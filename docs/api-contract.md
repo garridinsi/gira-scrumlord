@@ -88,6 +88,11 @@ Seed login for local dev: **`boss@example.test`** (admin).
 - `GET /issues/:key/cost` → `CostView` `{ minutes, billableMinutes, billingMode, hourlyCents, currency, accruedCents }`
 - `GET /projects/:key/summary` → `ProjectSummaryView` (time + money + open/done counts + active-sprint velocity)
 
+### Notifications & incidents (M3)
+- `GET /channels` (staff) → `ChannelView[]`; `POST /channels` (`createChannelSchema`: name, kind `email|webhook`, target, scope `global|project`, projectId?, events[]); `PATCH|DELETE /channels/:id`; `POST /channels/:id/test` → `{ ok, error? }` (send a test now)
+- `GET /incidents?status` → `IncidentView[]` (clients see only their own projects; read-only for them); `POST /incidents/:id/ack`; `POST /incidents/:id/resolve`
+- Emergencies (`priority: 'emergency'`) auto-open an `Incident`; the backend re-pages open ones until acked. A UI "Incidents" view + ack button is high-value. `events` strings: `issue.emergency`, `issue.assigned`.
+
 ### Audit (separate read-only service — `sauron`)
 - `GET http://localhost:666/audit?entityType&entityId&action&limit` → `{ count, entries }` (read-only; non-GET → `405`). Optional for an admin "activity" view.
 
