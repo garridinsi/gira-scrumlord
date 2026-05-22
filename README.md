@@ -71,12 +71,14 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 | User permissions & client isolation | ✅ | **NOT** everyone is admin anymore. We learned. Clients see only their own data, enforced server-side. |
 | `sauron` — audit log | ✅ | Append-only. Read-only. Listens on **port 666**. It only watches. Don't touch. |
 | `scrumlord` — the daemon | ✅ | A real `pg-boss` worker. Governs the dailies: rolls sprints, reaps timers, drains the outbox. |
-| Client portal | 🚧 | M2. The data isolation it needs already exists. |
-| Emergency paging | 🌀 | The `emergency` priority + outbox seam ship today; the pager screams in M3. |
-| Grafana / WordPress / Slack intake | 🚧 | M4, lives in `packages/chaos`. Notifications still drafted in ancient Aramaic. |
+| Notifications & **emergency paging** | ✅ | Email/webhook channels; an `emergency` opens an incident and the pager keeps nudging until someone acks. |
+| Grafana / WordPress intake | ✅ | A Grafana `critical` alert auto-files an `emergency` ticket (deduped) and pages you. WordPress forms become tickets. (`packages/chaos`) |
+| Auto-assignment | ✅ | Rule-based: new intake issues get an owner by type/priority/label. |
+| Slack intake | 🚧 | Same adapter pattern, later. Notifications still drafted in ancient Aramaic. |
+| Client portal | 🚧 | M2 — a frontend job. The data isolation it needs already exists. |
 | Dark mode | ✅ | Still the only mode. Darkness is the PM's natural state. |
 | AI | ❌ | We vibe by hand here, the way the gods intended. |
-| Tests | ✅ | **84 of them.** The README used to say we don't test. The README was coping. |
+| Tests | ✅ | **113 of them.** The README used to say we don't test. The README was coping. |
 
 ---
 

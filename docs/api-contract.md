@@ -93,6 +93,11 @@ Seed login for local dev: **`boss@example.test`** (admin).
 - `GET /incidents?status` → `IncidentView[]` (clients see only their own projects; read-only for them); `POST /incidents/:id/ack`; `POST /incidents/:id/resolve`
 - Emergencies (`priority: 'emergency'`) auto-open an `Incident`; the backend re-pages open ones until acked. A UI "Incidents" view + ack button is high-value. `events` strings: `issue.emergency`, `issue.assigned`.
 
+### Inbound integrations (M4)
+- `GET|POST /intake-sources` (admin; `POST` returns `{ ...source, token, intakeUrl }` — **token shown once**); `PATCH|DELETE /intake-sources/:id`
+- `GET|POST /projects/:key/assignment-rules` (auto-assign by matchType/matchPriority/matchLabelId → assigneeId, first match by order); `DELETE /assignment-rules/:id`
+- `POST /intake/:sourceId` — **external callers, no cookie.** Auth via header `X-Gira-Token: <token>` (or `?token=`). Body = raw Grafana/WordPress/generic payload; parsed by `@gira/chaos`, deduped on `(source, externalRef)`. A Grafana `critical` becomes an `emergency` issue → opens an incident → pages. Admin UI for sources + rules (and showing the token once on create) is useful.
+
 ### Audit (separate read-only service — `sauron`)
 - `GET http://localhost:666/audit?entityType&entityId&action&limit` → `{ count, entries }` (read-only; non-GET → `405`). Optional for an admin "activity" view.
 

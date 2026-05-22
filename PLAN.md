@@ -42,7 +42,7 @@ Client users are strictly isolated to their own client's data. (Details in the s
 | **M1** | Core tracker + time + money | ✅ done — 84 tests, full stack runs |
 | M2 | Client portal (read views of open/done/in-progress, time & money) | ⏳ planned (frontend — Claude Design) |
 | M3 | Notifications + **emergency paging** | ✅ done — channels (email/webhook), incidents, escalation; 22 tests |
-| M4 | Inbound integrations: Grafana alerts→issues, WordPress→issues, auto-assign (`packages/chaos`) | 🚧 in progress |
+| M4 | Inbound integrations: Grafana alerts→issues, WordPress→issues, auto-assign (`packages/chaos`) | ✅ done — token webhooks, dedup, auto-assign; 11 tests |
 | M5 | Billing/accounting: invoices, exports, rate snapshotting | ⏳ planned |
 
 ## M1 build order (vertical slices, TDD, commit each)
