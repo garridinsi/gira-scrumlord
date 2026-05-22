@@ -12,6 +12,7 @@ import { moneyRoutes } from './modules/money/routes.js';
 import { projectRoutes } from './modules/projects/routes.js';
 import { sprintRoutes } from './modules/sprints/routes.js';
 import { timeRoutes } from './modules/time/routes.js';
+import { userRoutes } from './modules/users/routes.js';
 import { registerErrorHandler } from './plugins/errors.js';
 import { registerSecurity } from './plugins/security.js';
 import { healthRoutes } from './routes/health.js';
@@ -28,6 +29,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(authRoutes);
   await app.register(clientRoutes);
+  await app.register(userRoutes);
   await app.register(projectRoutes);
   await app.register(issueRoutes);
   await app.register(boardRoutes);
