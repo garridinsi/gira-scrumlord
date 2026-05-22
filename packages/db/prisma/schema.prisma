@@ -1,0 +1,346 @@
+// gira-scrumlord data model — M1.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Money is ALWAYS integer minor units (cents) + an ISO-4217 currency. Never floats.
+// Client users are isolated to their own client's data — enforced in the app layer,
+// but the foreign keys here make that scoping cheap and unambiguous.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────── enums ──
+
+enum IssueType {
+  task
+  bug
+  story
+  epic
+}
+
+/// Ascending urgency. `emergency` is the seam M3's paging hooks onto.
+enum Priority {
+  low
+  medium
+  high
+  urgent
+  emergency
+}
+
+enum StatusCategory {
+  todo
+  in_progress
+  done
+}
+
+enum UserKind {
+  staff
+  client
+}
+
+enum UserRole {
+  admin
+  member
+  viewer
+}
+
+enum BillingMode {
+  hourly
+  fixed
+}
+
+enum RateScope {
+  default
+  client
+  project
+  issue
+}
+
+enum SprintState {
+  future
+  active
+  closed
+}
+
+// ───────────────────────────────────────────────────────────── identity ──
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  currency  String   @default("EUR") // ISO 4217
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    User[]
+  projects Project[]
+  rate     Rate?
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  kind      UserKind @default(staff)
+  role      UserRole @default(member)
+  clientId  String? // required when kind = client (app-enforced)
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  identities      Identity[]
+  sessions        Session[]
+  assignedIssues  Issue[]    @relation("IssueAssignee")
+  reportedIssues  Issue[]    @relation("IssueReporter")
+  comments        Comment[]
+  worklogs        Worklog[]
+  timers          Timer[]
+  auditLogs       AuditLog[]
+
+  @@index([clientId])
+}
+
+/// OIDC-ready auth binding. Today provider = "magic-link"; a client's IdP plugs
+/// in later as provider = "oidc:<issuer>" with no schema change.
+model Identity {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider  String
+  subject   String
+  email     String
+  createdAt DateTime @default(now())
+
+  @@unique([provider, subject])
+  @@index([userId])
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String // sha256 of the cookie's secret half — raw value never stored
+  userAgent String?
+  ip        String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model MagicLinkToken {
+  id         String    @id @default(cuid())
+  email      String
+  tokenHash  String    @unique // sha256 of the single-use token
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+}
+
+// ────────────────────────────────────────────────────────────── tracker ──
+
+model Project {
+  id           String   @id @default(cuid())
+  key          String   @unique // e.g. GIRA
+  name         String
+  description  String   @default("")
+  clientId     String?
+  client       Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  issueCounter Int      @default(0) // atomic source of PROJ-N keys
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  statuses Status[]
+  labels   Label[]
+  sprints  Sprint[]
+  issues   Issue[]
+  rate     Rate?
+
+  @@index([clientId])
+}
+
+model Status {
+  id        String         @id @default(cuid())
+  projectId String
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  category  StatusCategory
+  order     Int
+
+  issues Issue[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model Label {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  color     String  @default("#8b5cf6")
+
+  issues Issue[] @relation("IssueLabels")
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model Sprint {
+  id              String      @id @default(cuid())
+  projectId       String
+  project         Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name            String
+  goal            String?
+  startDate       DateTime?
+  endDate         DateTime?
+  state           SprintState @default(future)
+  committedPoints Int? // snapshot taken at start
+  completedPoints Int? // snapshot taken at close
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  issues Issue[]
+
+  @@index([projectId])
+}
+
+model Issue {
+  id              String      @id @default(cuid())
+  projectId       String
+  project         Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key             String      @unique // PROJ-N
+  title           String
+  description     String      @default("") // Markdown
+  type            IssueType   @default(task)
+  priority        Priority    @default(medium)
+  statusId        String
+  status          Status      @relation(fields: [statusId], references: [id])
+  assigneeId      String?
+  assignee        User?       @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporterId      String
+  reporter        User        @relation("IssueReporter", fields: [reporterId], references: [id])
+  sprintId        String?
+  sprint          Sprint?     @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  parentId        String?
+  parent          Issue?      @relation("IssueChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children        Issue[]     @relation("IssueChildren")
+  storyPoints     Int?
+  estimateMinutes Int?
+  rank            String // fractional LexoRank for board ordering
+  billingMode     BillingMode @default(hourly)
+  fixedPriceCents Int? // used when billingMode = fixed
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  closedAt        DateTime?
+
+  labels   Label[]   @relation("IssueLabels")
+  comments Comment[]
+  worklogs Worklog[]
+  timers   Timer[]
+  rate     Rate?
+
+  @@index([projectId, statusId])
+  @@index([projectId, rank])
+  @@index([assigneeId])
+  @@index([sprintId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  issueId   String
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String // Markdown
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([issueId])
+}
+
+// ──────────────────────────────────────────────────────── time & money ──
+
+model Worklog {
+  id        String   @id @default(cuid())
+  issueId   String
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  minutes   Int
+  note      String   @default("")
+  billable  Boolean  @default(true)
+  startedAt DateTime? // set when produced by stopping a timer
+  loggedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([issueId])
+  @@index([userId])
+}
+
+/// A running stopwatch. At most one active timer per user. Stopping writes a Worklog.
+model Timer {
+  id        String   @id @default(cuid())
+  issueId   String
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt DateTime @default(now())
+
+  @@index([issueId])
+}
+
+/// One row per scope. Resolution at read time: issue → project → client → default.
+model Rate {
+  id          String    @id @default(cuid())
+  scope       RateScope
+  clientId    String?   @unique
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId   String?   @unique
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issueId     String?   @unique
+  issue       Issue?    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  hourlyCents Int
+  currency    String    @default("EUR")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ──────────────────────────────────────────────── sauron & the outbox ──
+
+/// Append-only. Sauron only watches. Served read-only on port 666.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String // e.g. "issue.move"
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  at         DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([at])
+}
+
+/// Domain events for scrumlord/notifications. The seam M3 paging consumes.
+model Outbox {
+  id          String    @id @default(cuid())
+  type        String
+  payload     Json
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([processedAt])
+}
