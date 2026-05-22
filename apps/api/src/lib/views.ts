@@ -5,6 +5,7 @@
 import type {
   Comment,
   Incident,
+  IntakeSource,
   Issue,
   Label,
   NotificationChannel,
@@ -18,6 +19,7 @@ import type {
   ChannelView,
   CommentView,
   IncidentView,
+  IntakeSourceView,
   IssueView,
   LabelView,
   SprintView,
@@ -27,6 +29,18 @@ import type {
   VelocityView,
   WorklogView,
 } from '@gira/shared';
+
+export function toIntakeSourceView(s: IntakeSource): IntakeSourceView {
+  return {
+    id: s.id,
+    name: s.name,
+    kind: s.kind,
+    projectId: s.projectId,
+    defaultType: s.defaultType,
+    defaultPriority: s.defaultPriority,
+    active: s.active,
+  };
+}
 
 export function toUserView(u: User): UserView {
   return { id: u.id, email: u.email, name: u.name, kind: u.kind, role: u.role, clientId: u.clientId };

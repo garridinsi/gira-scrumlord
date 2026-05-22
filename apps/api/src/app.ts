@@ -7,6 +7,7 @@ import { config } from './config.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { boardRoutes } from './modules/board/routes.js';
 import { clientRoutes } from './modules/clients/routes.js';
+import { intakeRoutes } from './modules/intake/routes.js';
 import { issueRoutes } from './modules/issues/routes.js';
 import { moneyRoutes } from './modules/money/routes.js';
 import { notificationRoutes } from './modules/notifications/routes.js';
@@ -38,6 +39,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(timeRoutes);
   await app.register(moneyRoutes);
   await app.register(notificationRoutes);
+  await app.register(intakeRoutes);
 
   return app;
 }

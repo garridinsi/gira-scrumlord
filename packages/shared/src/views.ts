@@ -7,6 +7,7 @@ import type {
   ChannelKind,
   ChannelScope,
   IncidentStatus,
+  IntakeKind,
   IssueType,
   Priority,
   SprintState,
@@ -14,6 +15,16 @@ import type {
   UserKind,
   UserRole,
 } from './enums.js';
+
+export interface IntakeSourceView {
+  id: string;
+  name: string;
+  kind: IntakeKind;
+  projectId: string;
+  defaultType: IssueType;
+  defaultPriority: Priority;
+  active: boolean;
+}
 
 export interface UserView {
   id: string;
