@@ -123,3 +123,13 @@ export interface TimerView {
   startedAt: string;
   elapsedMinutes: number;
 }
+
+export interface WorklogView {
+  id: string;
+  minutes: number;
+  note: string;
+  billable: boolean;
+  startedAt: string | null;
+  loggedAt: string;
+  user: UserView | null;
+}

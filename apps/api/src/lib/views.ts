@@ -2,15 +2,17 @@
 // Map Prisma rows to the wire-facing view types from @gira/shared. Keeping these
 // in one place means the API and frontend never disagree about response shapes.
 
-import type { Comment, Issue, Label, Sprint, Status, User } from '@gira/db';
+import type { Comment, Issue, Label, Sprint, Status, Timer, User, Worklog } from '@gira/db';
 import type {
   CommentView,
   IssueView,
   LabelView,
   SprintView,
   StatusView,
+  TimerView,
   UserView,
   VelocityView,
+  WorklogView,
 } from '@gira/shared';
 
 export function toUserView(u: User): UserView {
@@ -31,6 +33,27 @@ export function toCommentView(c: Comment & { author?: User | null }): CommentVie
     body: c.body,
     author: c.author ? toUserView(c.author) : null,
     createdAt: c.createdAt.toISOString(),
+  };
+}
+
+export function toWorklogView(w: Worklog & { user?: User | null }): WorklogView {
+  return {
+    id: w.id,
+    minutes: w.minutes,
+    note: w.note,
+    billable: w.billable,
+    startedAt: w.startedAt ? w.startedAt.toISOString() : null,
+    loggedAt: w.loggedAt.toISOString(),
+    user: w.user ? toUserView(w.user) : null,
+  };
+}
+
+export function toTimerView(t: Timer & { issue?: { key: string } }, now = new Date()): TimerView {
+  return {
+    id: t.id,
+    issueKey: t.issue?.key ?? '',
+    startedAt: t.startedAt.toISOString(),
+    elapsedMinutes: Math.max(0, Math.floor((now.getTime() - t.startedAt.getTime()) / 60_000)),
   };
 }
 

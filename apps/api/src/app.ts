@@ -10,6 +10,7 @@ import { clientRoutes } from './modules/clients/routes.js';
 import { issueRoutes } from './modules/issues/routes.js';
 import { projectRoutes } from './modules/projects/routes.js';
 import { sprintRoutes } from './modules/sprints/routes.js';
+import { timeRoutes } from './modules/time/routes.js';
 import { registerErrorHandler } from './plugins/errors.js';
 import { registerSecurity } from './plugins/security.js';
 import { healthRoutes } from './routes/health.js';
@@ -30,6 +31,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(issueRoutes);
   await app.register(boardRoutes);
   await app.register(sprintRoutes);
+  await app.register(timeRoutes);
 
   return app;
 }
