@@ -1,0 +1,21 @@
+{
+  "name": "@gira/scrumlord",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@gira/db": "workspace:*",
+    "@gira/domain": "workspace:*",
+    "dotenv": "^16.4.7",
+    "pg-boss": "^10.1.5"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10"
+  }
+}
