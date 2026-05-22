@@ -6,6 +6,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { config } from './config.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { clientRoutes } from './modules/clients/routes.js';
+import { issueRoutes } from './modules/issues/routes.js';
 import { projectRoutes } from './modules/projects/routes.js';
 import { registerErrorHandler } from './plugins/errors.js';
 import { registerSecurity } from './plugins/security.js';
@@ -24,6 +25,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(authRoutes);
   await app.register(clientRoutes);
   await app.register(projectRoutes);
+  await app.register(issueRoutes);
 
   return app;
 }

@@ -50,6 +50,13 @@ export interface IssueView {
   closedAt: string | null;
 }
 
+export interface CommentView {
+  id: string;
+  body: string;
+  author: UserView | null;
+  createdAt: string;
+}
+
 export interface BoardColumn {
   status: StatusView;
   issues: IssueView[];

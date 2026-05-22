@@ -1,0 +1,171 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+import { type Prisma, prisma } from '@gira/db';
+import { createCommentSchema, createIssueSchema, issueFilterSchema, updateIssueSchema } from '@gira/shared';
+import { recordAudit } from '@gira/sauron';
+import type { FastifyInstance } from 'fastify';
+import { currentUser, requireAuth } from '../../lib/auth.js';
+import { badRequest } from '../../lib/http-error.js';
+import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
+import { toCommentView, toIssueView } from '../../lib/views.js';
+import { getProjectByKeyOr404 } from '../projects/service.js';
+import { createIssue, emitEmergency, issueInclude, loadIssueOr404 } from './service.js';
+
+export async function issueRoutes(app: FastifyInstance): Promise<void> {
+  // ── list / search / filter ─────────────────────────────────────────────
+  app.get('/issues', { preHandler: requireAuth }, async (req) => {
+    const user = currentUser(req);
+    const f = issueFilterSchema.parse(req.query);
+
+    const projectWhere: Prisma.ProjectWhereInput = {};
+    if (user.kind === 'client') projectWhere.clientId = user.clientId;
+    if (f.projectKey) projectWhere.key = f.projectKey;
+
+    const where: Prisma.IssueWhereInput = {};
+    if (Object.keys(projectWhere).length) where.project = projectWhere;
+    if (f.statusId) where.statusId = f.statusId;
+    if (f.assigneeId) where.assigneeId = f.assigneeId;
+    if (f.type) where.type = f.type;
+    if (f.priority) where.priority = f.priority;
+    if (f.sprintId) where.sprintId = f.sprintId;
+    if (f.labelId) where.labels = { some: { id: f.labelId } };
+    if (f.q) {
+      where.OR = [
+        { title: { contains: f.q, mode: 'insensitive' } },
+        { description: { contains: f.q, mode: 'insensitive' } },
+        { key: { contains: f.q.toUpperCase() } },
+      ];
+    }
+
+    const issues = await prisma.issue.findMany({
+      where,
+      include: issueInclude,
+      orderBy: { createdAt: 'desc' },
+      take: f.limit,
+    });
+    return issues.map((i) => toIssueView(i));
+  });
+
+  // ── create ──────────────────────────────────────────────────────────────
+  app.post('/issues', { preHandler: requireAuth }, async (req, reply) => {
+    const user = currentUser(req);
+    assertCanWrite(user);
+    const input = createIssueSchema.parse(req.body);
+    const project = await getProjectByKeyOr404(input.projectKey);
+    assertCanAccessProject(user, project);
+    const issue = await createIssue(input, user.id);
+    return reply.code(201).send(toIssueView(issue));
+  });
+
+  // ── read ──────────────────────────────────────────────────────────────
+  app.get('/issues/:key', { preHandler: requireAuth }, async (req) => {
+    const { key } = req.params as { key: string };
+    const issue = await loadIssueOr404(key);
+    assertCanAccessProject(currentUser(req), { clientId: issue.project.clientId });
+    return toIssueView(issue);
+  });
+
+  // ── update ──────────────────────────────────────────────────────────────
+  app.patch('/issues/:key', { preHandler: requireAuth }, async (req) => {
+    const user = currentUser(req);
+    assertCanWrite(user);
+    const { key } = req.params as { key: string };
+    const before = await loadIssueOr404(key);
+    assertCanAccessProject(user, { clientId: before.project.clientId });
+    const input = updateIssueSchema.parse(req.body);
+
+    // Moving across status categories drives closedAt.
+    let closedAt: Date | null | undefined;
+    if (input.statusId && input.statusId !== before.statusId) {
+      const status = await prisma.status.findUnique({ where: { id: input.statusId } });
+      if (!status || status.projectId !== before.projectId) throw badRequest('invalid statusId');
+      closedAt = status.category === 'done' ? (before.closedAt ?? new Date()) : null;
+    }
+
+    const data: Prisma.IssueUpdateInput = {
+      title: input.title,
+      description: input.description,
+      type: input.type,
+      priority: input.priority,
+      storyPoints: input.storyPoints,
+      estimateMinutes: input.estimateMinutes,
+      billingMode: input.billingMode,
+      fixedPriceCents: input.fixedPriceCents,
+    };
+    if (input.statusId) data.status = { connect: { id: input.statusId } };
+    if (closedAt !== undefined) data.closedAt = closedAt;
+    if ('assigneeId' in input) {
+      data.assignee = input.assigneeId ? { connect: { id: input.assigneeId } } : { disconnect: true };
+    }
+    if ('sprintId' in input) {
+      data.sprint = input.sprintId ? { connect: { id: input.sprintId } } : { disconnect: true };
+    }
+    if ('parentId' in input) {
+      data.parent = input.parentId ? { connect: { id: input.parentId } } : { disconnect: true };
+    }
+    if (input.labelIds) data.labels = { set: input.labelIds.map((id) => ({ id })) };
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const u = await tx.issue.update({ where: { key }, data, include: issueInclude });
+      if (u.priority === 'emergency' && before.priority !== 'emergency') {
+        await emitEmergency(tx, u.key, before.project.key, u.title);
+      }
+      await recordAudit(tx, {
+        actorId: user.id,
+        action: 'issue.update',
+        entityType: 'Issue',
+        entityId: before.id,
+        before: { title: before.title, statusId: before.statusId, priority: before.priority },
+        after: { title: u.title, statusId: u.statusId, priority: u.priority },
+      });
+      return u;
+    });
+    return toIssueView(updated);
+  });
+
+  // ── delete ──────────────────────────────────────────────────────────────
+  app.delete('/issues/:key', { preHandler: requireAuth }, async (req, reply) => {
+    const user = currentUser(req);
+    assertCanWrite(user);
+    const { key } = req.params as { key: string };
+    const issue = await loadIssueOr404(key);
+    assertCanAccessProject(user, { clientId: issue.project.clientId });
+    await prisma.$transaction(async (tx) => {
+      await tx.issue.delete({ where: { key } });
+      await recordAudit(tx, {
+        actorId: user.id,
+        action: 'issue.delete',
+        entityType: 'Issue',
+        entityId: issue.id,
+        before: { key: issue.key, title: issue.title },
+      });
+    });
+    return reply.code(204).send();
+  });
+
+  // ── comments ──────────────────────────────────────────────────────────
+  app.get('/issues/:key/comments', { preHandler: requireAuth }, async (req) => {
+    const { key } = req.params as { key: string };
+    const issue = await loadIssueOr404(key);
+    assertCanAccessProject(currentUser(req), { clientId: issue.project.clientId });
+    const comments = await prisma.comment.findMany({
+      where: { issueId: issue.id },
+      include: { author: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return comments.map(toCommentView);
+  });
+
+  app.post('/issues/:key/comments', { preHandler: requireAuth }, async (req, reply) => {
+    const user = currentUser(req);
+    const { key } = req.params as { key: string };
+    const issue = await loadIssueOr404(key);
+    // Anyone with access (including clients) may comment.
+    assertCanAccessProject(user, { clientId: issue.project.clientId });
+    const input = createCommentSchema.parse(req.body);
+    const comment = await prisma.comment.create({
+      data: { issueId: issue.id, authorId: user.id, body: input.body },
+      include: { author: true },
+    });
+    return reply.code(201).send(toCommentView(comment));
+  });
+}
