@@ -4,6 +4,7 @@
 
 import Fastify, { type FastifyInstance } from 'fastify';
 import { config } from './config.js';
+import { authRoutes } from './modules/auth/routes.js';
 import { registerErrorHandler } from './plugins/errors.js';
 import { registerSecurity } from './plugins/security.js';
 import { healthRoutes } from './routes/health.js';
@@ -18,6 +19,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   registerErrorHandler(app);
 
   await app.register(healthRoutes);
+  await app.register(authRoutes);
 
   return app;
 }

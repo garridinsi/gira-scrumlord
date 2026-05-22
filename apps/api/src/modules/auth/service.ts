@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Magic-link lifecycle: mint a single-use token for a known user (or bootstrap
+// the very first admin), then consume it exactly once.
+
+import { prisma, type User } from '@gira/db';
+import { generateToken, hashToken } from '@gira/domain';
+import { config } from '../../config.js';
+import { unauthorized } from '../../lib/http-error.js';
+
+export interface MagicLinkResult {
+  /** Whether a link was actually minted. The route returns 202 either way. */
+  sent: boolean;
+  rawToken?: string;
+  link?: string;
+}
+
+export async function createMagicLink(email: string): Promise<MagicLinkResult> {
+  let user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    const count = await prisma.user.count();
+    if (count === 0) {
+      // Bootstrap: the first person to sign in to a fresh install becomes admin.
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: email.split('@')[0] || 'admin',
+          kind: 'staff',
+          role: 'admin',
+          identities: { create: { provider: 'magic-link', subject: email, email } },
+        },
+      });
+    } else {
+      // Known-users-only. No open signup, and no enumeration (route still 202s).
+      return { sent: false };
+    }
+  }
+
+  const { raw, hash } = generateToken();
+  const expiresAt = new Date(Date.now() + config.MAGIC_LINK_TTL_MINUTES * 60_000);
+  await prisma.magicLinkToken.create({ data: { email, tokenHash: hash, expiresAt } });
+
+  const link = `${config.APP_URL}/auth/callback?token=${raw}`;
+  return { sent: true, rawToken: raw, link };
+}
+
+export async function consumeMagicLink(rawToken: string): Promise<User> {
+  const tokenHash = hashToken(rawToken);
+  const token = await prisma.magicLinkToken.findUnique({ where: { tokenHash } });
+  if (!token || token.consumedAt || token.expiresAt < new Date()) {
+    throw unauthorized('invalid or expired sign-in link');
+  }
+
+  // Atomic single-use: only the first caller flips consumedAt from null.
+  const claimed = await prisma.magicLinkToken.updateMany({
+    where: { id: token.id, consumedAt: null },
+    data: { consumedAt: new Date() },
+  });
+  if (claimed.count === 0) throw unauthorized('sign-in link already used');
+
+  const user = await prisma.user.findUnique({ where: { email: token.email } });
+  if (!user || !user.isActive) throw unauthorized('account not available');
+  return user;
+}
