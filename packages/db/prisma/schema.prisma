@@ -89,6 +89,12 @@ enum IncidentStatus {
   resolved
 }
 
+enum IntakeKind {
+  grafana
+  wordpress
+  generic
+}
+
 // ───────────────────────────────────────────────────────────── identity ──
 
 model Client {
@@ -121,11 +127,12 @@ model User {
   sessions        Session[]
   assignedIssues  Issue[]    @relation("IssueAssignee")
   reportedIssues  Issue[]    @relation("IssueReporter")
-  comments             Comment[]
-  worklogs             Worklog[]
-  timers               Timer[]
-  auditLogs            AuditLog[]
+  comments              Comment[]
+  worklogs              Worklog[]
+  timers                Timer[]
+  auditLogs             AuditLog[]
   acknowledgedIncidents Incident[]
+  assignmentRules       AssignmentRule[]
 
   @@index([clientId])
 }
@@ -183,12 +190,14 @@ model Project {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  statuses Status[]
-  labels   Label[]
-  sprints  Sprint[]
-  issues   Issue[]
-  rate     Rate?
-  channels NotificationChannel[]
+  statuses        Status[]
+  labels          Label[]
+  sprints         Sprint[]
+  issues          Issue[]
+  rate            Rate?
+  channels        NotificationChannel[]
+  intakeSources   IntakeSource[]
+  assignmentRules AssignmentRule[]
 
   @@index([clientId])
 }
@@ -264,17 +273,21 @@ model Issue {
   rank            String // fractional LexoRank for board ordering
   billingMode     BillingMode @default(hourly)
   fixedPriceCents Int? // used when billingMode = fixed
+  externalRef     String? // external system id/fingerprint (M4 intake dedup)
+  intakeSourceId  String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   closedAt        DateTime?
 
-  labels    Label[]    @relation("IssueLabels")
-  comments  Comment[]
-  worklogs  Worklog[]
-  timers    Timer[]
-  rate      Rate?
-  incidents Incident[]
+  labels       Label[]        @relation("IssueLabels")
+  comments     Comment[]
+  worklogs     Worklog[]
+  timers       Timer[]
+  rate         Rate?
+  incidents    Incident[]
+  intakeSource IntakeSource?  @relation(fields: [intakeSourceId], references: [id], onDelete: SetNull)
 
+  @@unique([intakeSourceId, externalRef])
   @@index([projectId, statusId])
   @@index([projectId, rank])
   @@index([assigneeId])
@@ -430,4 +443,41 @@ model Incident {
 
   @@index([status])
   @@index([issueId])
+}
+
+// ───────────────────────────────────── M4: inbound integrations ──
+
+/// An external system allowed to create issues. Authenticated by a hashed token.
+model IntakeSource {
+  id              String     @id @default(cuid())
+  name            String
+  kind            IntakeKind
+  projectId       String
+  project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tokenHash       String     @unique // sha256 of the bearer token (shown once on create)
+  defaultType     IssueType  @default(bug)
+  defaultPriority Priority   @default(high)
+  active          Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  issues Issue[]
+
+  @@index([projectId])
+}
+
+/// First matching rule (by order) auto-assigns a new issue. Null match = wildcard.
+model AssignmentRule {
+  id            String     @id @default(cuid())
+  projectId     String
+  project       Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  order         Int        @default(0)
+  matchType     IssueType?
+  matchPriority Priority?
+  matchLabelId  String?
+  assigneeId    String
+  assignee      User       @relation(fields: [assigneeId], references: [id], onDelete: Cascade)
+  createdAt     DateTime   @default(now())
+
+  @@index([projectId])
 }
