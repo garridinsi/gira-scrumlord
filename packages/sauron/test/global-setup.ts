@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export default function setup(): void {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const dbDir = path.resolve(here, '../../db');
+  execFileSync('pnpm', ['exec', 'prisma', 'db', 'push', '--skip-generate', '--accept-data-loss'], {
+    cwd: dbDir,
+    stdio: 'inherit',
+    env: process.env,
+  });
+}

@@ -76,6 +76,18 @@ importers:
 
   packages/domain: {}
 
+  packages/sauron:
+    dependencies:
+      '@gira/db':
+        specifier: workspace:*
+        version: link:../db
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
+      fastify:
+        specifier: ^5.2.1
+        version: 5.8.5
+
   packages/shared:
     dependencies:
       zod:
