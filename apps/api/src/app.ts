@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// The Fastify application factory (the README's "core"). Building the app is
+// separate from listening so tests can drive it via `app.inject()`.
+
+import Fastify, { type FastifyInstance } from 'fastify';
+import { config } from './config.js';
+import { registerErrorHandler } from './plugins/errors.js';
+import { registerSecurity } from './plugins/security.js';
+import { healthRoutes } from './routes/health.js';
+
+export async function buildApp(): Promise<FastifyInstance> {
+  const app = Fastify({
+    logger: config.NODE_ENV !== 'test',
+    bodyLimit: 2 * 1024 * 1024,
+  });
+
+  await registerSecurity(app);
+  registerErrorHandler(app);
+
+  await app.register(healthRoutes);
+
+  return app;
+}
