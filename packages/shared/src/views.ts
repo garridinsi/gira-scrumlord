@@ -2,7 +2,15 @@
 // Response shapes (the API conforms to these; the web imports them). Dates are
 // ISO strings because this is what crosses the wire as JSON.
 
-import type { BillingMode, IssueType, Priority, StatusCategory, UserKind, UserRole } from './enums.js';
+import type {
+  BillingMode,
+  IssueType,
+  Priority,
+  SprintState,
+  StatusCategory,
+  UserKind,
+  UserRole,
+} from './enums.js';
 
 export interface UserView {
   id: string;
@@ -57,6 +65,27 @@ export interface CommentView {
   createdAt: string;
 }
 
+export interface VelocityView {
+  committedPoints: number;
+  completedPoints: number;
+  completedCount: number;
+  totalPoints: number;
+  totalCount: number;
+}
+
+export interface SprintView {
+  id: string;
+  projectId: string;
+  name: string;
+  goal: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  state: SprintState;
+  committedPoints: number | null;
+  completedPoints: number | null;
+  velocity?: VelocityView;
+}
+
 export interface BoardColumn {
   status: StatusView;
   issues: IssueView[];
@@ -75,14 +104,6 @@ export interface CostView {
   hourlyCents: number | null;
   currency: string;
   accruedCents: number;
-}
-
-export interface VelocityView {
-  committedPoints: number;
-  completedPoints: number;
-  completedCount: number;
-  totalPoints: number;
-  totalCount: number;
 }
 
 export interface ProjectSummaryView {

@@ -2,8 +2,16 @@
 // Map Prisma rows to the wire-facing view types from @gira/shared. Keeping these
 // in one place means the API and frontend never disagree about response shapes.
 
-import type { Comment, Issue, Label, Status, User } from '@gira/db';
-import type { CommentView, IssueView, LabelView, StatusView, UserView } from '@gira/shared';
+import type { Comment, Issue, Label, Sprint, Status, User } from '@gira/db';
+import type {
+  CommentView,
+  IssueView,
+  LabelView,
+  SprintView,
+  StatusView,
+  UserView,
+  VelocityView,
+} from '@gira/shared';
 
 export function toUserView(u: User): UserView {
   return { id: u.id, email: u.email, name: u.name, kind: u.kind, role: u.role, clientId: u.clientId };
@@ -23,6 +31,21 @@ export function toCommentView(c: Comment & { author?: User | null }): CommentVie
     body: c.body,
     author: c.author ? toUserView(c.author) : null,
     createdAt: c.createdAt.toISOString(),
+  };
+}
+
+export function toSprintView(s: Sprint, velocity?: VelocityView): SprintView {
+  return {
+    id: s.id,
+    projectId: s.projectId,
+    name: s.name,
+    goal: s.goal,
+    startDate: s.startDate ? s.startDate.toISOString() : null,
+    endDate: s.endDate ? s.endDate.toISOString() : null,
+    state: s.state,
+    committedPoints: s.committedPoints,
+    completedPoints: s.completedPoints,
+    velocity,
   };
 }
 
