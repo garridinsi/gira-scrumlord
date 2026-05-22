@@ -67,6 +67,28 @@ enum SprintState {
   closed
 }
 
+enum ChannelKind {
+  email
+  webhook
+}
+
+enum ChannelScope {
+  global
+  project
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+}
+
+enum IncidentStatus {
+  open
+  acked
+  resolved
+}
+
 // ───────────────────────────────────────────────────────────── identity ──
 
 model Client {
@@ -99,10 +121,11 @@ model User {
   sessions        Session[]
   assignedIssues  Issue[]    @relation("IssueAssignee")
   reportedIssues  Issue[]    @relation("IssueReporter")
-  comments        Comment[]
-  worklogs        Worklog[]
-  timers          Timer[]
-  auditLogs       AuditLog[]
+  comments             Comment[]
+  worklogs             Worklog[]
+  timers               Timer[]
+  auditLogs            AuditLog[]
+  acknowledgedIncidents Incident[]
 
   @@index([clientId])
 }
@@ -165,6 +188,7 @@ model Project {
   sprints  Sprint[]
   issues   Issue[]
   rate     Rate?
+  channels NotificationChannel[]
 
   @@index([clientId])
 }
@@ -244,11 +268,12 @@ model Issue {
   updatedAt       DateTime    @updatedAt
   closedAt        DateTime?
 
-  labels   Label[]   @relation("IssueLabels")
-  comments Comment[]
-  worklogs Worklog[]
-  timers   Timer[]
-  rate     Rate?
+  labels    Label[]    @relation("IssueLabels")
+  comments  Comment[]
+  worklogs  Worklog[]
+  timers    Timer[]
+  rate      Rate?
+  incidents Incident[]
 
   @@index([projectId, statusId])
   @@index([projectId, rank])
@@ -343,4 +368,66 @@ model Outbox {
   processedAt DateTime?
 
   @@index([processedAt])
+}
+
+// ───────────────────────────────────── M3: notifications & paging ──
+
+/// Where notifications go. Admin/member-configured.
+model NotificationChannel {
+  id        String       @id @default(cuid())
+  name      String
+  kind      ChannelKind
+  target    String // email address or webhook URL
+  scope     ChannelScope @default(global)
+  projectId String?
+  project   Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  events    String[] // event types this channel wants, e.g. ["issue.emergency"]
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  notifications Notification[]
+
+  @@index([projectId])
+}
+
+/// A delivery record (audit + retry).
+model Notification {
+  id         String              @id @default(cuid())
+  type       String
+  channelId  String
+  channel    NotificationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  payload    Json
+  status     NotificationStatus  @default(pending)
+  attempts   Int                 @default(0)
+  error      String?
+  sentAt     DateTime?
+  incidentId String?
+  incident   Incident?           @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  createdAt  DateTime            @default(now())
+
+  @@index([channelId])
+  @@index([status])
+}
+
+/// Opened when an issue reaches `emergency`. The pager nudges open incidents
+/// until someone acknowledges.
+model Incident {
+  id               String         @id @default(cuid())
+  issueId          String
+  issue            Issue          @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  status           IncidentStatus @default(open)
+  escalationLevel  Int            @default(0)
+  lastNotifiedAt   DateTime?
+  acknowledgedById String?
+  acknowledgedBy   User?          @relation(fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  acknowledgedAt   DateTime?
+  resolvedAt       DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  notifications Notification[]
+
+  @@index([status])
+  @@index([issueId])
 }
