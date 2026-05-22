@@ -87,6 +87,14 @@ export async function createIssue(
     if (issue.priority === 'emergency') {
       await emitEmergency(tx, key, project.key, issue.title);
     }
+    if (issue.assigneeId) {
+      await tx.outbox.create({
+        data: {
+          type: 'issue.assigned',
+          payload: { issueKey: key, projectKey: project.key, assigneeId: issue.assigneeId, title: issue.title },
+        },
+      });
+    }
     await recordAudit(tx, {
       actorId: reporterId,
       action: 'issue.create',

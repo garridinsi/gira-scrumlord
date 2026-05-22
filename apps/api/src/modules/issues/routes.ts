@@ -109,6 +109,14 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
       if (u.priority === 'emergency' && before.priority !== 'emergency') {
         await emitEmergency(tx, u.key, before.project.key, u.title);
       }
+      if (u.assigneeId && u.assigneeId !== before.assigneeId) {
+        await tx.outbox.create({
+          data: {
+            type: 'issue.assigned',
+            payload: { issueKey: u.key, projectKey: before.project.key, assigneeId: u.assigneeId, title: u.title },
+          },
+        });
+      }
       await recordAudit(tx, {
         actorId: user.id,
         action: 'issue.update',

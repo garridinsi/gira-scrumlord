@@ -2,6 +2,7 @@
 // scrumlord — the daemon that governs the dailies.
 // One ticket to rule them all. Sauron watches. The tornado is you at end of quarter.
 
+import { escalateOpenIncidents } from '@gira/notify';
 import PgBoss from 'pg-boss';
 import { DATABASE_URL } from './config.js';
 import { runSprintAutoclose } from './jobs/sprint-autoclose.js';
@@ -14,6 +15,7 @@ const QUEUE_OUTBOX_DISPATCH = 'outbox-dispatch';
 const QUEUE_SPRINT_AUTOCLOSE = 'sprint-autoclose';
 const QUEUE_VELOCITY_SNAPSHOT = 'velocity-snapshot';
 const QUEUE_TIMER_REAP = 'timer-reap';
+const QUEUE_INCIDENT_ESCALATE = 'incident-escalate';
 
 // ── Cron cadences ────────────────────────────────────────────────────────────
 // outbox-dispatch:    every minute  (* * * * *)
@@ -35,6 +37,7 @@ async function main(): Promise<void> {
   await boss.schedule(QUEUE_SPRINT_AUTOCLOSE, '*/5 * * * *', {});
   await boss.schedule(QUEUE_VELOCITY_SNAPSHOT, '*/5 * * * *', {});
   await boss.schedule(QUEUE_TIMER_REAP, '*/10 * * * *', {});
+  await boss.schedule(QUEUE_INCIDENT_ESCALATE, '*/2 * * * *', {});
 
   // Wire up job handlers.
   await boss.work(QUEUE_OUTBOX_DISPATCH, async () => {
@@ -55,6 +58,11 @@ async function main(): Promise<void> {
   await boss.work(QUEUE_TIMER_REAP, async () => {
     const count = await runTimerReap();
     if (count > 0) console.log(`[scrumlord] timer-reap reaped ${count} timer(s)`);
+  });
+
+  await boss.work(QUEUE_INCIDENT_ESCALATE, async () => {
+    const count = await escalateOpenIncidents({ intervalMinutes: 5, maxLevel: 3 });
+    if (count > 0) console.log(`[scrumlord] incident-escalate re-paged ${count} incident(s)`);
   });
 
   console.log('🌀 scrumlord awakened — the dailies have a master');

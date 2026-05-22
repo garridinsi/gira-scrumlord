@@ -75,6 +75,9 @@ importers:
       '@gira/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@gira/notify':
+        specifier: workspace:*
+        version: link:../../packages/notify
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
