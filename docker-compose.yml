@@ -1,0 +1,47 @@
+# gira-scrumlord — local stack.
+#
+# `docker compose up -d` brings up the only two pieces of infra the dev loop needs:
+#   - postgres : the single datastore (app data AND the pg-boss job queue live here)
+#   - mailpit  : catches outgoing magic-link emails so you can click them in dev
+#
+# The app processes (api, scrumlord, web) run via `pnpm dev` with hot reload.
+# Full containerised app services land in M1's final task under the `full` profile.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gira-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gira}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gira}
+      POSTGRES_DB: ${POSTGRES_DB:-gira}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - gira-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-gira} -d ${POSTGRES_DB:-gira}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: gira-mailpit
+    restart: unless-stopped
+    ports:
+      - '${SMTP_PORT:-1025}:1025' # SMTP
+      - '${MAILPIT_UI_PORT:-8025}:8025' # web UI — open http://localhost:8025
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '-', 'http://localhost:8025/readyz']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  gira-pgdata:
