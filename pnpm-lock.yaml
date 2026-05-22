@@ -41,6 +41,9 @@ importers:
       '@gira/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@gira/sauron':
+        specifier: workspace:*
+        version: link:../../packages/sauron
       '@gira/shared':
         specifier: workspace:*
         version: link:../../packages/shared

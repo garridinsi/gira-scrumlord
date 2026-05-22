@@ -16,6 +16,7 @@
     "@fastify/helmet": "^13.0.1",
     "@gira/db": "workspace:*",
     "@gira/domain": "workspace:*",
+    "@gira/sauron": "workspace:*",
     "@gira/shared": "workspace:*",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",

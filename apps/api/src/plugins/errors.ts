@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // One place that turns thrown errors into clean JSON responses.
 
+import { Prisma } from '@gira/db';
 import type { FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { HttpError } from '../lib/http-error.js';
@@ -12,6 +13,17 @@ export function registerErrorHandler(app: FastifyInstance): void {
     }
     if (err instanceof HttpError) {
       return reply.status(err.statusCode).send({ error: err.message, details: err.details });
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === 'P2002') {
+        return reply.status(409).send({ error: 'already_exists', target: err.meta?.target });
+      }
+      if (err.code === 'P2025') {
+        return reply.status(404).send({ error: 'not_found' });
+      }
+      if (err.code === 'P2003') {
+        return reply.status(409).send({ error: 'in_use', detail: 'referenced by other records' });
+      }
     }
     const e = err as { message?: string; statusCode?: number; validation?: unknown };
     // Fastify's own schema validation, if any route uses it.
