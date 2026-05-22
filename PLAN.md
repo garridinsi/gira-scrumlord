@@ -39,7 +39,7 @@ Client users are strictly isolated to their own client's data. (Details in the s
 
 | # | Milestone | Status |
 |---|---|---|
-| **M1** | Core tracker + time + money | 🚧 in progress |
+| **M1** | Core tracker + time + money | ✅ done — 84 tests, full stack runs |
 | M2 | Client portal (read views of open/done/in-progress, time & money) | ⏳ planned |
 | M3 | Notifications + **emergency paging** (`emergency` priority + Outbox seam ship in M1) | ⏳ planned |
 | M4 | Inbound integrations: Grafana alerts→issues, WordPress→issues, auto-assign (`packages/chaos`) | ⏳ planned |

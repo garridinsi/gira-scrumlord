@@ -55,51 +55,86 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 
 ---
 
-## 🐉 Features (which exist, probably)
+## 🐉 Features (which exist, actually)
+
+> Status is honest now. The jokes moved to the _Reality_ column where they belong.
+> Full engineering plan: [`PLAN.md`](./PLAN.md). Design spec: [`docs/superpowers/specs/`](./docs/superpowers/specs/).
 
 | Feature | Status | Reality |
 |---|---|---|
-| Kanban boards | ✅ | Columns explode if you put >5 cards in _In Progress_. Game mechanic. |
-| Sprints | ✅ | They start. They don't always finish. |
-| Velocity reports | 🌀 | The chart is always the same hurricane, spinning. Soothing. |
-| Slack integration | ❓ | Sends notifications in ancient Aramaic. |
-| User permissions | 🔒 | Everyone is admin. We trust you. (Mistake.) |
-| Dark mode | ✅ | It's the only mode. Darkness is the PM's natural state. |
+| Issues & Kanban board (drag-drop) | ✅ | Real `@dnd-kit` board with fractional ranks. Columns still warn you past 5 cards in _In Progress_. Game mechanic, now documented. |
+| Backlog & sprints | ✅ | They start. Closing one snapshots velocity before it collapses into the next, like a cyclical universe. |
+| Time tracking (worklogs + timers) | ✅ | One running timer per human. `scrumlord` reaps the ones you forget after 12h. |
+| Money (rates + accrued cost) | ✅ | Rates resolve issue → project → client → default. Stored in cents, because floats lie about money. |
+| Velocity reports | ✅ | Real committed-vs-completed points. Still rendered as a hurricane. Soothing. |
+| Passwordless auth (magic links) | ✅ | OIDC-ready. The first login to a fresh install becomes the dark lord (admin). |
+| User permissions & client isolation | ✅ | **NOT** everyone is admin anymore. We learned. Clients see only their own data, enforced server-side. |
+| `sauron` — audit log | ✅ | Append-only. Read-only. Listens on **port 666**. It only watches. Don't touch. |
+| `scrumlord` — the daemon | ✅ | A real `pg-boss` worker. Governs the dailies: rolls sprints, reaps timers, drains the outbox. |
+| Client portal | 🚧 | M2. The data isolation it needs already exists. |
+| Emergency paging | 🌀 | The `emergency` priority + outbox seam ship today; the pager screams in M3. |
+| Grafana / WordPress / Slack intake | 🚧 | M4, lives in `packages/chaos`. Notifications still drafted in ancient Aramaic. |
+| Dark mode | ✅ | Still the only mode. Darkness is the PM's natural state. |
 | AI | ❌ | We vibe by hand here, the way the gods intended. |
+| Tests | ✅ | **84 of them.** The README used to say we don't test. The README was coping. |
 
 ---
 
 ## ⚙️ Installation
+
+Real steps. They actually work. (We left the prayer in, just in case.)
 
 ```bash
 # clone the repo (an act of bravery)
 git clone https://github.com/your-username/gira-scrumlord.git
 cd gira-scrumlord
 
-# install the dependencies (there are 4,000, don't ask)
-npm install --legacy-peer-deps --force --no-questions-please
+# one package manager to rule them all
+corepack enable pnpm
+pnpm install
 
-# start the daemon
-sudo systemctl start scrumlord.service
+# config (defaults work out of the box for local dev)
+cp .env.example .env
 
-# pray
+# bring up the only infra you need: Postgres + Mailpit
+docker compose up -d
+
+# apply the schema and seed fictional data (Acme Corp, a velociraptor PO)
+pnpm --filter @gira/db migrate
+
+# summon everything: api :3000 · scrumlord worker · sauron :666 · web :5173
+pnpm dev
+
+# pray (optional)
 ```
 
-> **Note:** if `scrumlord.service` won't start, check that `sauron.daemon` is listening on port 666. That's the canonical port.
+Then open **http://localhost:5173**, enter `boss@example.test`, and grab your
+magic link from **Mailpit at http://localhost:8025**. The first account on a
+fresh install becomes admin.
+
+> **Note:** `sauron` listens on **port 666** — the canonical port. Binding it
+> needs privilege; without root it honestly retreats to `6660` and tells you so.
+> It only watches. The `scrumlord` daemon governs the dailies via a real job queue.
 
 ---
 
 ## 🧙 Architecture
 
+The lore names turned out to be load-bearing. They're real packages now:
+
 ```
 gira-scrumlord/
-├── src/
-│   ├── core/              # the core. nobody understands it anymore.
-│   ├── scrumlord/         # the daemon. governs all dailies.
-│   ├── sauron/            # the eye. it only watches. don't touch.
-│   └── chaos/             # this is where the stuff that works by accident lives
-├── tests/                 # empty. the users are the tests.
-├── docs/                  # a small, kind lie
+├── apps/
+│   ├── api/               # the "core". Fastify + Prisma. nobody understands it anymore (jk, see PLAN.md)
+│   ├── scrumlord/         # the daemon. governs all dailies. (a real pg-boss worker)
+│   └── web/               # React + Vite + Tailwind. dark, like your roadmap.
+├── packages/
+│   ├── db/                # Prisma schema, migrations, fictional seed
+│   ├── domain/            # pure logic: ranks, rates, velocity, tokens (21 tests)
+│   ├── sauron/            # the eye. it only watches. listens on 666. don't touch.
+│   ├── chaos/             # where the stuff that works by accident WILL live (M4)
+│   └── shared/            # Zod contracts shared by api + web
+├── docs/                  # no longer a lie. there's a spec and a plan in there.
 └── README.md              # you are here. brave of you.
 ```
 
@@ -114,7 +149,8 @@ gira-scrumlord/
 3. Commit with honest messages: `git commit -m "i think this fixes something"`.
 4. Open a PR. The velociraptor will review it. Be kind, he's having a rough day.
 
-We do not accept PRs that add tests. They would break the magic.
+We used to say we don't accept PRs that add tests — they'd break the magic.
+Then we wrote 84 of them and the magic held. Add tests. The velociraptor insists now.
 
 ---
 
