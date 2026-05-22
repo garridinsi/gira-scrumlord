@@ -4,6 +4,9 @@
 
 import type {
   BillingMode,
+  ChannelKind,
+  ChannelScope,
+  IncidentStatus,
   IssueType,
   Priority,
   SprintState,
@@ -132,4 +135,27 @@ export interface WorklogView {
   startedAt: string | null;
   loggedAt: string;
   user: UserView | null;
+}
+
+export interface ChannelView {
+  id: string;
+  name: string;
+  kind: ChannelKind;
+  target: string;
+  scope: ChannelScope;
+  projectId: string | null;
+  events: string[];
+  active: boolean;
+}
+
+export interface IncidentView {
+  id: string;
+  issueKey: string;
+  projectKey: string;
+  title: string;
+  status: IncidentStatus;
+  escalationLevel: number;
+  lastNotifiedAt: string | null;
+  acknowledgedAt: string | null;
+  createdAt: string;
 }

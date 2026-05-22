@@ -2,9 +2,22 @@
 // Map Prisma rows to the wire-facing view types from @gira/shared. Keeping these
 // in one place means the API and frontend never disagree about response shapes.
 
-import type { Comment, Issue, Label, Sprint, Status, Timer, User, Worklog } from '@gira/db';
 import type {
+  Comment,
+  Incident,
+  Issue,
+  Label,
+  NotificationChannel,
+  Sprint,
+  Status,
+  Timer,
+  User,
+  Worklog,
+} from '@gira/db';
+import type {
+  ChannelView,
   CommentView,
+  IncidentView,
   IssueView,
   LabelView,
   SprintView,
@@ -45,6 +58,35 @@ export function toWorklogView(w: Worklog & { user?: User | null }): WorklogView 
     startedAt: w.startedAt ? w.startedAt.toISOString() : null,
     loggedAt: w.loggedAt.toISOString(),
     user: w.user ? toUserView(w.user) : null,
+  };
+}
+
+export function toChannelView(c: NotificationChannel): ChannelView {
+  return {
+    id: c.id,
+    name: c.name,
+    kind: c.kind,
+    target: c.target,
+    scope: c.scope,
+    projectId: c.projectId,
+    events: c.events,
+    active: c.active,
+  };
+}
+
+export function toIncidentView(
+  i: Incident & { issue?: { key: string; title: string; project?: { key: string } } },
+): IncidentView {
+  return {
+    id: i.id,
+    issueKey: i.issue?.key ?? '',
+    projectKey: i.issue?.project?.key ?? '',
+    title: i.issue?.title ?? '',
+    status: i.status,
+    escalationLevel: i.escalationLevel,
+    lastNotifiedAt: i.lastNotifiedAt ? i.lastNotifiedAt.toISOString() : null,
+    acknowledgedAt: i.acknowledgedAt ? i.acknowledgedAt.toISOString() : null,
+    createdAt: i.createdAt.toISOString(),
   };
 }
 

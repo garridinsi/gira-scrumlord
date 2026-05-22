@@ -11,6 +11,9 @@ export const userRole = z.enum(['admin', 'member', 'viewer']);
 export const billingMode = z.enum(['hourly', 'fixed']);
 export const rateScope = z.enum(['default', 'client', 'project', 'issue']);
 export const sprintState = z.enum(['future', 'active', 'closed']);
+export const channelKind = z.enum(['email', 'webhook']);
+export const channelScope = z.enum(['global', 'project']);
+export const incidentStatus = z.enum(['open', 'acked', 'resolved']);
 
 export type IssueType = z.infer<typeof issueType>;
 export type Priority = z.infer<typeof priority>;
@@ -20,6 +23,9 @@ export type UserRole = z.infer<typeof userRole>;
 export type BillingMode = z.infer<typeof billingMode>;
 export type RateScope = z.infer<typeof rateScope>;
 export type SprintState = z.infer<typeof sprintState>;
+export type ChannelKind = z.infer<typeof channelKind>;
+export type ChannelScope = z.infer<typeof channelScope>;
+export type IncidentStatus = z.infer<typeof incidentStatus>;
 
 /** Urgency ranking, highest first. `emergency` is the paging tier. */
 export const PRIORITY_ORDER: Record<Priority, number> = {

@@ -9,4 +9,5 @@ export * from './issue.js';
 export * from './sprint.js';
 export * from './worklog.js';
 export * from './rate.js';
+export * from './channel.js';
 export * from './views.js';
