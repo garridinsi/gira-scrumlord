@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# env & secrets (never commit — don't leak client info)
+.env
+.env.*
+!.env.example
+
+# prisma generated client
+packages/db/generated/
+
+# test / coverage
+coverage/
+
+# logs & os cruft
+*.log
+.DS_Store
+
+# editor
+.idea/
+.vscode/*
+!.vscode/extensions.json

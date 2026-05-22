@@ -1,0 +1,7 @@
+Use this short SPDX header at the top of new source files:
+
+  // SPDX-License-Identifier: GPL-3.0-or-later
+  // gira-scrumlord — Copyright (C) 2026 gira-scrumlord contributors.
+  // This program comes with ABSOLUTELY NO WARRANTY. It is free software under the GPLv3.
+
+The full license text lives in /LICENSE. Whatever you build on top stays just as free.

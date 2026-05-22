@@ -1,0 +1,31 @@
+{
+  "name": "gira-scrumlord",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Jira, but rotated — and now it has a master. Self-hostable issue tracking, time & money.",
+  "license": "GPL-3.0-or-later",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm run format:check && pnpm run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "pnpm --filter @gira/db migrate",
+    "db:seed": "pnpm --filter @gira/db seed",
+    "db:reset": "pnpm --filter @gira/db reset"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
