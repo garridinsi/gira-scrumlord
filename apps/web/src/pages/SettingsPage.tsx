@@ -8,15 +8,14 @@ import { clients, rates, projects, channels, intake } from '../api/client';
 import type { ClientRecord, RateRecord } from '../api/client';
 import type { CreateClient, UpdateClient, UpsertRate, CreateChannel, CreateIntakeSource } from '@gira/shared';
 import { Subbar } from '../ui/Subbar';
-import { Avatar, initialsOf, hueFor, Plate } from '../ui/atoms';
-import { formatMoney, formatRatePerHour } from '../lib/money';
+import { Avatar, Plate } from '../ui/atoms';
+import { formatRatePerHour } from '../lib/money';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type Tab = 'clients' | 'rates' | 'channels' | 'intake';
 
 const CURRENCIES = ['EUR', 'USD', 'GBP'] as const;
-type Currency = (typeof CURRENCIES)[number];
 
 // ── Scope badge ───────────────────────────────────────────────────────────────
 
