@@ -26,6 +26,7 @@ coverage/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+.vscode
 
 # claude code worktrees / local tool state
 .claude/worktrees/
