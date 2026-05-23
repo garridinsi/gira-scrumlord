@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>gira-scrumlord · Depósito · Parts Depot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="eg-tokens.css" />
+<link rel="stylesheet" href="app.css" />
+<link rel="stylesheet" href="library.css" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel" src="lib-shell.jsx"></script>
+<script type="text/babel" src="lib-readthis.jsx"></script>
+<script type="text/babel" src="lib-foundations.jsx"></script>
+<script type="text/babel" src="lib-elements.jsx"></script>
+<script type="text/babel" src="lib-controls.jsx"></script>
+<script type="text/babel" src="lib-nav-feedback.jsx"></script>
+<script type="text/babel" src="lib-data.jsx"></script>
+<script type="text/babel" src="lib-compositions.jsx"></script>
+<script type="text/babel" src="lib-lore.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+// Catalog console boot stamp — same voice as the app
+console.log(
+  "%c gira-scrumlord %c DEPÓSITO · v0.1 %c\n" +
+  "// 8 chapters · ~120 piezas · 4 reglas\n" +
+  "// si lo ves dos veces, hazle pieza. si lo ves tres, hazle nunca.\n" +
+  "// y si no tiene 'nunca · never', no lo entiendes todavía.",
+  "background:#0b1620;color:#f5c400;padding:2px 6px;font:700 13px/1.2 monospace",
+  "background:#f5c400;color:#0b1620;padding:2px 6px;font:600 12px/1.2 monospace",
+  "color:#6a7280;font:500 11px/1.5 monospace"
+);
+
+function Depot() {
+  return (
+    <div className="dep" data-screen-label="00 Depósito · Parts Depot">
+      <DepotMast />
+      <div className="dep__layout">
+        <DepotToc />
+        <div className="dep__body">
+          <ReadThisSection />
+          <FoundationsSection />
+          <ElementsSection />
+          <ControlsSection />
+          <NavSection />
+          <FeedbackSection />
+          <DataSection />
+          <CompositionsSection />
+          <LoreSection />
+        </div>
+      </div>
+      <DepotFoot />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Depot />);
+</script>
+</body>
+</html>
