@@ -507,10 +507,11 @@ totalMinutes    = ${cost.minutes}`}
 
 // ── Audit mini-tab ────────────────────────────────────────────────────────────
 
-function AuditMiniTab({ issueKey }: { issueKey: string }) {
+function AuditMiniTab({ issueId }: { issueId: string }) {
+  // AuditLog.entityId stores the issue's cuid id (not the PROJ-N key).
   const auditQuery = useQuery({
-    queryKey: ['audit', 'issue', issueKey],
-    queryFn: () => audit.list({ entityId: issueKey, limit: 12 }),
+    queryKey: ['audit', 'issue', issueId],
+    queryFn: () => audit.list({ entityType: 'Issue', entityId: issueId, limit: 12 }),
   });
 
   if (auditQuery.isLoading) {
@@ -1044,7 +1045,7 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
               {tab === 'comments' && <CommentsTab issueKey={issue.key} />}
               {tab === 'worklogs' && <WorklogsTab issueKey={issue.key} />}
               {tab === 'cost'     && <CostTab issueKey={issue.key} />}
-              {tab === 'audit'    && <AuditMiniTab issueKey={issue.key} />}
+              {tab === 'audit'    && <AuditMiniTab issueId={issue.id} />}
             </div>
 
             {/* Sidebar */}

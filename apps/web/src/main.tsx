@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import { App } from './App';
+import { ToastProvider } from './ui/Toast';
+import { consoleBoot } from './ui/lore';
+
+consoleBoot();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,9 +32,11 @@ if (!rootEl) throw new Error('#root element not found');
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ToastProvider>
     </QueryClientProvider>
   </StrictMode>,
 );
