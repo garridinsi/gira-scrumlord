@@ -560,6 +560,10 @@ function CreateIssueModal({
       issues.create({
         projectKey,
         title: title.trim(),
+        description: '',
+        type: 'task',
+        priority: 'medium',
+        billingMode: 'hourly',
         statusId,
       }),
     onSuccess: () => {
