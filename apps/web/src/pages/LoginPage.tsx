@@ -1,101 +1,330 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { auth } from '../api/client';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { ErrorMessage } from '../components/ui/ErrorMessage';
+import { useMe } from '../hooks/useAuth';
+import { Glyph } from '../ui/atoms';
 
 export function LoginPage() {
+  const me = useMe();
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const sendLink = useMutation({ mutationFn: (e: string) => auth.magicLink(e) });
 
-  const sendLink = useMutation({
-    mutationFn: (emailAddr: string) => auth.magicLink(emailAddr),
-    onSuccess: () => setSent(true),
-  });
+  if (me.data) return <Navigate to="/projects" replace />;
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (email.trim()) sendLink.mutate(email.trim());
-  }
+  const sent = sendLink.isSuccess;
 
   return (
-    <div className="min-h-screen bg-surface-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-10">
-          <span className="text-6xl block mb-4 animate-spin-slow select-none">🌀</span>
-          <h1 className="text-2xl font-bold text-gray-100">gira-scrumlord</h1>
-          <p className="text-sm text-muted mt-1 italic">agile, but make it dizzy.</p>
+    <div
+      style={{
+        width: '100%',
+        minHeight: '100vh',
+        background: 'var(--eg-iron)',
+        display: 'grid',
+        gridTemplateColumns: '1fr 580px',
+        fontFamily: 'var(--font-body)',
+        color: 'var(--eg-paper)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Left poster */}
+      <div
+        style={{
+          position: 'relative',
+          padding: 56,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              background: 'var(--eg-yellow)',
+              border: '3px solid var(--eg-paper)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Glyph />
+          </div>
+          <div>
+            <div className="disp" style={{ fontSize: 22, color: 'var(--eg-paper)', lineHeight: 1 }}>
+              gira-scrumlord
+            </div>
+            <div
+              className="mono"
+              style={{
+                fontSize: 11,
+                color: 'var(--eg-yellow)',
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                marginTop: 4,
+              }}
+            >
+              mantenedor · maintainer
+            </div>
+          </div>
         </div>
 
-        <div className="bg-surface-900 rounded-xl border border-surface-700 p-8 shadow-2xl shadow-black/60">
-          {!sent ? (
-            <>
-              <h2 className="text-base font-semibold text-gray-200 mb-1">Sign in</h2>
-              <p className="text-sm text-muted mb-6">
-                Enter your email. We'll send a magic link. No passwords. The velociraptor approves.
-              </p>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <Input
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  required
-                  autoFocus
-                />
-                {sendLink.error && <ErrorMessage error={sendLink.error} />}
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="w-full"
-                  isLoading={sendLink.isPending}
-                >
-                  Send magic link
-                </Button>
-              </form>
-            </>
-          ) : (
-            <div className="text-center space-y-4">
-              <span className="text-4xl block">📬</span>
-              <h2 className="text-base font-semibold text-gray-200">Check your email</h2>
-              <p className="text-sm text-muted">
-                A magic link has been summoned to <strong className="text-gray-300">{email}</strong>.
-              </p>
-              <p className="text-xs text-gray-600 mt-2">
-                Running locally? Check{' '}
-                <a
-                  href="http://localhost:8025"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-accent-400 hover:text-accent-300 underline"
-                >
-                  Mailpit at :8025
-                </a>
-                .
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-4"
-                onClick={() => {
-                  setSent(false);
-                  sendLink.reset();
+        <div style={{ marginTop: 40 }}>
+          <div
+            className="mono"
+            style={{
+              fontSize: 11,
+              color: 'var(--eg-yellow)',
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              marginBottom: 16,
+            }}
+          >
+            // gestión de incidencias · autoalojable · gpl-3.0
+          </div>
+          <h1
+            className="disp"
+            style={{ fontSize: 110, color: 'var(--eg-paper)', lineHeight: 0.82, margin: 0, fontWeight: 900, letterSpacing: '-0.03em' }}
+          >
+            CONSTRUIDO.
+            <br />
+            <span style={{ background: 'var(--eg-yellow)', color: 'var(--eg-iron)', padding: '0 0.08em' }}>REGISTRADO.</span>
+            <br />
+            <span style={{ color: 'var(--eg-red)' }}>COBRADO.</span>
+          </h1>
+          <div
+            className="mono"
+            style={{ fontSize: 12, color: 'var(--eg-fg-5)', letterSpacing: '0.16em', textTransform: 'uppercase', marginTop: 16 }}
+          >
+            — BUILT · TRACKED · PAID —
+          </div>
+
+          <div style={{ marginTop: 32, display: 'flex', gap: 0, maxWidth: 520, border: '2px solid var(--eg-yellow)' }}>
+            {[
+              { es: 'tablero', en: 'board' },
+              { es: 'tiempos', en: 'timesheet' },
+              { es: 'facturas', en: 'invoices' },
+              { es: 'mantenedor', en: 'for makers' },
+            ].map((s, i) => (
+              <div
+                key={i}
+                style={{
+                  flex: 1,
+                  padding: '12px 12px',
+                  borderRight: i < 3 ? '2px solid var(--eg-yellow)' : 'none',
+                  background: i === 3 ? 'var(--eg-yellow)' : 'transparent',
                 }}
               >
-                Use a different email
-              </Button>
-            </div>
-          )}
+                <div className="caps" style={{ color: i === 3 ? 'var(--eg-iron)' : 'var(--eg-fg-5)' }}>
+                  // 0{i + 1}
+                </div>
+                <div
+                  className="disp"
+                  style={{ fontSize: 20, color: i === 3 ? 'var(--eg-iron)' : 'var(--eg-paper)', lineHeight: 1, marginTop: 4 }}
+                >
+                  {s.es.toUpperCase()}
+                </div>
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 10,
+                    color: i === 3 ? 'var(--eg-iron)' : 'var(--eg-fg-5)',
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    marginTop: 4,
+                  }}
+                >
+                  {s.en}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <p className="text-center text-xs text-gray-700 mt-6 italic">
-          One ticket to rule them all.
+        <div>
+          <div
+            style={{
+              height: 14,
+              background: 'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 14px, var(--eg-iron) 14px 28px)',
+              marginBottom: 14,
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 18 }}>
+            <div className="mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: 'var(--eg-fg-5)', textTransform: 'uppercase' }}>
+              // software libre · GPL-3.0
+              <br />
+              // sin telemetría · sin terceros
+            </div>
+            <div
+              className="mono"
+              style={{ fontSize: 10, letterSpacing: '0.14em', color: 'var(--eg-yellow)', textTransform: 'uppercase', textAlign: 'right' }}
+            >
+              ✦ mantenedor.eus
+              <br />
+              ◉ acceso restringido
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: 'absolute',
+            right: -100,
+            top: 280,
+            fontFamily: 'var(--font-stencil)',
+            fontSize: 280,
+            fontWeight: 900,
+            color: 'var(--eg-iron-2)',
+            lineHeight: 0.9,
+            transform: 'rotate(-90deg)',
+            transformOrigin: 'right top',
+            letterSpacing: '0.04em',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+          }}
+        >
+          GIRA · SCRUMLORD
+        </div>
+      </div>
+
+      {/* Right login card */}
+      <div
+        style={{
+          background: 'var(--eg-paper)',
+          borderLeft: '12px solid var(--eg-yellow)',
+          padding: '80px 56px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          color: 'var(--eg-iron)',
+          position: 'relative',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: 12,
+            top: 0,
+            bottom: 0,
+            width: 14,
+            backgroundImage: 'radial-gradient(circle at 7px 10px, var(--eg-iron) 1.5px, transparent 2px)',
+            backgroundSize: '14px 20px',
+          }}
+        />
+
+        <span className="plate" style={{ alignSelf: 'flex-start', marginBottom: 20 }}>
+          BOARDING · PASS · ACCESO
+        </span>
+
+        <h2 className="disp" style={{ fontSize: 60, color: 'var(--eg-iron)', lineHeight: 0.9, margin: '0 0 6px', fontWeight: 900, letterSpacing: '-0.02em' }}>
+          ACCEDE.
+          <br />
+          SIN CONTRASEÑA.
+        </h2>
+        <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 22 }}>
+          — SIGN IN · NO PASSWORD —
+        </div>
+
+        <p style={{ fontSize: 15, color: 'var(--eg-fg-2)', marginBottom: 28, maxWidth: 400, lineHeight: 1.5 }}>
+          Te enviamos un enlace de un solo uso. Pincha en menos de 15 minutos y entras. Los tokens se guardan como hash SHA-256. Las sesiones son HttpOnly.{' '}
+          <span style={{ color: 'var(--eg-fg-3)' }}>OIDC se enchufa después — mismo flujo, otro proveedor de identidad.</span>
         </p>
+
+        {!sent ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (email.trim()) sendLink.mutate(email.trim());
+            }}
+          >
+            <label className="caps" style={{ display: 'block', marginBottom: 6 }}>
+              // CORREO · EMAIL
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tu@correo.eus"
+              autoFocus
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 16,
+                background: 'var(--eg-paper)',
+                border: '2px solid var(--eg-iron)',
+                padding: '12px 14px',
+                width: '100%',
+                boxShadow: '3px 3px 0 var(--eg-iron)',
+              }}
+            />
+
+            <button
+              type="submit"
+              className="btn btn--yellow"
+              disabled={sendLink.isPending}
+              style={{ marginTop: 22, width: '100%', justifyContent: 'center' }}
+            >
+              {sendLink.isPending ? 'Enviando…' : 'Envíame el enlace · Mail me the link →'}
+            </button>
+
+            <div
+              style={{
+                marginTop: 22,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderTop: '1px dashed var(--eg-iron)',
+                paddingTop: 16,
+              }}
+            >
+              <span className="caps">// o con sso · or sso</span>
+              <button
+                type="button"
+                className="b-btn"
+                disabled
+                title="OIDC — próximamente · coming soon"
+                style={{ opacity: 0.5, cursor: 'not-allowed' }}
+              >
+                Continuar con OIDC ↗
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-yellow)', padding: 18, boxShadow: '4px 4px 0 var(--eg-iron)' }}>
+            <div className="caps" style={{ color: 'var(--eg-iron)' }}>
+              // REVISA TU BANDEJA · CHECK YOUR INBOX
+            </div>
+            <div className="disp" style={{ fontSize: 28, color: 'var(--eg-iron)', lineHeight: 1.05, marginTop: 6 }}>
+              Enviado. Si conocemos{' '}
+              <span style={{ background: 'var(--eg-iron)', color: 'var(--eg-yellow)', padding: '0 6px' }}>{email}</span>, el enlace está en camino.
+            </div>
+            <div className="mono" style={{ fontSize: 11, color: 'var(--eg-iron)', marginTop: 12, letterSpacing: '0.08em' }}>
+              // expira en 15 minutos · un solo uso
+              <br />
+              // en desarrollo, el enlace aparece en Mailpit · :8025
+            </div>
+            <button
+              onClick={() => sendLink.reset()}
+              className="b-btn"
+              style={{ marginTop: 14, background: 'var(--eg-iron)', color: 'var(--eg-yellow)' }}
+            >
+              ← Otro correo
+            </button>
+          </div>
+        )}
+
+        <div style={{ marginTop: 'auto', paddingTop: 36, borderTop: '1px solid var(--eg-iron)', display: 'flex', justifyContent: 'space-between' }}>
+          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            autoalojable · self-hosted · GPL-3.0
+          </span>
+          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            sin analítica · sin tracking
+          </span>
+        </div>
       </div>
     </div>
   );

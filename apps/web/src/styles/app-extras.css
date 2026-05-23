@@ -1,0 +1,97 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* App-level overrides on top of eg-tokens.css + app.css.
+   The design canvas used fixed 1440x900 frames; the real app fills the viewport. */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--eg-paper);
+}
+
+/* The shell fills the screen instead of the canvas's fixed frame. */
+.app {
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+}
+
+/* Board / backlog cards reused from the shell IssueCard. Most styling is inline;
+   this is just the base so the class exists for hover hooks. */
+.gs-card {
+  background: var(--eg-paper);
+}
+
+/* Industrial scrollbars — thin, iron on paper. */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--eg-paper-2);
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--eg-iron-3);
+  border: 2px solid var(--eg-paper-2);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--eg-iron);
+}
+
+/* Buttons/inputs reset that App.css/tokens assume */
+button {
+  font-family: inherit;
+}
+
+/* Spinner used in loading states — a riveted square that pulses, not spins
+   (sensory-friendly: no continuous rotation). */
+@keyframes gs-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.gs-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--eg-fg-3);
+}
+.gs-loading::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background: var(--eg-yellow);
+  border: 1.5px solid var(--eg-iron);
+  animation: gs-pulse 1.1s var(--ease) infinite;
+}
+
+/* Generic full-area centered state (loading / empty / error) */
+.gs-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+}
+
+/* Modal/drawer scrim */
+.gs-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 22, 32, 0.55);
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+}

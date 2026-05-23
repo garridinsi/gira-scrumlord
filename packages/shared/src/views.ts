@@ -67,6 +67,8 @@ export interface IssueView {
   billingMode: BillingMode;
   fixedPriceCents: number | null;
   labels: LabelView[];
+  /** Sum of worklog minutes — populated by the board endpoint; optional elsewhere. */
+  loggedMinutes?: number;
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;

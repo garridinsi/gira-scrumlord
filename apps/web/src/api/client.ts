@@ -8,8 +8,16 @@ import type {
   CostView,
   ProjectSummaryView,
   TimerView,
+  ChannelView,
+  IncidentView,
+  IntakeSourceView,
 } from '@gira/shared';
 import type {
+  CreateChannel,
+  UpdateChannel,
+  CreateIntakeSource,
+  UpdateIntakeSource,
+  CreateAssignmentRule,
   CreateIssue,
   UpdateIssue,
   MoveIssue,
@@ -79,6 +87,11 @@ function json(body: unknown): RequestInit {
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
+
+export const system = {
+  health: () =>
+    request<{ status: string; db: boolean; name: string; version: string }>('/health'),
+};
 
 export const auth = {
   magicLink: (email: string) =>
@@ -277,4 +290,83 @@ export const rates = {
   list: () => request<RateRecord[]>('/rates'),
   upsert: (data: UpsertRate) => request<RateRecord>('/rates', { method: 'POST', ...json(data) }),
   delete: (id: string) => request<void>(`/rates/${id}`, { method: 'DELETE' }),
+};
+
+// ---------------------------------------------------------------------------
+// Notifications & incidents (M3)
+// ---------------------------------------------------------------------------
+
+export const incidents = {
+  list: (status?: 'open' | 'acked' | 'resolved') =>
+    request<IncidentView[]>(`/incidents${status ? `?status=${status}` : ''}`),
+  ack: (id: string) => request<IncidentView>(`/incidents/${id}/ack`, { method: 'POST' }),
+  resolve: (id: string) => request<IncidentView>(`/incidents/${id}/resolve`, { method: 'POST' }),
+};
+
+export const channels = {
+  list: () => request<ChannelView[]>('/channels'),
+  create: (data: CreateChannel) => request<ChannelView>('/channels', { method: 'POST', ...json(data) }),
+  update: (id: string, data: UpdateChannel) =>
+    request<ChannelView>(`/channels/${id}`, { method: 'PATCH', ...json(data) }),
+  delete: (id: string) => request<void>(`/channels/${id}`, { method: 'DELETE' }),
+  test: (id: string) => request<{ ok: boolean; error?: string }>(`/channels/${id}/test`, { method: 'POST' }),
+};
+
+// ---------------------------------------------------------------------------
+// Inbound integrations (M4)
+// ---------------------------------------------------------------------------
+
+export interface AssignmentRuleRecord {
+  id: string;
+  projectId: string;
+  order: number;
+  matchType?: string | null;
+  matchPriority?: string | null;
+  matchLabelId?: string | null;
+  assigneeId: string;
+}
+
+export const intake = {
+  sources: {
+    list: () => request<IntakeSourceView[]>('/intake-sources'),
+    create: (data: CreateIntakeSource) =>
+      request<IntakeSourceView & { token: string; intakeUrl: string }>('/intake-sources', {
+        method: 'POST',
+        ...json(data),
+      }),
+    update: (id: string, data: UpdateIntakeSource) =>
+      request<IntakeSourceView>(`/intake-sources/${id}`, { method: 'PATCH', ...json(data) }),
+    delete: (id: string) => request<void>(`/intake-sources/${id}`, { method: 'DELETE' }),
+  },
+  rules: {
+    list: (key: string) => request<AssignmentRuleRecord[]>(`/projects/${key}/assignment-rules`),
+    create: (key: string, data: CreateAssignmentRule) =>
+      request<AssignmentRuleRecord>(`/projects/${key}/assignment-rules`, { method: 'POST', ...json(data) }),
+    delete: (id: string) => request<void>(`/assignment-rules/${id}`, { method: 'DELETE' }),
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Audit (sauron) — read-only, served by the main API for in-app viewing
+// ---------------------------------------------------------------------------
+
+export interface AuditEntry {
+  id: string;
+  actorId: string | null;
+  actor?: { id: string; name: string } | null;
+  action: string;
+  entityType: string;
+  entityId: string;
+  before: unknown;
+  after: unknown;
+  at: string;
+}
+
+export const audit = {
+  list: (params?: { entityType?: string; entityId?: string; action?: string; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params) for (const [k, v] of Object.entries(params)) if (v != null) qs.set(k, String(v));
+    const s = qs.toString();
+    return request<{ count: number; entries: AuditEntry[] }>(`/audit${s ? `?${s}` : ''}`);
+  },
 };

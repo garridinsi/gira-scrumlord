@@ -1,69 +1,84 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { auth } from '../api/client';
-import { FullPageSpinner } from '../components/ui/Spinner';
-import { ErrorMessage } from '../components/ui/ErrorMessage';
-import { Button } from '../components/ui/Button';
 
 export function AuthCallbackPage() {
-  const [searchParams] = useSearchParams();
+  const [params] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const token = searchParams.get('token') ?? '';
+  const token = params.get('token');
+  const ran = useRef(false);
 
-  const callback = useMutation({
+  const exchange = useMutation({
     mutationFn: (t: string) => auth.callback(t),
     onSuccess: (data) => {
-      // Seed the me query with the returned user
       queryClient.setQueryData(['auth', 'me'], data.user);
-      navigate('/', { replace: true });
+      navigate('/projects', { replace: true });
     },
   });
 
   useEffect(() => {
-    if (token && !callback.isPending && !callback.isError && !callback.isSuccess) {
-      callback.mutate(token);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+    if (ran.current) return;
+    ran.current = true;
+    if (token) exchange.mutate(token);
+  }, [token, exchange]);
 
-  if (!token) {
-    return (
-      <div className="min-h-screen bg-surface-950 flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <ErrorMessage error={new Error('No token in URL. Something went wrong with the magic link.')} />
-          <Button variant="secondary" onClick={() => navigate('/login')}>
-            Back to login
-          </Button>
+  const failed = !token || exchange.isError;
+
+  return (
+    <div
+      style={{
+        width: '100%',
+        minHeight: '100vh',
+        background: 'var(--eg-iron)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 40,
+      }}
+    >
+      <div
+        style={{
+          background: 'var(--eg-paper)',
+          border: '2px solid var(--eg-iron)',
+          boxShadow: '6px 6px 0 var(--eg-yellow)',
+          padding: 0,
+          maxWidth: 460,
+          width: '100%',
+        }}
+      >
+        <div style={{ height: 14, background: 'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 14px, var(--eg-iron) 14px 28px)' }} />
+        <div style={{ padding: '28px 32px' }}>
+          <span className="plate" style={{ marginBottom: 16 }}>
+            ACCESO · BOARDING
+          </span>
+          {failed ? (
+            <>
+              <h2 className="disp" style={{ fontSize: 34, color: 'var(--eg-red)', margin: '0 0 8px', lineHeight: 1 }}>
+                ENLACE INVÁLIDO
+              </h2>
+              <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 14 }}>
+                — INVALID OR EXPIRED LINK —
+              </div>
+              <p style={{ color: 'var(--eg-fg-2)', marginBottom: 18 }}>
+                El enlace ha caducado o ya se usó (un solo uso, 15 min). Pide uno nuevo.
+              </p>
+              <Link to="/login" className="btn btn--yellow" style={{ textDecoration: 'none' }}>
+                ← Volver a entrar · Back to login
+              </Link>
+            </>
+          ) : (
+            <>
+              <h2 className="disp" style={{ fontSize: 34, color: 'var(--eg-iron)', margin: '0 0 8px', lineHeight: 1 }}>
+                ENTRANDO…
+              </h2>
+              <div className="gs-loading">validando enlace · validating link</div>
+            </>
+          )}
         </div>
       </div>
-    );
-  }
-
-  if (callback.isPending || (!callback.isError && !callback.isSuccess)) {
-    return <FullPageSpinner />;
-  }
-
-  if (callback.isError) {
-    return (
-      <div className="min-h-screen bg-surface-950 flex items-center justify-center p-4">
-        <div className="text-center space-y-4 max-w-sm">
-          <span className="text-4xl block">💀</span>
-          <h1 className="text-lg font-semibold text-gray-200">Magic link failed</h1>
-          <ErrorMessage error={callback.error} />
-          <p className="text-sm text-muted">
-            The link may have expired or already been used. Magic links are single-use and short-lived —
-            like a sprint that ends at midnight.
-          </p>
-          <Button variant="secondary" onClick={() => navigate('/login')}>
-            Try again
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return <FullPageSpinner />;
+    </div>
+  );
 }

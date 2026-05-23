@@ -1,0 +1,386 @@
+/* ============================================================
+   Eneko Garrido — Design System v3
+   "Mantenedor / Maintainer"
+   ------------------------------------------------------------
+   Public-works visual language for the federated web.
+   Railway-iron, safety-yellow, ikurriña-red, paper-cream.
+   Stenciled type. Asset-tag layouts. Bilingual by default.
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;500;700;800;900&family=Big+Shoulders+Stencil+Display:wght@500;700;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+:root {
+  /* ─── 1 · COLOR · the four-stamp system ─────────────────── */
+  /* Every system needs a hero color. Ours is hi-vis safety
+     yellow — the color of a railway worker's vest, a hazard
+     sign, a school bus. It says "doing public work, watch
+     out." Paired with iron-black it becomes the universal
+     mark of infrastructure. Red is the ikurriña wildcard.
+     Green is the "go" signal and ferroviario brand. */
+
+  --eg-iron:        #0b1620; /* primary ink · loco-engine black */
+  --eg-iron-2:      #182431;
+  --eg-iron-3:      #2e3c4b;
+
+  --eg-yellow:      #f5c400; /* hi-vis safety · brand hero      */
+  --eg-yellow-hi:   #d9ad00;
+  --eg-yellow-lo:   #fde17a;
+  --eg-yellow-soft: #fff3b8;
+
+  --eg-red:         #d9211e; /* ikurriña / stop signal          */
+  --eg-red-hi:      #a8160f;
+  --eg-red-soft:    #ffd9d7;
+
+  --eg-green:       #1b7f4a; /* go signal · ferroviario         */
+  --eg-green-hi:    #0f5c34;
+  --eg-green-soft:  #d2ebde;
+
+  /* ─── ND pride ──────────────────────────────────────────── */
+  /* Autism pride gold (Au = gold = autism) and the original
+     neurodiversity rainbow (Mel Baggs et al.) used in the ∞
+     infinity glyph — the community-affirmed symbol that
+     replaced the puzzle piece. */
+  --eg-gold:        #e5a700; /* autism pride · ∞                */
+  --eg-gold-soft:   #ffe8a8;
+  --nd-red:         #e40303;
+  --nd-orange:      #ff8c00;
+  --nd-yellow:      #ffed00;
+  --nd-green:       #008026;
+  --nd-blue:        #004cff;
+  --nd-violet:      #732982;
+  --nd-gradient:    linear-gradient(90deg,
+                      var(--nd-red)    0%,
+                      var(--nd-orange) 20%,
+                      var(--nd-yellow) 40%,
+                      var(--nd-green)  60%,
+                      var(--nd-blue)   80%,
+                      var(--nd-violet) 100%);
+
+  --eg-paper:       #f4f1e8; /* timetable paper                 */
+  --eg-paper-2:     #ebe7d8;
+  --eg-paper-3:     #ddd6c0;
+  --eg-rule:        #c6bfa6;
+
+  /* Foreground scale */
+  --eg-fg-1: var(--eg-iron);
+  --eg-fg-2: #2a3543;
+  --eg-fg-3: #5a6573;
+  --eg-fg-4: #8e96a1;
+  --eg-fg-5: #b6bcc3;
+
+  /* Surface scale */
+  --eg-bg-1: var(--eg-paper);
+  --eg-bg-2: var(--eg-paper-2);
+  --eg-bg-3: var(--eg-paper-3);
+  --eg-bg-ink: var(--eg-iron);
+
+  /* Semantic — built on the four-stamp colors. */
+  --eg-success: var(--eg-green);
+  --eg-danger:  var(--eg-red);
+  --eg-warn:    var(--eg-yellow);
+  --eg-info:    #1f6dba;
+
+  --eg-link:       var(--eg-iron);
+  --eg-link-hover: var(--eg-red);
+  --eg-focus:      var(--eg-yellow);
+  --eg-selection:  var(--eg-yellow);
+
+  /* ─── 2 · TYPE ──────────────────────────────────────────── */
+  /* Big Shoulders Display: railway station board, condensed,
+     stencil-capable. Used for headlines, asset tags, signage.
+     DM Sans: warm grotesque, designed for legibility at small
+     sizes, bilingual-friendly. JetBrains Mono: asset numbers,
+     code, version strings, timetables. */
+  --font-display: "Big Shoulders Display", "Antonio", "Bebas Neue", system-ui, sans-serif;
+  --font-stencil: "Big Shoulders Stencil Display", "Big Shoulders Display", monospace;
+  --font-body:    "DM Sans", -apple-system, system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "Menlo", monospace;
+
+  /* Scale */
+  --fs-xxs: 10px; --fs-xs:  12px; --fs-sm:  14px;
+  --fs-md:  16px; --fs-lg:  18px; --fs-xl:  22px;
+  --fs-2xl: 28px; --fs-3xl: 36px; --fs-4xl: 48px;
+  --fs-5xl: 64px; --fs-6xl: 96px; --fs-7xl: 144px;
+  --fs-8xl: 220px;
+
+  --lh-tight: 0.92;
+  --lh-snug:  1.12;
+  --lh-base:  1.55;
+  --lh-loose: 1.75;
+
+  --tr-tightest: -0.04em;
+  --tr-tight:    -0.02em;
+  --tr-snug:     -0.01em;
+  --tr-base:      0;
+  --tr-wide:      0.06em;
+  --tr-caps:      0.14em;
+  --tr-stencil:   0.02em;
+
+  /* ─── 3 · SPACING (4-pt grid) ───────────────────────────── */
+  --s-0:0; --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px;
+  --s-5:20px; --s-6:24px; --s-7:32px; --s-8:40px; --s-9:56px;
+  --s-10:72px; --s-11:96px; --s-12:144px; --s-13:192px;
+
+  /* ─── 4 · LAYOUT ────────────────────────────────────────── */
+  --container:      1280px;
+  --container-text: 680px;
+  --nav-h:          64px;
+
+  /* ─── 5 · RADII ─────────────────────────────────────────── */
+  /* Industrial brand → sharp by default. Radii are rare,
+     reserved for chips and the round stamp mark. */
+  --r-0:0; --r-1:2px; --r-2:4px; --r-3:8px; --r-pill:999px;
+
+  /* ─── 6 · BORDERS ───────────────────────────────────────── */
+  --b-hair:   1px solid var(--eg-rule);
+  --b-1:      1px solid var(--eg-iron);
+  --b-2:      2px solid var(--eg-iron);
+  --b-3:      3px solid var(--eg-iron);
+  --b-4:      4px solid var(--eg-iron);
+
+  /* ─── 7 · SHADOWS (very rare) ───────────────────────────── */
+  /* Industrial system uses offset hardshadow, not soft blur. */
+  --sh-tap:  2px 2px 0 var(--eg-iron);
+  --sh-card: 4px 4px 0 var(--eg-iron);
+  --sh-deep: 8px 8px 0 var(--eg-iron);
+
+  /* ─── 8 · MOTION ────────────────────────────────────────── */
+  --ease:  cubic-bezier(0.2, 0, 0, 1);
+  --dur-1: 100ms;
+  --dur-2: 200ms;
+  --dur-3: 360ms;
+}
+
+/* ─── Sensory access ──────────────────────────────────────
+   This brand is designed by and for a neurodivergent maintainer.
+   The whole system already favors: high contrast, predictable
+   shape, no flashing, no autoplaying motion, plain language.
+   But we also honor user-side prefs explicitly. */
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+[data-theme="dark"] {
+  --eg-paper: #0b1620; --eg-paper-2: #11202d; --eg-paper-3: #1a2a3a;
+  --eg-iron:  #f4f1e8; --eg-iron-2: #d8d3c3; --eg-iron-3: #a4a193;
+  --eg-rule:  #2a3b4d;
+  --eg-fg-1:  #f4f1e8; --eg-fg-2: #c4c7c9; --eg-fg-3: #8a8e96;
+  --eg-bg-1:  #0b1620; --eg-bg-2: #11202d; --eg-bg-3: #1a2a3a;
+  --eg-bg-ink:#f4f1e8;
+  --eg-link:  #f4f1e8; --eg-link-hover: var(--eg-yellow);
+}
+
+/* ─── Base ───────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing: border-box; }
+html,body { margin: 0; }
+body {
+  background: var(--eg-paper);
+  color: var(--eg-fg-2);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: var(--lh-base);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: var(--eg-yellow); color: var(--eg-iron); }
+
+/* ─── Type primitives ───────────────────────────────────── */
+h1,.h1 {
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(var(--fs-5xl), 9vw, var(--fs-7xl));
+  line-height: var(--lh-tight); letter-spacing: var(--tr-tight);
+  color: var(--eg-fg-1); margin: 0 0 var(--s-5);
+  text-wrap: balance; text-transform: uppercase;
+}
+h2,.h2 {
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(var(--fs-3xl), 5vw, var(--fs-6xl));
+  line-height: var(--lh-tight); letter-spacing: var(--tr-tight);
+  color: var(--eg-fg-1); margin: 0 0 var(--s-4);
+  text-wrap: balance; text-transform: uppercase;
+}
+h3,.h3 {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--fs-2xl); line-height: var(--lh-snug);
+  letter-spacing: var(--tr-snug); color: var(--eg-fg-1);
+  margin: 0 0 var(--s-3); text-transform: uppercase;
+}
+h4,.h4 {
+  font-family: var(--font-body); font-weight: 600;
+  font-size: var(--fs-lg); line-height: var(--lh-snug);
+  color: var(--eg-fg-1); margin: 0 0 var(--s-2);
+}
+.eyebrow {
+  font-family: var(--font-mono); font-weight: 500;
+  font-size: var(--fs-xs); text-transform: uppercase;
+  letter-spacing: var(--tr-caps); color: var(--eg-fg-3);
+  display: inline-flex; align-items: center; gap: var(--s-2);
+}
+.eyebrow::before {
+  content: ""; width: 10px; height: 10px;
+  background: var(--eg-yellow); display: inline-block;
+  border: 1px solid var(--eg-iron);
+}
+
+p { margin: 0 0 var(--s-4); text-wrap: pretty; max-width: 60ch; }
+.lead { font-size: var(--fs-lg); color: var(--eg-fg-2); }
+
+a {
+  color: var(--eg-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--eg-yellow);
+  transition: color var(--dur-1) var(--ease);
+}
+a:hover { color: var(--eg-red); text-decoration-color: var(--eg-red); }
+a:focus-visible { outline: 3px solid var(--eg-yellow); outline-offset: 2px; }
+
+strong,b { font-weight: 700; color: var(--eg-fg-1); }
+
+code,kbd,samp {
+  font-family: var(--font-mono); font-size: 0.92em;
+  background: var(--eg-paper-2); border: 1px solid var(--eg-rule);
+  padding: 1px 6px;
+}
+pre {
+  font-family: var(--font-mono); font-size: var(--fs-sm);
+  background: var(--eg-iron); color: var(--eg-yellow);
+  padding: var(--s-5) var(--s-6); overflow-x: auto;
+  line-height: 1.6; border-left: 4px solid var(--eg-yellow);
+}
+pre code { background: none; border: 0; padding: 0; color: inherit; }
+
+blockquote {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--fs-2xl); line-height: var(--lh-snug);
+  letter-spacing: var(--tr-snug); color: var(--eg-fg-1);
+  text-transform: uppercase;
+  border-left: 6px solid var(--eg-yellow);
+  padding: var(--s-3) var(--s-6); margin: var(--s-6) 0;
+}
+
+hr { border: 0; border-top: 1px solid var(--eg-iron); margin: var(--s-9) 0; }
+
+/* ─── Form controls ─────────────────────────────────────── */
+input,textarea,select {
+  font: inherit; font-family: var(--font-body);
+  background: var(--eg-paper); color: var(--eg-fg-1);
+  border: var(--b-2); border-radius: 0;
+  padding: var(--s-3) var(--s-4); width: 100%;
+  transition: box-shadow var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+input:focus-visible,textarea:focus-visible,select:focus-visible {
+  outline: none; background: var(--eg-yellow-soft);
+  box-shadow: 3px 3px 0 var(--eg-iron);
+}
+
+/* ─── Buttons — sharp, offset hardshadow ────────────────── */
+.btn {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--fs-lg); line-height: 1;
+  text-transform: uppercase; letter-spacing: var(--tr-wide);
+  padding: 12px 22px 14px;
+  border: var(--b-2); border-radius: 0;
+  background: var(--eg-paper); color: var(--eg-iron);
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  cursor: pointer; text-decoration: none;
+  transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.btn:hover { transform: translate(-2px,-2px); box-shadow: 4px 4px 0 var(--eg-iron); }
+.btn:active { transform: translate(0,0); box-shadow: 0 0 0 var(--eg-iron); }
+.btn--brand { background: var(--eg-gold); }       /* v3.1 · autism gold brand pulse */
+.btn--yellow{ background: var(--eg-yellow); }     /* hi-vis safety yellow, occasional */
+.btn--ink   { background: var(--eg-iron); color: var(--eg-yellow); }
+.btn--ink:hover { box-shadow: 4px 4px 0 var(--eg-yellow); }
+.btn--red   { background: var(--eg-red); color: var(--eg-paper); }
+.btn--ghost { background: transparent; border-color: transparent; text-decoration: underline; }
+
+/* ─── Chip · the asset-tag pill ─────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: var(--fs-xs);
+  font-weight: 600; text-transform: uppercase;
+  letter-spacing: var(--tr-wide);
+  padding: 3px 9px 4px; border: var(--b-1); border-radius: 0;
+  background: var(--eg-paper); color: var(--eg-iron);
+}
+.chip--yellow { background: var(--eg-yellow); }
+.chip--gold   { background: var(--eg-gold); }
+.chip--ink    { background: var(--eg-iron); color: var(--eg-yellow); border-color: var(--eg-iron); }
+.chip--red    { background: var(--eg-red); color: var(--eg-paper); border-color: var(--eg-iron); }
+.chip--green  { background: var(--eg-green); color: var(--eg-paper); border-color: var(--eg-iron); }
+
+/* ─── Card · the asset-tag layout ───────────────────────── */
+.card {
+  background: var(--eg-paper); border: var(--b-2);
+  border-radius: 0; padding: var(--s-6);
+  box-shadow: var(--sh-tap);
+  transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.card:hover { transform: translate(-2px,-2px); box-shadow: var(--sh-card); }
+
+/* Asset-tag header rule */
+.card-tag-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--font-mono); font-size: var(--fs-xs);
+  text-transform: uppercase; letter-spacing: var(--tr-wide);
+  color: var(--eg-fg-3);
+  padding-bottom: var(--s-2); margin-bottom: var(--s-3);
+  border-bottom: 1px dashed var(--eg-iron);
+}
+
+/* ─── Utility ───────────────────────────────────────────── */
+.container       { max-width: var(--container); margin-inline: auto; padding-inline: var(--s-7); }
+.text-container  { max-width: var(--container-text); margin-inline: auto; padding-inline: var(--s-7); }
+.stack-3 > * + * { margin-top: var(--s-3); }
+.stack-4 > * + * { margin-top: var(--s-4); }
+.stack-6 > * + * { margin-top: var(--s-6); }
+.row { display: flex; gap: var(--s-4); align-items: center; flex-wrap: wrap; }
+
+/* ─── Industrial patterns ───────────────────────────────── */
+/* Hazard stripes — the universal "watch out, work in progress"  */
+.bg-hazard {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--eg-yellow) 0 18px,
+    var(--eg-iron) 18px 36px
+  );
+}
+.bg-hazard-thin {
+  background: repeating-linear-gradient(
+    -45deg, var(--eg-yellow) 0 8px, var(--eg-iron) 8px 16px
+  );
+}
+/* Railway sleepers */
+.bg-sleepers {
+  background-image: repeating-linear-gradient(90deg, var(--eg-iron) 0 8px, transparent 8px 20px);
+  background-size: 20px 100%;
+}
+/* Timetable grid */
+.bg-timetable {
+  background-image:
+    linear-gradient(var(--eg-rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--eg-rule) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+/* Dot grid */
+.bg-dot {
+  background-image: radial-gradient(var(--eg-fg-4) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+/* Perforated edge — for ticket-style cards */
+.edge-perf {
+  --p: 8px;
+  -webkit-mask:
+    radial-gradient(var(--p) at var(--p) 50%, #0000 98%, #000) -8px 0,
+    radial-gradient(var(--p) at calc(100% - var(--p)) 50%, #0000 98%, #000) 8px 0;
+  -webkit-mask-composite: source-in;
+          mask-composite: intersect;
+}

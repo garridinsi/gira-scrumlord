@@ -36,18 +36,29 @@ export async function boardRoutes(app: FastifyInstance): Promise<void> {
     const project = await getProjectByKeyOr404(key);
     assertCanAccessProject(currentUser(req), project);
 
-    const [statuses, issues] = await Promise.all([
+    const [statuses, issues, loggedByIssue] = await Promise.all([
       prisma.status.findMany({ where: { projectId: project.id }, orderBy: { order: 'asc' } }),
       prisma.issue.findMany({
         where: { projectId: project.id },
         include: issueInclude,
         orderBy: { rank: 'asc' },
       }),
+      prisma.worklog.groupBy({
+        by: ['issueId'],
+        where: { issue: { projectId: project.id } },
+        _sum: { minutes: true },
+      }),
     ]);
+
+    const loggedMinutes = new Map(loggedByIssue.map((g) => [g.issueId, g._sum.minutes ?? 0]));
+    const toCardView = (i: (typeof issues)[number]) => ({
+      ...toIssueView(i),
+      loggedMinutes: loggedMinutes.get(i.id) ?? 0,
+    });
 
     const columns = statuses.map((s) => ({
       status: toStatusView(s),
-      issues: issues.filter((i) => i.statusId === s.id).map((i) => toIssueView(i)),
+      issues: issues.filter((i) => i.statusId === s.id).map(toCardView),
     }));
     return { projectKey: key, columns };
   });

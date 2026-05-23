@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>gira-scrumlord · Design canvas (M1)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="eg-tokens.css" />
+<link rel="stylesheet" href="app.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: #f0eee9; }
+  .app-frame {
+    width: 1440px; height: 900px;
+    background: var(--eg-paper);
+    color: var(--eg-fg-2);
+    font-family: var(--font-body); font-size: 14px;
+    display: grid; grid-template-rows: var(--gs-topbar) 1fr;
+    overflow: hidden; position: relative;
+    border: 1px solid var(--eg-iron);
+  }
+  .app-frame .main {
+    display: grid; grid-template-columns: var(--gs-rail) 1fr;
+    overflow: hidden;
+  }
+  .screen-1440 { width: 1440px; height: 900px; overflow: hidden; }
+  /* Layer: a soft scanline so frames feel like prints */
+  .app-frame::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(transparent 50%, rgba(0,0,0,0.012) 50%);
+    background-size: 100% 2px;
+  }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="shell.jsx"></script>
+<script type="text/babel" src="screen-login.jsx"></script>
+<script type="text/babel" src="screen-board.jsx"></script>
+<script type="text/babel" src="screen-issue.jsx"></script>
+<script type="text/babel" src="screen-backlog.jsx"></script>
+<script type="text/babel" src="screen-summary.jsx"></script>
+<script type="text/babel" src="screen-sauron.jsx"></script>
+<script type="text/babel" src="screen-settings.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+// Lore easter egg: print the boarding pass to console
+console.log(
+  "%c gira-scrumlord %c v0.1.0 · M1 %c\n" +
+  "// scrumlord · pg-boss worker · 4 jobs queued\n" +
+  "// sauron · audit log · port :666 · watching\n" +
+  "// chaos · adapters · M4 · works by accident\n" +
+  "// the roadmap isn't read, it's felt. but we wrote it down anyway,\n" +
+  "// because the velociraptor insisted.",
+  "background:#0b1620;color:#f5c400;padding:2px 6px;font:700 13px/1.2 monospace",
+  "background:#f5c400;color:#0b1620;padding:2px 6px;font:600 12px/1.2 monospace",
+  "color:#6a7280;font:500 11px/1.5 monospace"
+);
+
+// ─────────────────────────────────────────────────────────────────
+// Re-usable AppFrame — wraps a screen in the shared chrome.
+// Body content slots into the right column.
+// ─────────────────────────────────────────────────────────────────
+function AppFrame({ active, project = "MTNR", projectName = "Freight Scheduling Engine", search = "", children }) {
+  return (
+    <div className="app-frame">
+      <Topbar project={project} projectName={projectName} search={search} />
+      <div className="main">
+        <Rail active={active} project={project} />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Two small "states" frames: WIP-breach detail + Scrumlord daemon
+// ─────────────────────────────────────────────────────────────────
+function ScrumlordPanel() {
+  // Standalone panel, 720x900 — could live in :666 detail page
+  return (
+    <div style={{
+      width: 720, height: 900,
+      background: "var(--eg-iron)", color: "var(--eg-paper)",
+      fontFamily: "var(--font-body)", overflow: "hidden",
+      border: "1px solid var(--eg-iron)",
+      display: "flex", flexDirection: "column"
+    }}>
+      <div style={{
+        background: "var(--eg-yellow)", color: "var(--eg-iron)",
+        padding: "12px 20px", display: "flex", alignItems: "center", gap: 14,
+        borderBottom: "2px solid var(--eg-iron)"
+      }}>
+        <span className="plate" style={{ background: "var(--eg-iron)", color: "var(--eg-yellow)" }}>apps/scrumlord</span>
+        <div>
+          <div className="disp" style={{ fontSize: 26, color: "var(--eg-iron)", lineHeight: 1 }}>SCRUMLORD · DAEMON</div>
+          <div className="mono" style={{ fontSize: 10, letterSpacing: "0.14em", marginTop: 3, color: "var(--eg-iron)" }}>
+            PG-BOSS · RESPALDADO POR POSTGRES · SIN REDIS
+          </div>
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 10, height: 10, background: "var(--eg-green)", borderRadius: "50%", border: "1.5px solid var(--eg-iron)" }} />
+          <span className="mono" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em" }}>RUN</span>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflow: "auto" }}>
+        {[
+          { name: "sprint.autoclose", when: "cada 5 min",  last: "16:18:00", count: 1, next: "16:23:00",  ok: true, note: "cierra sprints con endDate pasada, snapshot de velocidad" },
+          { name: "timer.reap",       when: "cada 1 min",  last: "16:42:08", count: 2, next: "16:43:08",  ok: true, note: "detiene timers > 12h, escribe worklog limitado + bandera" },
+          { name: "outbox.dispatch",  when: "cada 30 seg", last: "16:42:14", count: 3, next: "16:42:44",  ok: true, note: "vacía eventos de dominio · M3 paging consume este seam" },
+          { name: "velocity.snapshot",when: "al cerrar sprint",last: "16:18:01", count: 1, next: "—",         ok: true, note: "escribe committedPoints / completedPoints / completedCount" },
+        ].map((j, i) => (
+          <div key={i} style={{
+            padding: "14px 20px",
+            borderBottom: "1px solid var(--eg-iron-2)",
+            display: "grid", gridTemplateColumns: "1fr auto auto auto auto",
+            gap: 14, alignItems: "center"
+          }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 8, height: 8, background: j.ok ? "var(--eg-green)" : "var(--eg-red)", display: "inline-block", borderRadius: "50%" }} />
+                <span className="mono" style={{ fontSize: 14, fontWeight: 700, color: "var(--eg-yellow)" }}>{j.name}</span>
+              </div>
+              <div className="mono" style={{ fontSize: 11, color: "var(--eg-fg-5)", marginTop: 3, letterSpacing: "0.06em" }}>{j.note}</div>
+            </div>
+            <div style={{ minWidth: 80 }}>
+              <div className="caps" style={{ color: "var(--eg-fg-5)" }}>// cada · every</div>
+              <div className="mono" style={{ fontSize: 11, color: "var(--eg-paper)" }}>{j.when}</div>
+            </div>
+            <div style={{ minWidth: 80 }}>
+              <div className="caps" style={{ color: "var(--eg-fg-5)" }}>// última · last</div>
+              <div className="mono" style={{ fontSize: 11, color: "var(--eg-paper)" }}>{j.last}</div>
+            </div>
+            <div style={{ minWidth: 80 }}>
+              <div className="caps" style={{ color: "var(--eg-fg-5)" }}>// próxima · next</div>
+              <div className="mono" style={{ fontSize: 11, color: "var(--eg-yellow)" }}>{j.next}</div>
+            </div>
+            <div style={{ minWidth: 50, textAlign: "right" }}>
+              <div className="caps" style={{ color: "var(--eg-fg-5)" }}>// ejec.</div>
+              <div className="disp" style={{ fontSize: 22, color: "var(--eg-paper)", lineHeight: 1 }}>{j.count}</div>
+            </div>
+          </div>
+        ))}
+
+        {/* Live log */}
+        <div style={{ padding: "18px 20px" }}>
+          <div className="caps" style={{ color: "var(--eg-yellow)" }}>// en vivo · live · últimos 6 eventos</div>
+          <pre style={{
+            background: "var(--eg-iron-2)", border: "1.5px solid var(--eg-iron-3)",
+            color: "var(--eg-paper)", padding: "12px 14px",
+            margin: "8px 0 0", fontSize: 11, lineHeight: 1.7,
+            borderLeft: "4px solid var(--eg-yellow)"
+          }}>
+{`16:42:14 outbox.dispatch  · vaciados 3 eventos       · ok 30ms
+16:42:08 timer.reap        · escaneados 14 timers     · 0 reaped
+16:42:00 sprint.autoclose  · escaneados 8 sprints     · 0 closed
+16:41:14 outbox.dispatch   · vaciado 1 evento         · ok 18ms
+16:40:44 outbox.dispatch   · vacío                    · skip 4ms
+16:39:08 timer.reap        · escaneados 14 timers     · 1 reaped (T-8814)`}
+          </pre>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: "12px 20px", borderTop: "1px dashed var(--eg-iron-3)" }}>
+          <div className="mono" style={{ fontSize: 10, color: "var(--eg-fg-5)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            // cola · 4 · max worker · 8 · conexiones pg · 3/31<br />
+            // workspace · apps/scrumlord · pid 8814 · activo desde 14d 03:18
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Empty board state (first-run for a new project)
+// ─────────────────────────────────────────────────────────────────
+function EmptyBoardScreen() {
+  return (
+    <div className="body">
+      <Subbar
+        tabs={[{es:"Tablero",en:"Board",active:true,count:0},{es:"Pendientes",en:"Backlog",count:0},{es:"Sprints",en:"Sprints",count:0}]}
+        right={<><button className="b-btn b-btn--ink">+ Nuevo ticket</button></>}
+      />
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
+        <div style={{
+          maxWidth: 580, textAlign: "center",
+          padding: 0, border: "2px solid var(--eg-iron)",
+          background: "var(--eg-paper)", boxShadow: "6px 6px 0 var(--eg-iron)"
+        }}>
+          <div style={{
+            background: "repeating-linear-gradient(-45deg, var(--eg-yellow) 0 16px, var(--eg-iron) 16px 32px)",
+            height: 16
+          }} />
+          <div style={{ padding: "32px 36px 30px" }}>
+            <div className="plate" style={{ marginBottom: 18 }}>PROYECTO · NUEVO · GIRA</div>
+            <h2 className="disp" style={{ fontSize: 44, color: "var(--eg-iron)", margin: "0 0 14px", lineHeight: 0.95, fontWeight: 900 }}>
+              VÍAS VACÍAS.<br />
+              <span style={{ color: "var(--eg-red)" }}>SIN MATERIAL RODANTE.</span>
+            </h2>
+            <div className="mono" style={{ fontSize: 11, color: "var(--eg-fg-3)", letterSpacing: "0.14em", marginBottom: 14, textTransform: "uppercase" }}>
+              — EMPTY YARD · NO ROLLING STOCK —
+            </div>
+            <p style={{ fontSize: 14, color: "var(--eg-fg-2)", marginBottom: 22, lineHeight: 1.6 }}>
+              Hemos creado cinco estados por defecto: <b>Pendientes</b>, <b>Por Hacer</b>, <b>En Curso</b>, <b>En Revisión</b>, <b>Hecho</b>. Aún no hay etiquetas. Ningún sprint. El primer ticket será <code style={{ fontSize: 13 }}>GIRA-1</code>. Atómico, sin duplicados — el contador del proyecto incrementa dentro de la transacción.
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+              <button className="b-btn b-btn--yellow">+ Primer ticket</button>
+              <button className="b-btn">Importar CSV</button>
+              <button className="b-btn b-btn--ghost">Ajustes de workflow</button>
+            </div>
+          </div>
+          <div style={{ background: "var(--eg-paper-2)", padding: "10px 18px", borderTop: "1px dashed var(--eg-iron)", display: "flex", justifyContent: "space-between" }}>
+            <span className="mono" style={{ fontSize: 10, color: "var(--eg-fg-3)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              // workflow · por defecto · 5 estados
+            </span>
+            <span className="mono" style={{ fontSize: 10, color: "var(--eg-fg-3)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              // serie · gira-init-2026-05-22
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Canvas assembly
+// ─────────────────────────────────────────────────────────────────
+function App() {
+  return (
+    <DesignCanvas
+      title="gira-scrumlord · m1 design"
+      subtitle="The honest one · La honesta. Self-hostable Jira alternative. GPL-3.0."
+    >
+      <DCSection id="auth" title="01 · Autenticación · Authentication" subtitle="Passwordless magic-link. OIDC-ready. No password column.">
+        <DCArtboard id="login" label="Login · poster + boarding pass" width={1440} height={900}>
+          <LoginScreen />
+        </DCArtboard>
+        <DCArtboard id="login-sent" label="Login · estado enviado" width={1440} height={900}>
+          <LoginSentVariant />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="core" title="02 · Tracker Central · Core tracker" subtitle="El protagonista. Arrastra un ticket entre columnas. Mira las franjas de peligro.">
+        <DCArtboard id="board" label="Tablero · Mantenedor SL · S-04" width={1440} height={900}>
+          <AppFrame active="board" project="MTNR" projectName="Freight Scheduling Engine">
+            <BoardScreen />
+          </AppFrame>
+        </DCArtboard>
+        <DCArtboard id="issue" label="Drawer · MTNR-42 · emergencia" width={1440} height={900}>
+          <AppFrame active="board" project="MTNR" projectName="Freight Scheduling Engine">
+            <IssueDrawer issueKey="MTNR-42" />
+          </AppFrame>
+        </DCArtboard>
+        <DCArtboard id="issue-normal" label="Drawer · MTNR-39 · normal" width={1440} height={900}>
+          <AppFrame active="board" project="MTNR" projectName="Freight Scheduling Engine">
+            <IssueDrawer issueKey="MTNR-39" />
+          </AppFrame>
+        </DCArtboard>
+        <DCArtboard id="empty" label="Estado vacío · nuevo proyecto" width={1440} height={900}>
+          <AppFrame active="board" project="GIRA" projectName="Gira · Core Tracker">
+            <EmptyBoardScreen />
+          </AppFrame>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="planning" title="03 · Planificación · Planning" subtitle="Backlog, sprints, velocidad. Comprometido vs completado, números reales.">
+        <DCArtboard id="backlog" label="Pendientes + sprints" width={1440} height={900}>
+          <AppFrame active="backlog" project="MTNR" projectName="Freight Scheduling Engine">
+            <BacklogScreen />
+          </AppFrame>
+        </DCArtboard>
+        <DCArtboard id="summary" label="Resumen · tiempo + dinero + 🌀 velocidad" width={1440} height={900}>
+          <AppFrame active="summary" project="MTNR" projectName="Freight Scheduling Engine">
+            <SummaryScreen />
+          </AppFrame>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="lore" title="04 · Lore, en código · Lore, in code" subtitle="Módulos reales. scrumlord daemon (pg-boss). sauron audit (puerto :666). Easter eggs en tooltips y consola, nunca en la UI principal.">
+        <DCArtboard id="sauron" label="Sauron · auditoría · :666" width={1440} height={900}>
+          <AppFrame active="audit" project="MTNR" projectName="Freight Scheduling Engine">
+            <SauronScreen />
+          </AppFrame>
+        </DCArtboard>
+        <DCArtboard id="scrumlord" label="Scrumlord · detalle del daemon" width={720} height={900}>
+          <ScrumlordPanel />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="admin" title="05 · Admin" subtitle="Clientes, tarifas, cadena de resolución. El dinero es entero en céntimos. Nunca floats.">
+        <DCArtboard id="settings" label="Ajustes · clientes + tarifas" width={1440} height={900}>
+          <AppFrame active="rates" project="MTNR" projectName="Freight Scheduling Engine">
+            <SettingsScreen />
+          </AppFrame>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+// Minor variant: pre-rendered sent state of login
+function LoginSentVariant() {
+  // Set initial state by mounting a forced-sent version
+  const [, setX] = React.useState(0);
+  React.useEffect(() => { setX(1); }, []);
+  return <LoginScreenSent />;
+}
+
+function LoginScreenSent() {
+  // copy of LoginScreen with sent=true initial
+  // The original LoginScreen owns its state, so we recreate a wrapper
+  return <LoginScreenWithSent />;
+}
+
+function LoginScreenWithSent() {
+  // Render LoginScreen and click submit on mount
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!ref.current) return;
+    const btn = ref.current.querySelector('button[type="submit"]');
+    if (btn) btn.click();
+  }, []);
+  return <div ref={ref}><LoginScreen /></div>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
