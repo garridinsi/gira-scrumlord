@@ -30,3 +30,6 @@ coverage/
 
 # claude code worktrees / local tool state
 .claude/worktrees/
+
+# local verification screenshots (delivered, not versioned)
+docs/design/_shots/

@@ -82,6 +82,28 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 
 ---
 
+## 🎨 Interfaz · UI
+
+The web app (`apps/web`, React + Vite) is built in the **Eneko Garrido "Mantenedor"
+design system** — an industrial public-works language: timetable-paper cream,
+locomotive-iron black, hi-vis safety yellow, ikurriña red. Stencil display type,
+hard offset shadows (no blur), riveted asset-tag plates, hazard stripes for danger,
+and **bilingual by default** (Spanish primary, English mono secondary). Dark mode is
+not the only mode anymore — the only mode is *paper*.
+
+Screens, all wired to the live API: passwordless **login** (poster + boarding pass),
+**Kanban board** (drag-drop, emergency banner, WIP-breach hazard warnings), **issue
+drawer** (edit / comments / worklogs / cost / timer / audit), **backlog + sprints**,
+**summary** (time + money + 🌀 velocity), **Sauron audit** (`:666`), and **settings**
+(clients + the rate-resolution chain). The design source lives in
+[`docs/design/`](./docs/design/); the contract the UI builds against is
+[`docs/api-contract.md`](./docs/api-contract.md).
+
+> _Four rules, non-negotiable: the system is a promise · bilingual by default · sharp
+> by default · honesty over polish (empty states with a voice, errors with a cause)._
+
+---
+
 ## ⚙️ Installation
 
 Real steps. They actually work. (We left the prayer in, just in case.)
