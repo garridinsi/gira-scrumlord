@@ -112,7 +112,9 @@ export const auth = {
 
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
 
-  me: () => request<UserView>('/auth/me'),
+  // /auth/me returns { user }, like /auth/callback — unwrap so me.data is a UserView
+  // (otherwise me.data.kind is undefined and client users never reach the portal).
+  me: () => request<{ user: UserView }>('/auth/me').then((r) => r.user),
 };
 
 // ---------------------------------------------------------------------------
