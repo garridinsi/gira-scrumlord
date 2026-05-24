@@ -160,7 +160,7 @@ export function PortalInvoicesPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '160px 130px 240px 180px 120px',
+              gridTemplateColumns: '150px 165px minmax(180px, 1fr) 150px 130px',
               gap: 0,
               background: 'var(--eg-paper-3)',
               borderBottom: '1.5px solid var(--eg-iron)',
@@ -186,7 +186,7 @@ export function PortalInvoicesPage() {
               onClick={() => navigate(`/portal/invoices/${inv.id}`)}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '160px 130px 240px 180px 120px',
+                gridTemplateColumns: '150px 165px minmax(180px, 1fr) 150px 130px',
                 gap: 0,
                 alignItems: 'center',
                 padding: '14px 16px',

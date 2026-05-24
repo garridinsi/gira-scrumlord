@@ -215,7 +215,7 @@ function InvoiceList({ clientId }: { clientId: string }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '160px 130px 260px 180px 120px',
+          gridTemplateColumns: '150px 165px minmax(180px, 1fr) 150px 130px',
           gap: 0,
           background: 'var(--eg-paper-3)',
           borderBottom: '1.5px solid var(--eg-iron)',
@@ -256,7 +256,7 @@ function InvoiceList({ clientId }: { clientId: string }) {
           to={`/invoices/${inv.id}`}
           style={{
             display: 'grid',
-            gridTemplateColumns: '160px 130px 260px 180px 120px',
+            gridTemplateColumns: '150px 165px minmax(180px, 1fr) 150px 130px',
             gap: 0,
             alignItems: 'center',
             padding: '12px 14px',
