@@ -19,6 +19,12 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   APP_URL: z.string().url().default('http://localhost:5173'),
   SESSION_SECRET: z.string().min(16, 'SESSION_SECRET must be at least 16 chars'),
+  // Set true when served over HTTPS (prod behind TLS). Decoupled from NODE_ENV so a
+  // plain-HTTP `docker compose up` demo can still set the session cookie.
+  COOKIE_SECURE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
   MAGIC_LINK_TTL_MINUTES: z.coerce.number().int().positive().default(15),
   SMTP_HOST: z.string().default('localhost'),
