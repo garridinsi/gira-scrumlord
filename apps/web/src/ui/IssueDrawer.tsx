@@ -2,12 +2,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { IssueView, StatusView, LabelView, CostView } from '@gira/shared';
-import { issues, projects, audit } from '../api/client';
+import { issues, projects, audit, users, ApiError } from '../api/client';
 import type { CommentRecord, WorklogRecord } from '../api/client';
 import { Avatar, Bi, LabelChip, Plate, PriorityChip, SpinGlyph, TypeChip } from './atoms';
 import { formatMinutes, formatRelativeTime, formatDate } from '../lib/format';
 import { formatMoney, formatRatePerHour } from '../lib/money';
 import { useActiveTimer, useStartTimer, useStopTimer } from '../hooks/useTimer';
+import { useToast } from './Toast';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ function SideField({ labelEs, labelEn, children }: { labelEs: string; labelEn: s
 
 // ── Timer section ─────────────────────────────────────────────────────────────
 
-function TimerPanel({ issueKey }: { issueKey: string }) {
+function TimerPanel({ issueKey, toast }: { issueKey: string; toast: ReturnType<typeof useToast> }) {
   const activeTimer = useActiveTimer();
   const startTimer = useStartTimer();
   const stopTimer = useStopTimer();
@@ -71,12 +72,23 @@ function TimerPanel({ issueKey }: { issueKey: string }) {
   const handleToggle = () => {
     if (isRunningForThisIssue) {
       stopTimer.mutate(undefined, {
-        onSuccess: () => {
+        onSuccess: (log) => {
           void queryClient.invalidateQueries({ queryKey: ['worklogs', issueKey] });
+          toast({ tone: 'ok', title: 'Cronómetro parado · Timer stopped', body: formatMinutes(log.minutes) + ' registrados' });
+        },
+        onError: (err) => {
+          toast({ tone: 'danger', title: 'Error al parar · Stop failed', body: err instanceof ApiError ? err.message : 'Error' });
         },
       });
     } else {
-      startTimer.mutate(issueKey);
+      startTimer.mutate(issueKey, {
+        onSuccess: () => {
+          toast({ tone: 'ok', title: 'Cronómetro iniciado · Timer started' });
+        },
+        onError: (err) => {
+          toast({ tone: 'danger', title: 'Error al iniciar · Start failed', body: err instanceof ApiError ? err.message : 'Error' });
+        },
+      });
     }
   };
 
@@ -178,6 +190,7 @@ function DetailsTab({ issue }: { issue: IssueView }) {
 
 function CommentsTab({ issueKey }: { issueKey: string }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [body, setBody] = useState('');
 
   const commentsQuery = useQuery({
@@ -190,6 +203,10 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['comments', issueKey] });
       setBody('');
+      toast({ tone: 'ok', title: 'Comentario añadido · Comment added' });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al comentar · Comment failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
@@ -279,6 +296,7 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
 
 function WorklogsTab({ issueKey }: { issueKey: string }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [addMinutes, setAddMinutes] = useState('');
   const [addNote, setAddNote] = useState('');
@@ -292,12 +310,16 @@ function WorklogsTab({ issueKey }: { issueKey: string }) {
   const createWorklog = useMutation({
     mutationFn: (data: { minutes: number; note: string; billable: boolean }) =>
       issues.worklogs.create(issueKey, data),
-    onSuccess: () => {
+    onSuccess: (log) => {
       void queryClient.invalidateQueries({ queryKey: ['worklogs', issueKey] });
       void queryClient.invalidateQueries({ queryKey: ['issue', issueKey] });
       setShowAdd(false);
       setAddMinutes('');
       setAddNote('');
+      toast({ tone: 'ok', title: 'Trabajo registrado · Worklog added', body: formatMinutes(log.minutes) });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al registrar · Worklog failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
@@ -571,17 +593,29 @@ function DrawerSidebar({
   statuses,
   labels,
   onUpdate,
+  onAssigneeChange,
+  toast,
 }: {
   issue: IssueView;
   statuses: StatusView[];
   labels: LabelView[];
   onUpdate: (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[] }>) => void;
+  onAssigneeChange: (assigneeId: string | null) => void;
+  toast: ReturnType<typeof useToast>;
 }) {
   const currentStatus = statuses.find((s) => s.id === issue.statusId);
 
+  const usersQuery = useQuery({
+    queryKey: ['users'],
+    queryFn: () => users.list(),
+    staleTime: 60_000,
+  });
+
+  const userList = usersQuery.data ?? [];
+
   return (
     <aside style={{ background: 'var(--eg-paper-2)', overflow: 'auto' }}>
-      <TimerPanel issueKey={issue.key} />
+      <TimerPanel issueKey={issue.key} toast={toast} />
 
       <SideField labelEs="estado" labelEn="status">
         <select
@@ -614,14 +648,27 @@ function DrawerSidebar({
       </SideField>
 
       <SideField labelEs="asignado" labelEn="assignee">
-        {issue.assignee ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <select
+          value={issue.assignee?.id ?? ''}
+          onChange={(e) => onAssigneeChange(e.target.value || null)}
+          style={{
+            width: '100%',
+            padding: '4px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+          }}
+        >
+          <option value="">— sin asignar · unassigned</option>
+          {userList.map((u) => (
+            <option key={u.id} value={u.id}>{u.name}</option>
+          ))}
+        </select>
+        {issue.assignee && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
             <Avatar user={issue.assignee} />
-            <span style={{ fontSize: 13, color: 'var(--eg-iron)' }}>{issue.assignee.name}</span>
-          </span>
-        ) : (
-          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            sin asignar · unassigned
+            <span style={{ fontSize: 12, color: 'var(--eg-iron)' }}>{issue.assignee.name}</span>
           </span>
         )}
       </SideField>
@@ -764,6 +811,7 @@ type DrawerTab = (typeof DRAWER_TABS)[number]['id'];
 
 export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [tab, setTab] = useState<DrawerTab>('details');
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -797,9 +845,22 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
 
   const updateMutation = useMutation({
     mutationFn: (data: Parameters<typeof issues.update>[1]) => issues.update(issueKey, data),
-    onSuccess: (updated) => {
+    onSuccess: (updated, vars) => {
       queryClient.setQueryData(['issue', issueKey], updated);
       void queryClient.invalidateQueries({ queryKey: ['board', projectKey] });
+      if ('title' in vars) {
+        toast({ tone: 'ok', title: 'Ticket actualizado · Issue updated', body: 'Título guardado · Title saved' });
+      } else if ('assigneeId' in vars) {
+        const name = updated.assignee?.name ?? 'sin asignar · unassigned';
+        toast({ tone: 'ok', title: 'Asignación actualizada · Assignee updated', body: name });
+      } else if ('labelIds' in vars) {
+        toast({ tone: 'ok', title: 'Etiquetas actualizadas · Labels updated' });
+      } else {
+        toast({ tone: 'ok', title: 'Ticket actualizado · Issue updated' });
+      }
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al actualizar · Update failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
@@ -808,6 +869,10 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
     onSuccess: (updated) => {
       queryClient.setQueryData(['issue', issueKey], updated);
       void queryClient.invalidateQueries({ queryKey: ['board', projectKey] });
+      toast({ tone: 'ok', title: 'Ticket actualizado · Issue updated', body: 'Estado cambiado · Status changed' });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al mover · Move failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
@@ -827,6 +892,10 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
     } else {
       updateMutation.mutate(data as Parameters<typeof issues.update>[1]);
     }
+  };
+
+  const handleAssigneeChange = (assigneeId: string | null) => {
+    updateMutation.mutate({ assigneeId });
   };
 
   const handleTitleSave = () => {
@@ -1054,6 +1123,8 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
               statuses={statusesQuery.data ?? []}
               labels={labelsQuery.data ?? []}
               onUpdate={handleUpdate}
+              onAssigneeChange={handleAssigneeChange}
+              toast={toast}
             />
           </div>
         )}
