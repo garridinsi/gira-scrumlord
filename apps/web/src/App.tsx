@@ -4,7 +4,9 @@ import { AppLayout } from './components/layout/AppLayout';
 import { ClientPortalLayout } from './components/layout/ClientPortalLayout';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { BacklogPage } from './pages/BacklogPage';
+import { BillingPage } from './pages/BillingPage';
 import { BoardPage } from './pages/BoardPage';
+import { InvoiceDetailPage } from './pages/InvoiceDetailPage';
 import { IssueDetailPage } from './pages/IssueDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProjectSummaryPage } from './pages/ProjectSummaryPage';
@@ -15,6 +17,8 @@ import { SprintsPage } from './pages/SprintsPage';
 import { PortalOverviewPage } from './pages/portal/PortalOverviewPage';
 import { PortalTicketsPage } from './pages/portal/PortalTicketsPage';
 import { PortalIssueDetailPage } from './pages/portal/PortalIssueDetailPage';
+import { PortalInvoicesPage } from './pages/portal/PortalInvoicesPage';
+import { PortalInvoiceDetailPage } from './pages/portal/PortalInvoiceDetailPage';
 import { PortalRequestPage } from './pages/portal/PortalRequestPage';
 
 export function App() {
@@ -29,6 +33,8 @@ export function App() {
         <Route path="/portal" element={<PortalOverviewPage />} />
         <Route path="/portal/issues" element={<PortalTicketsPage />} />
         <Route path="/portal/issues/:key" element={<PortalIssueDetailPage />} />
+        <Route path="/portal/invoices" element={<PortalInvoicesPage />} />
+        <Route path="/portal/invoices/:id" element={<PortalInvoiceDetailPage />} />
         <Route path="/portal/request" element={<PortalRequestPage />} />
       </Route>
 
@@ -42,6 +48,8 @@ export function App() {
         <Route path="/projects/:key/sprints" element={<SprintsPage />} />
         <Route path="/issues/:key" element={<IssueDetailPage />} />
         <Route path="/audit" element={<SauronPage />} />
+        <Route path="/billing" element={<BillingPage />} />
+        <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
 

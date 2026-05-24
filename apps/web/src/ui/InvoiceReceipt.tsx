@@ -1,0 +1,443 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Printable invoice receipt — EG "Mantenedor" design. Presentation-only.
+import type { InvoiceView } from '@gira/shared';
+import { Glyph, Plate } from './atoms';
+import { formatMoney } from '../lib/money';
+import { formatMinutes, formatDate } from '../lib/format';
+
+// ── Status badge ─────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: InvoiceView['status'] }) {
+  const configs = {
+    draft: {
+      es: 'Borrador',
+      en: 'Draft',
+      style: {
+        background: 'var(--eg-paper-3)',
+        color: 'var(--eg-iron)',
+        borderColor: 'var(--eg-iron)',
+        textDecoration: 'none' as const,
+      },
+    },
+    issued: {
+      es: 'Emitida',
+      en: 'Issued',
+      style: {
+        background: 'var(--eg-yellow)',
+        color: 'var(--eg-iron)',
+        borderColor: 'var(--eg-iron)',
+        textDecoration: 'none' as const,
+      },
+    },
+    paid: {
+      es: 'Pagada',
+      en: 'Paid',
+      style: {
+        background: 'var(--eg-green)',
+        color: 'var(--eg-paper)',
+        borderColor: 'var(--eg-iron)',
+        textDecoration: 'none' as const,
+      },
+    },
+    void: {
+      es: 'Anulada',
+      en: 'Void',
+      style: {
+        background: 'var(--eg-paper-2)',
+        color: 'var(--eg-fg-4)',
+        borderColor: 'var(--eg-rule)',
+        textDecoration: 'line-through' as const,
+      },
+    },
+  } as const;
+
+  const cfg = configs[status];
+  return (
+    <span
+      style={{
+        fontFamily: 'var(--font-mono)',
+        fontWeight: 700,
+        fontSize: 11,
+        textTransform: 'uppercase',
+        letterSpacing: '0.14em',
+        padding: '4px 12px',
+        border: '1.5px solid',
+        display: 'inline-block',
+        ...cfg.style,
+      }}
+    >
+      <span style={{ textDecoration: cfg.style.textDecoration }}>
+        {cfg.es} · {cfg.en}
+      </span>
+    </span>
+  );
+}
+
+// ── Main receipt component ───────────────────────────────────────────────────
+
+export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
+  const hasPeriod = invoice.periodStart || invoice.periodEnd;
+
+  return (
+    <article className="invoice-receipt">
+      {/* ── Header ──────────────────────────────────────────── */}
+      <div className="invoice-receipt__header">
+        <div className="invoice-receipt__brand">
+          <Glyph />
+          <span
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontWeight: 900,
+              fontSize: 24,
+              textTransform: 'uppercase',
+              letterSpacing: '-0.01em',
+              color: 'var(--eg-iron)',
+              lineHeight: 1,
+            }}
+          >
+            GIRA
+          </span>
+        </div>
+
+        <div className="invoice-receipt__title-block">
+          <h1
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontWeight: 900,
+              fontSize: 'clamp(28px, 5vw, 52px)',
+              textTransform: 'uppercase',
+              letterSpacing: '-0.02em',
+              color: 'var(--eg-iron)',
+              margin: 0,
+              lineHeight: 0.9,
+            }}
+          >
+            FACTURA
+          </h1>
+          <div
+            style={{
+              fontFamily: 'var(--font-stencil)',
+              fontWeight: 700,
+              fontSize: 16,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: 'var(--eg-fg-3)',
+              marginTop: 2,
+            }}
+          >
+            INVOICE
+          </div>
+        </div>
+
+        <div className="invoice-receipt__number-block">
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.16em',
+              color: 'var(--eg-fg-3)',
+              marginBottom: 4,
+            }}
+          >
+            // núm · number
+          </div>
+          <Plate>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 700,
+                fontSize: 14,
+                letterSpacing: '0.08em',
+              }}
+            >
+              {invoice.number}
+            </span>
+          </Plate>
+          <div style={{ marginTop: 8 }}>
+            <StatusBadge status={invoice.status} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Meta ────────────────────────────────────────────── */}
+      <div className="invoice-receipt__meta">
+        <div className="invoice-receipt__meta-row">
+          <div className="invoice-receipt__meta-cell">
+            <div className="invoice-receipt__meta-label">// cliente · client</div>
+            <div
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontWeight: 800,
+                fontSize: 20,
+                textTransform: 'uppercase',
+                color: 'var(--eg-iron)',
+                lineHeight: 1.1,
+              }}
+            >
+              {invoice.clientName}
+            </div>
+          </div>
+
+          <div className="invoice-receipt__meta-cell">
+            <div className="invoice-receipt__meta-label">// período · period</div>
+            <div
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'var(--eg-iron)',
+              }}
+            >
+              {hasPeriod ? (
+                <>
+                  {invoice.periodStart ? formatDate(invoice.periodStart) : '—'}
+                  {' – '}
+                  {invoice.periodEnd ? formatDate(invoice.periodEnd) : '—'}
+                </>
+              ) : (
+                <span>
+                  todo el trabajo
+                  <span style={{ color: 'var(--eg-fg-4)', marginLeft: 6 }}>· all work</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="invoice-receipt__meta-cell">
+            <div className="invoice-receipt__meta-label">// fechas · dates</div>
+            <div
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 3,
+              }}
+            >
+              <span style={{ color: 'var(--eg-fg-3)' }}>
+                <span style={{ color: 'var(--eg-fg-4)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  creada ·{' '}
+                </span>
+                {formatDate(invoice.createdAt)}
+              </span>
+              {invoice.issuedAt && (
+                <span style={{ color: 'var(--eg-fg-3)' }}>
+                  <span style={{ color: 'var(--eg-fg-4)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    emitida ·{' '}
+                  </span>
+                  {formatDate(invoice.issuedAt)}
+                </span>
+              )}
+              {invoice.paidAt && (
+                <span style={{ color: 'var(--eg-green)' }}>
+                  <span style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                    pagada ·{' '}
+                  </span>
+                  {formatDate(invoice.paidAt)}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Lines table ─────────────────────────────────────── */}
+      <div className="invoice-receipt__lines">
+        {/* Table header */}
+        <div className="invoice-receipt__line invoice-receipt__line--head">
+          <span className="invoice-receipt__col invoice-receipt__col--issue">
+            <span className="invoice-receipt__col-es">ISSUE</span>
+          </span>
+          <span className="invoice-receipt__col invoice-receipt__col--desc">
+            <span className="invoice-receipt__col-es">DESCRIPCIÓN</span>
+            <span className="invoice-receipt__col-en">DESCRIPTION</span>
+          </span>
+          <span className="invoice-receipt__col invoice-receipt__col--time">
+            <span className="invoice-receipt__col-es">TIEMPO</span>
+            <span className="invoice-receipt__col-en">TIME</span>
+          </span>
+          <span className="invoice-receipt__col invoice-receipt__col--rate">
+            <span className="invoice-receipt__col-es">TARIFA</span>
+            <span className="invoice-receipt__col-en">RATE</span>
+          </span>
+          <span className="invoice-receipt__col invoice-receipt__col--amount invoice-receipt__col--right">
+            <span className="invoice-receipt__col-es">IMPORTE</span>
+            <span className="invoice-receipt__col-en">AMOUNT</span>
+          </span>
+        </div>
+
+        {/* Data rows */}
+        {invoice.lines.map((line, i) => (
+          <div
+            key={line.id}
+            className="invoice-receipt__line"
+            style={{ background: i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)' }}
+          >
+            <span className="invoice-receipt__col invoice-receipt__col--issue">
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background: 'var(--eg-iron)',
+                  color: 'var(--eg-yellow)',
+                  padding: '2px 7px',
+                  display: 'inline-block',
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {line.issueKey}
+              </span>
+            </span>
+            <span className="invoice-receipt__col invoice-receipt__col--desc">
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  color: 'var(--eg-fg-1)',
+                  lineHeight: 1.4,
+                }}
+              >
+                {line.description}
+              </span>
+            </span>
+            <span className="invoice-receipt__col invoice-receipt__col--time">
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--eg-iron)',
+                }}
+              >
+                {formatMinutes(line.minutes)}
+              </span>
+            </span>
+            <span className="invoice-receipt__col invoice-receipt__col--rate">
+              {line.hourlyCents !== null ? (
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 12,
+                    color: 'var(--eg-iron)',
+                  }}
+                >
+                  {formatMoney(line.hourlyCents, invoice.currency)}
+                  <span style={{ color: 'var(--eg-fg-3)', fontSize: 10 }}>/h</span>
+                </span>
+              ) : (
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    color: 'var(--eg-fg-3)',
+                  }}
+                >
+                  precio fijo · fixed
+                </span>
+              )}
+            </span>
+            <span className="invoice-receipt__col invoice-receipt__col--amount invoice-receipt__col--right">
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: 'var(--eg-iron)',
+                }}
+              >
+                {formatMoney(line.amountCents, invoice.currency)}
+              </span>
+            </span>
+          </div>
+        ))}
+
+        {/* Empty state */}
+        {invoice.lines.length === 0 && (
+          <div
+            style={{
+              padding: '32px 20px',
+              textAlign: 'center',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              color: 'var(--eg-fg-4)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+            }}
+          >
+            sin líneas · no lines
+          </div>
+        )}
+
+        {/* Total row */}
+        <div className="invoice-receipt__total">
+          <span style={{ flex: 1 }} />
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.16em',
+              color: 'var(--eg-fg-3)',
+              paddingRight: 20,
+            }}
+          >
+            SUBTOTAL · TOTAL
+          </span>
+          <Plate tone="yellow" style={{ fontSize: 16, padding: '8px 18px' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 800,
+                fontSize: 18,
+                letterSpacing: '0.02em',
+              }}
+            >
+              {formatMoney(invoice.subtotalCents, invoice.currency)}
+            </span>
+          </Plate>
+        </div>
+      </div>
+
+      {/* ── Notes ───────────────────────────────────────────── */}
+      {invoice.notes && (
+        <div className="invoice-receipt__notes">
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.16em',
+              color: 'var(--eg-fg-3)',
+              marginBottom: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span style={{ color: 'var(--eg-yellow)' }}>//</span>
+            notas · notes
+          </div>
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 13,
+              lineHeight: 1.6,
+              color: 'var(--eg-fg-1)',
+              whiteSpace: 'pre-wrap',
+              background: 'var(--eg-paper-2)',
+              border: '1px solid var(--eg-rule)',
+              padding: '14px 16px',
+            }}
+          >
+            {invoice.notes}
+          </div>
+        </div>
+      )}
+    </article>
+  );
+}

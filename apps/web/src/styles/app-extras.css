@@ -1018,3 +1018,208 @@ button {
   display: flex;
   justify-content: flex-end;
 }
+
+/* ── Invoice receipt ──────────────────────────────────────────────────────── */
+
+.invoice-receipt {
+  background: var(--eg-paper);
+  border: 2px solid var(--eg-iron);
+  box-shadow: 4px 4px 0 var(--eg-iron);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.invoice-receipt__header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 24px 28px;
+  border-bottom: 3px solid var(--eg-iron);
+  background: var(--eg-paper);
+  /* hazard stripe accent on right edge */
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 12px,
+    rgba(245, 196, 0, 0.06) 12px 24px
+  );
+}
+
+.invoice-receipt__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.invoice-receipt__title-block {
+  padding-left: 8px;
+}
+
+.invoice-receipt__number-block {
+  text-align: right;
+}
+
+.invoice-receipt__meta {
+  padding: 20px 28px;
+  border-bottom: 2px solid var(--eg-iron);
+  background: var(--eg-paper-2);
+}
+
+.invoice-receipt__meta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 640px) {
+  .invoice-receipt__meta-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.invoice-receipt__meta-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.invoice-receipt__meta-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--eg-fg-4);
+}
+
+.invoice-receipt__lines {
+  padding: 0;
+}
+
+.invoice-receipt__line {
+  display: grid;
+  grid-template-columns: 110px 1fr 100px 160px 160px;
+  gap: 0;
+  align-items: center;
+  padding: 10px 20px;
+}
+
+.invoice-receipt__line--head {
+  background: var(--eg-iron) !important;
+  border-bottom: 2px solid var(--eg-iron);
+  padding: 8px 20px;
+}
+
+.invoice-receipt__col {
+  padding: 0 8px 0 0;
+}
+
+.invoice-receipt__col--right {
+  text-align: right;
+  padding-right: 0;
+}
+
+.invoice-receipt__col-es {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--eg-yellow);
+  display: block;
+  line-height: 1.2;
+}
+
+.invoice-receipt__col-en {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--eg-fg-5, rgba(245, 196, 0, 0.5));
+  display: block;
+  line-height: 1.2;
+}
+
+.invoice-receipt__total {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 16px 20px;
+  border-top: 3px solid var(--eg-iron);
+  background: var(--eg-paper);
+}
+
+.invoice-receipt__notes {
+  padding: 20px 28px 24px;
+  border-top: 1px dashed var(--eg-iron);
+}
+
+/* ── Print support ────────────────────────────────────────────────────────── */
+
+@media print {
+  /* Hide all app chrome: nav, topbars, rails, action bars */
+  .app,
+  .rail,
+  .topbar,
+  .cp-topbar,
+  .cp-nav,
+  .invoice-action-bar,
+  .cp-detail__back,
+  .cp-topbar__right,
+  .b-btn,
+  .gs-scrim,
+  [class*="subbar"],
+  [class*="tag-head"] {
+    /* Keep tag-head inside receipt — override specifically */
+  }
+
+  .rail { display: none !important; }
+  .topbar { display: none !important; }
+  .cp-topbar { display: none !important; }
+  .invoice-action-bar { display: none !important; }
+
+  /* Let the receipt fill the page */
+  body {
+    background: white !important;
+    margin: 0;
+  }
+
+  .app {
+    height: auto !important;
+    min-height: unset !important;
+  }
+
+  .main {
+    display: block !important;
+  }
+
+  .body {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .cp-shell {
+    display: block !important;
+    height: auto !important;
+    min-height: unset !important;
+  }
+
+  .cp-body {
+    overflow: visible !important;
+  }
+
+  .invoice-receipt {
+    box-shadow: none !important;
+    border: 1px solid #0b1620 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Remove hazard stripes for clean print */
+  .invoice-receipt__header {
+    background-image: none !important;
+  }
+}

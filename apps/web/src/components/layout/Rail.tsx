@@ -49,6 +49,7 @@ export function Rail() {
     { id: 'scrumlord', es: 'Daemon', en: 'Scrumlord', lore: 'pg-boss · 4 jobs queued', num: '4' },
   ];
   const adminItems: RailItem[] = [
+    { id: 'billing', es: 'Facturación', en: 'Billing', to: '/billing' },
     { id: 'rates', es: 'Tarifas', en: 'Rates', to: '/settings?tab=rates' },
     { id: 'clients', es: 'Clientes', en: 'Clients', to: '/settings?tab=clients' },
     { id: 'settings', es: 'Ajustes', en: 'Settings', to: '/settings' },
