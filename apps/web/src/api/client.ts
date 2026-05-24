@@ -55,13 +55,18 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${BASE_URL}${path}`;
+  // Only declare a JSON content-type when we actually send a body. Fastify rejects
+  // an empty body sent with `content-type: application/json` (400), which would
+  // break every bodyless POST: logout, timer stop, sprint start/close, invoice
+  // issue/pay/void.
+  const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) ?? {}) };
+  if (init?.body != null && !('Content-Type' in headers)) {
+    headers['Content-Type'] = 'application/json';
+  }
   const res = await fetch(url, {
     ...init,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 
   if (res.status === 204) return undefined as T;
