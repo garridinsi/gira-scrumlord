@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { IssueView } from '@gira/shared';
-import { issues, projects, sprints as sprintsApi } from '../api/client';
+import { issues, projects, sprints as sprintsApi, ApiError } from '../api/client';
 import type { SprintRecord } from '../api/client';
 import { Avatar, LabelChip, Plate, PriorityChip, SpinGlyph, TypeChip } from '../ui/atoms';
 import { Subbar } from '../ui/Subbar';
+import { useToast } from '../ui/Toast';
 import { formatMinutes } from '../lib/format';
 import { formatMoney } from '../lib/money';
 
@@ -167,6 +168,7 @@ function SprintGroup({
 }) {
   const [open, setOpen] = useState(true);
   const qc = useQueryClient();
+  const toast = useToast();
 
   const committedPts = sprintIssues.reduce((s, i) => s + (i.storyPoints ?? 0), 0);
   const loggedMin = sprintIssues.reduce((s, i) => s + (i.loggedMinutes ?? 0), 0);
@@ -181,6 +183,10 @@ function SprintGroup({
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['sprints', projectKey] });
       void qc.invalidateQueries({ queryKey: ['backlog', projectKey] });
+      toast({ tone: 'ok', title: 'Sprint iniciado · Sprint started', body: sprint.name });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al iniciar sprint · Start failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
@@ -189,6 +195,10 @@ function SprintGroup({
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['sprints', projectKey] });
       void qc.invalidateQueries({ queryKey: ['backlog', projectKey] });
+      toast({ tone: 'ok', title: 'Sprint cerrado · Sprint closed', body: sprint.name });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al cerrar sprint · Close failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
@@ -396,6 +406,7 @@ function CreateSprintModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [name, setName] = useState('');
   const [goal, setGoal] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -409,9 +420,13 @@ function CreateSprintModal({
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (sprint) => {
       void qc.invalidateQueries({ queryKey: ['sprints', projectKey] });
+      toast({ tone: 'ok', title: 'Sprint creado · Sprint created', body: sprint.name });
       onClose();
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al crear sprint · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
@@ -553,6 +568,7 @@ function CreateIssueModal({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [title, setTitle] = useState('');
 
   const mut = useMutation({
@@ -566,9 +582,13 @@ function CreateIssueModal({
         billingMode: 'hourly',
         statusId,
       }),
-    onSuccess: () => {
+    onSuccess: (issue) => {
       void qc.invalidateQueries({ queryKey: ['backlog', projectKey] });
+      toast({ tone: 'ok', title: 'Ticket creado · Issue created', body: issue.key });
       onClose();
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al crear · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
@@ -648,6 +668,7 @@ export function BacklogPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const q = searchParams.get('q')?.toLowerCase() ?? '';
+  const toast = useToast();
 
   const [showCreateSprint, setShowCreateSprint] = useState(false);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
@@ -669,8 +690,17 @@ export function BacklogPage() {
   const assignMut = useMutation({
     mutationFn: ({ issueKey, sprintId }: { issueKey: string; sprintId: string | null }) =>
       issues.update(issueKey, { sprintId }),
-    onSuccess: () => {
+    onSuccess: (_updated, vars) => {
       void qc.invalidateQueries({ queryKey: ['backlog', key] });
+      const sprintName = (sprintsQ.data ?? []).find((s) => s.id === vars.sprintId)?.name;
+      if (sprintName) {
+        toast({ tone: 'ok', title: 'Sprint asignado · Sprint assigned', body: `${vars.issueKey} → ${sprintName}` });
+      } else {
+        toast({ tone: 'ok', title: 'Sprint eliminado · Sprint removed', body: vars.issueKey });
+      }
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al asignar sprint · Assign failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 

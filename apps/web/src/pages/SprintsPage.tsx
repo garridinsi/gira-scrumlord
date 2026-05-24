@@ -2,10 +2,11 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { projects, sprints as sprintsApi } from '../api/client';
+import { projects, sprints as sprintsApi, ApiError } from '../api/client';
 import type { SprintRecord } from '../api/client';
 import { Plate, SpinGlyph } from '../ui/atoms';
 import { Subbar } from '../ui/Subbar';
+import { useToast } from '../ui/Toast';
 
 // ── State badge ───────────────────────────────────────────────────────────────
 function StateBadge({ state }: { state: SprintRecord['state'] }) {
@@ -98,20 +99,39 @@ function SprintRow({
   projectKey: string;
 }) {
   const qc = useQueryClient();
+  const toast = useToast();
 
   const startMut = useMutation({
     mutationFn: () => sprintsApi.start(sprint.id),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['sprints', projectKey] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sprints', projectKey] });
+      toast({ tone: 'ok', title: 'Sprint iniciado · Sprint started', body: sprint.name });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al iniciar · Start failed', body: err instanceof ApiError ? err.message : 'Error' });
+    },
   });
 
   const closeMut = useMutation({
     mutationFn: () => sprintsApi.close(sprint.id),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['sprints', projectKey] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sprints', projectKey] });
+      toast({ tone: 'ok', title: 'Sprint cerrado · Sprint closed', body: sprint.name });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al cerrar · Close failed', body: err instanceof ApiError ? err.message : 'Error' });
+    },
   });
 
   const deleteMut = useMutation({
     mutationFn: () => sprintsApi.delete(sprint.id),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['sprints', projectKey] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sprints', projectKey] });
+      toast({ tone: 'ok', title: 'Sprint eliminado · Sprint deleted', body: sprint.name });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al eliminar · Delete failed', body: err instanceof ApiError ? err.message : 'Error' });
+    },
   });
 
   const dateRange =
@@ -216,6 +236,7 @@ function CreateSprintInline({
   onDone: () => void;
 }) {
   const qc = useQueryClient();
+  const toast = useToast();
   const [name, setName] = useState('');
   const [goal, setGoal] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -229,9 +250,13 @@ function CreateSprintInline({
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (sprint) => {
       void qc.invalidateQueries({ queryKey: ['sprints', projectKey] });
+      toast({ tone: 'ok', title: 'Sprint creado · Sprint created', body: sprint.name });
       onDone();
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al crear sprint · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 

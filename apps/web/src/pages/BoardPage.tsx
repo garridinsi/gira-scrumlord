@@ -3,9 +3,10 @@ import { useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { IssueView, StatusView, LabelView } from '@gira/shared';
-import { projects, issues as issuesApi, incidents, sprints } from '../api/client';
+import { projects, issues as issuesApi, incidents, sprints, ApiError } from '../api/client';
 import type { SprintRecord } from '../api/client';
 import { Bi, Plate, SpinGlyph } from '../ui/atoms';
+import { useToast } from '../ui/Toast';
 import { IssueCard } from '../ui/IssueCard';
 import { Subbar } from '../ui/Subbar';
 import { IssueDrawer } from '../ui/IssueDrawer';
@@ -35,6 +36,7 @@ function CreateIssueModal({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [title, setTitle] = useState('');
   const [statusId, setStatusId] = useState(defaultStatusId ?? '');
   const [type, setType] = useState<'task' | 'bug' | 'story' | 'epic'>('task');
@@ -51,9 +53,13 @@ function CreateIssueModal({
         billingMode: 'hourly',
         statusId: statusId || undefined,
       }),
-    onSuccess: () => {
+    onSuccess: (issue) => {
       void queryClient.invalidateQueries({ queryKey: ['board', projectKey] });
+      toast({ tone: 'ok', title: 'Ticket creado · Issue created', body: issue.key });
       onClose();
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al crear · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
@@ -139,11 +145,16 @@ function SprintStrip({
   projectKey: string;
 }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const closeMutation = useMutation({
     mutationFn: () => sprints.close(sprint.id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['sprints', projectKey] });
+      toast({ tone: 'ok', title: 'Sprint cerrado · Sprint closed', body: sprint.name });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al cerrar sprint · Close failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
@@ -530,6 +541,7 @@ export function BoardPage() {
   const { key: projectKey = '' } = useParams<{ key: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
 
   // Drawer key from query param
   const searchParams = new URLSearchParams(location.search);
@@ -573,8 +585,14 @@ export function BoardPage() {
   const moveMutation = useMutation({
     mutationFn: ({ issueKey, data }: { issueKey: string; data: Parameters<typeof issuesApi.move>[1] }) =>
       issuesApi.move(issueKey, data),
-    onSuccess: () => {
+    onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: ['board', projectKey] });
+      const status = board?.columns.find((c) => c.issues.some((i) => i.key === updated.key))?.status.name;
+      if (status) toast({ tone: 'ok', title: `Movido · Moved`, body: `${updated.key} → ${status}` });
+    },
+    onError: (err) => {
+      void queryClient.invalidateQueries({ queryKey: ['board', projectKey] }); // revert optimistic
+      toast({ tone: 'danger', title: 'Error al mover · Move failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 

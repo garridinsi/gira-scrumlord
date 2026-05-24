@@ -4,12 +4,13 @@ import { useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ChannelView, IntakeSourceView } from '@gira/shared';
-import { clients, rates, projects, channels, intake } from '../api/client';
+import { clients, rates, projects, channels, intake, ApiError } from '../api/client';
 import type { ClientRecord, RateRecord } from '../api/client';
 import type { CreateClient, UpdateClient, UpsertRate, CreateChannel, CreateIntakeSource } from '@gira/shared';
 import { Subbar } from '../ui/Subbar';
 import { Avatar, Plate } from '../ui/atoms';
 import { formatRatePerHour } from '../lib/money';
+import { useToast } from '../ui/Toast';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -152,6 +153,7 @@ function Mini({
 
 function ClientsTab() {
   const qc = useQueryClient();
+  const toast = useToast();
   const list = useQuery({ queryKey: ['clients'], queryFn: () => clients.list() });
 
   // Create form state
@@ -169,25 +171,39 @@ function ClientsTab() {
 
   const createMut = useMutation({
     mutationFn: (data: CreateClient) => clients.create(data),
-    onSuccess: () => {
+    onSuccess: (client) => {
       void qc.invalidateQueries({ queryKey: ['clients'] });
       setShowCreate(false);
       setForm({ name: '', slug: '', currency: 'EUR', notes: '' });
+      toast({ tone: 'ok', title: 'Cliente creado · Client created', body: client.name });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al crear cliente · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateClient }) =>
       clients.update(id, data),
-    onSuccess: () => {
+    onSuccess: (client) => {
       void qc.invalidateQueries({ queryKey: ['clients'] });
       setEditId(null);
+      toast({ tone: 'ok', title: 'Cliente actualizado · Client updated', body: client.name });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al actualizar · Update failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => clients.delete(id),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['clients'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['clients'] });
+      toast({ tone: 'ok', title: 'Cliente eliminado · Client deleted' });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al eliminar · Delete failed', body: err instanceof ApiError ? err.message : 'Error' });
+    },
   });
 
   const startEdit = useCallback((c: ClientRecord) => {
@@ -445,6 +461,7 @@ function ClientsTab() {
 
 function RatesTab() {
   const qc = useQueryClient();
+  const toast = useToast();
   const ratesList = useQuery({ queryKey: ['rates'], queryFn: () => rates.list() });
   const clientsList = useQuery({ queryKey: ['clients'], queryFn: () => clients.list() });
   const projectsList = useQuery({ queryKey: ['projects'], queryFn: () => projects.list() });
@@ -467,17 +484,28 @@ function RatesTab() {
 
   const upsertMut = useMutation({
     mutationFn: (data: UpsertRate) => rates.upsert(data),
-    onSuccess: () => {
+    onSuccess: (_rate, vars) => {
       void qc.invalidateQueries({ queryKey: ['rates'] });
       setShowForm(false);
       setEditId(null);
       setForm({ scope: 'default', clientId: '', projectId: '', hourlyCents: '', currency: 'EUR' });
+      const action = editId ? 'Tarifa actualizada · Rate updated' : 'Tarifa creada · Rate created';
+      toast({ tone: 'ok', title: action, body: `${vars.scope} · ${formatRatePerHour(Math.round(parseFloat(form.hourlyCents) * 100), form.currency)}` });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error con la tarifa · Rate failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => rates.delete(id),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['rates'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['rates'] });
+      toast({ tone: 'ok', title: 'Tarifa eliminada · Rate deleted' });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al eliminar tarifa · Delete failed', body: err instanceof ApiError ? err.message : 'Error' });
+    },
   });
 
   function startEdit(r: RateRecord) {
@@ -986,6 +1014,7 @@ function ResolutionChainItem({
 
 function ChannelsTab() {
   const qc = useQueryClient();
+  const toast = useToast();
   const list = useQuery({ queryKey: ['channels'], queryFn: () => channels.list() });
 
   const [showCreate, setShowCreate] = useState(false);
@@ -1000,25 +1029,44 @@ function ChannelsTab() {
 
   const createMut = useMutation({
     mutationFn: (data: CreateChannel) => channels.create(data),
-    onSuccess: () => {
+    onSuccess: (ch) => {
       void qc.invalidateQueries({ queryKey: ['channels'] });
       setShowCreate(false);
       setForm({ name: '', kind: 'webhook', target: '', scope: 'global', events: ['issue.emergency'] });
+      toast({ tone: 'ok', title: 'Canal creado · Channel created', body: ch.name });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al crear canal · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => channels.delete(id),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['channels'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['channels'] });
+      toast({ tone: 'ok', title: 'Canal eliminado · Channel deleted' });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al eliminar canal · Delete failed', body: err instanceof ApiError ? err.message : 'Error' });
+    },
   });
 
   const testMut = useMutation({
     mutationFn: (id: string) => channels.test(id),
-    onSuccess: (result, id) =>
+    onSuccess: (result, id) => {
       setTestResult((prev) => ({
         ...prev,
         [id]: result.ok ? 'OK' : (result.error ?? 'error'),
-      })),
+      }));
+      if (result.ok) {
+        toast({ tone: 'ok', title: 'Canal OK · Channel test passed' });
+      } else {
+        toast({ tone: 'warn', title: 'Canal con error · Channel test failed', body: result.error ?? 'error' });
+      }
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al probar canal · Test failed', body: err instanceof ApiError ? err.message : 'Error' });
+    },
   });
 
   if (list.isLoading) {
@@ -1240,6 +1288,7 @@ function ChannelsTab() {
 
 function IntakeTab() {
   const qc = useQueryClient();
+  const toast = useToast();
   const list = useQuery({
     queryKey: ['intake-sources'],
     queryFn: () => intake.sources.list(),
@@ -1263,12 +1312,22 @@ function IntakeTab() {
       setShowCreate(false);
       setNewToken({ token: result.token, intakeUrl: result.intakeUrl });
       setForm({ name: '', kind: 'generic', projectId: '', defaultType: 'bug', defaultPriority: 'high' });
+      toast({ tone: 'ok', title: 'Fuente creada · Source created', body: result.name + ' — copia el token · copy the token' });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al crear fuente · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
     },
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => intake.sources.delete(id),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['intake-sources'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['intake-sources'] });
+      toast({ tone: 'ok', title: 'Fuente eliminada · Source deleted' });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al eliminar fuente · Delete failed', body: err instanceof ApiError ? err.message : 'Error' });
+    },
   });
 
   if (list.isLoading) {
