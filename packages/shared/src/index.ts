@@ -11,4 +11,5 @@ export * from './worklog.js';
 export * from './rate.js';
 export * from './channel.js';
 export * from './intake.js';
+export * from './portal.js';
 export * from './views.js';

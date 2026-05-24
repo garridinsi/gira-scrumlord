@@ -133,6 +133,7 @@ type IssueWithRelations = Issue & {
   assignee?: User | null;
   reporter?: User | null;
   labels?: Label[];
+  status?: { name: string; category: Status['category'] } | null;
 };
 
 export function toIssueView(i: IssueWithRelations, projectKey?: string): IssueView {
@@ -145,6 +146,8 @@ export function toIssueView(i: IssueWithRelations, projectKey?: string): IssueVi
     type: i.type,
     priority: i.priority,
     statusId: i.statusId,
+    statusName: i.status?.name,
+    statusCategory: i.status?.category,
     assignee: i.assignee ? toUserView(i.assignee) : null,
     reporter: i.reporter ? toUserView(i.reporter) : null,
     sprintId: i.sprintId,

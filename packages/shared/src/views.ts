@@ -57,6 +57,9 @@ export interface IssueView {
   type: IssueType;
   priority: Priority;
   statusId: string;
+  /** Status name + category — populated when the issue is loaded with its status. */
+  statusName?: string;
+  statusCategory?: StatusCategory;
   assignee: UserView | null;
   reporter: UserView | null;
   sprintId: string | null;
@@ -79,6 +82,32 @@ export interface CommentView {
   body: string;
   author: UserView | null;
   createdAt: string;
+}
+
+// ── Client portal (M2) ───────────────────────────────────────────────────
+export interface PortalProjectRollup {
+  key: string;
+  name: string;
+  open: number;
+  inProgress: number;
+  done: number;
+  totalMinutes: number;
+  billableMinutes: number;
+  accruedCents: number;
+}
+
+export interface PortalOverviewView {
+  client: { name: string; currency: string } | null;
+  projects: PortalProjectRollup[];
+  totals: {
+    open: number;
+    inProgress: number;
+    done: number;
+    totalMinutes: number;
+    billableMinutes: number;
+    accruedCents: number;
+    currency: string;
+  };
 }
 
 export interface VelocityView {
