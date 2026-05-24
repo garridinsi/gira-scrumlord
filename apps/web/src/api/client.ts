@@ -11,6 +11,7 @@ import type {
   ChannelView,
   IncidentView,
   IntakeSourceView,
+  PortalOverviewView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -34,6 +35,7 @@ import type {
   UpdateSprint,
   UpsertRate,
   IssueFilter,
+  CreateRequest,
 } from '@gira/shared';
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000';
@@ -352,6 +354,16 @@ export const intake = {
       request<AssignmentRuleRecord>(`/projects/${key}/assignment-rules`, { method: 'POST', ...json(data) }),
     delete: (id: string) => request<void>(`/assignment-rules/${id}`, { method: 'DELETE' }),
   },
+};
+
+// ---------------------------------------------------------------------------
+// Portal (M2) — client-facing read-mostly surface
+// ---------------------------------------------------------------------------
+
+export const portal = {
+  overview: () => request<PortalOverviewView>('/portal'),
+  createRequest: (d: CreateRequest) =>
+    request<IssueView>('/portal/requests', { method: 'POST', ...json(d) }),
 };
 
 // ---------------------------------------------------------------------------
