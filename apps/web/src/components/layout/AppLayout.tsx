@@ -21,6 +21,11 @@ export function AppLayout() {
     return <Navigate to="/login" replace />;
   }
 
+  // Client users belong in the portal, not the staff app
+  if (me.data.kind === 'client') {
+    return <Navigate to="/portal" replace />;
+  }
+
   return (
     <div className="app">
       <TopBar />
