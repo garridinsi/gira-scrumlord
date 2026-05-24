@@ -12,6 +12,8 @@ import type {
   IncidentView,
   IntakeSourceView,
   PortalOverviewView,
+  InvoiceView,
+  InvoiceListItemView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -359,13 +361,38 @@ export const intake = {
 };
 
 // ---------------------------------------------------------------------------
-// Portal (M2) — client-facing read-mostly surface
+// Invoices (M5) — staff billing
+// ---------------------------------------------------------------------------
+
+/** Period bounds are ISO date strings (what an <input type="date"> yields). */
+export interface GenerateInvoiceInput {
+  periodStart?: string;
+  periodEnd?: string;
+  notes?: string;
+}
+
+export const invoices = {
+  listForClient: (clientId: string) =>
+    request<InvoiceListItemView[]>(`/clients/${clientId}/invoices`),
+  generate: (clientId: string, data: GenerateInvoiceInput = {}) =>
+    request<InvoiceView>(`/clients/${clientId}/invoices`, { method: 'POST', ...json(data) }),
+  get: (id: string) => request<InvoiceView>(`/invoices/${id}`),
+  issue: (id: string) => request<InvoiceView>(`/invoices/${id}/issue`, { method: 'POST' }),
+  pay: (id: string) => request<InvoiceView>(`/invoices/${id}/pay`, { method: 'POST' }),
+  void: (id: string) => request<InvoiceView>(`/invoices/${id}/void`, { method: 'POST' }),
+  delete: (id: string) => request<void>(`/invoices/${id}`, { method: 'DELETE' }),
+};
+
+// ---------------------------------------------------------------------------
+// Portal (M2/M5) — client-facing read-mostly surface
 // ---------------------------------------------------------------------------
 
 export const portal = {
   overview: () => request<PortalOverviewView>('/portal'),
   createRequest: (d: CreateRequest) =>
     request<IssueView>('/portal/requests', { method: 'POST', ...json(d) }),
+  invoices: () => request<InvoiceListItemView[]>('/portal/invoices'),
+  invoice: (id: string) => request<InvoiceView>(`/portal/invoices/${id}`),
 };
 
 // ---------------------------------------------------------------------------

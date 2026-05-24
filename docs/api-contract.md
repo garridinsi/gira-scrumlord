@@ -88,6 +88,18 @@ Seed login for local dev: **`boss@example.test`** (admin).
 - `GET /issues/:key/cost` → `CostView` `{ minutes, billableMinutes, billingMode, hourlyCents, currency, accruedCents }`
 - `GET /projects/:key/summary` → `ProjectSummaryView` (time + money + open/done counts + active-sprint velocity)
 
+### Invoicing (M5, staff billing)
+- `GET /clients/:id/invoices` → `InvoiceListItemView[]` (staff). `POST /clients/:id/invoices` (`generateInvoiceSchema`: `{ periodStart?, periodEnd?, notes? }` — dates ISO, omit to bill everything un-invoiced) → `InvoiceView` **draft** (writer role).
+- `GET /invoices/:id` → `InvoiceView` (staff). `POST /invoices/:id/issue` (draft→issued), `/pay` (issued→paid), `/void` (frees worklogs); `DELETE /invoices/:id` (draft only). All transitions writer-role; illegal ones → `400`.
+- `InvoiceView` = `{ id, number ("INV-YYYY-NNNN"), clientId, clientName, status: 'draft'|'issued'|'paid'|'void', currency, subtotalCents, periodStart, periodEnd, createdAt, issuedAt, paidAt, notes, lines: InvoiceLineView[] }`.
+- `InvoiceLineView` = `{ id, issueKey, description, minutes, hourlyCents (null for fixed-price), amountCents }`. **Rates are frozen at generation** — never recompute on the client; render `amountCents`/`hourlyCents` as stored.
+- Each generated line bills only not-yet-invoiced billable hours; a printable EG "receipt" view of `GET /invoices/:id` is the headline deliverable.
+
+### Client portal (M2/M5, `kind: 'client'` only — staff get `403`)
+- `GET /portal` → `PortalOverviewView` `{ client, projects: PortalProjectRollup[], totals }` (open/inProgress/done + time + money rollups).
+- `POST /portal/requests` (`createRequestSchema`: `{ projectKey, title, description?, type: 'task'|'bug' }`) → `IssueView` (priority capped to `medium`, reporter = the client).
+- `GET /portal/invoices` → `InvoiceListItemView[]` (own client, **issued/paid only — drafts hidden**). `GET /portal/invoices/:id` → `InvoiceView` (own + non-draft, else `404`). Read-only; same printable receipt.
+
 ### Notifications & incidents (M3)
 - `GET /channels` (staff) → `ChannelView[]`; `POST /channels` (`createChannelSchema`: name, kind `email|webhook`, target, scope `global|project`, projectId?, events[]); `PATCH|DELETE /channels/:id`; `POST /channels/:id/test` → `{ ok, error? }` (send a test now)
 - `GET /incidents?status` → `IncidentView[]` (clients see only their own projects; read-only for them); `POST /incidents/:id/ack`; `POST /incidents/:id/resolve`
