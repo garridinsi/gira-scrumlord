@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# The whole app, one command:  docker compose -f docker-compose.full.yml up --build
+# First-run demo data:         docker compose -f docker-compose.full.yml --profile seed up --build
+#
+# web      → http://localhost:8080   (SPA + /api proxy; the only public app port)
+# sauron   → http://localhost:666    (read-only audit; the canonical port)
+# mailpit  → http://localhost:8025   (catches magic-link emails in this demo)
+#
+# For real deploys: put a TLS terminator in front of `web`, set a strong
+# SESSION_SECRET and COOKIE_SECURE=true, and point SMTP_* at a real mail server.
+
+x-env: &env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://gira:gira@postgres:5432/gira?schema=public
+  SESSION_SECRET: ${SESSION_SECRET:-dev-only-insecure-change-me-please-00000000}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  APP_URL: ${APP_URL:-http://localhost:8080}
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  MAIL_FROM: "gira-scrumlord <no-reply@gira.local>"
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: gira-scrumlord-app:local
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gira
+      POSTGRES_PASSWORD: gira
+      POSTGRES_DB: gira
+    volumes:
+      - gira_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U gira -d gira']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - '8025:8025'
+    restart: unless-stopped
+
+  # One-shot: apply migrations, then exit.
+  migrate:
+    <<: *app
+    image: gira-scrumlord-app:local
+    command: ['pnpm', '--filter', '@gira/db', 'exec', 'prisma', 'migrate', 'deploy']
+    environment: *env
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Opt-in fictional demo data:  --profile seed
+  seed:
+    <<: *app
+    image: gira-scrumlord-app:local
+    profiles: ['seed']
+    command: ['pnpm', '--filter', '@gira/db', 'exec', 'tsx', 'prisma/seed.ts']
+    environment: *env
+    restart: 'no'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  api:
+    <<: *app
+    command: ['pnpm', '--filter', '@gira/api', 'start']
+    environment: *env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # The daemon that governs the dailies.
+  scrumlord:
+    <<: *app
+    command: ['pnpm', '--filter', '@gira/scrumlord', 'start']
+    environment: *env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # The eye. Read-only. Binds :6660 as non-root inside; published on host :666.
+  sauron:
+    <<: *app
+    command: ['pnpm', '--filter', '@gira/sauron', 'start']
+    environment:
+      <<: *env
+      SAURON_PORT: '6660'
+    ports:
+      - '666:6660'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: /api
+    image: gira-scrumlord-web:local
+    ports:
+      - '8080:8080'
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  gira_pgdata:

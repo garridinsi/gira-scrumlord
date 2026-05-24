@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: CI
+
+on:
+  push:
+    branches: [main, 'm*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: typecheck · test · build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: gira
+          POSTGRES_PASSWORD: gira
+          POSTGRES_DB: gira
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gira -d gira"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # The vitest harnesses derive per-package test DBs from this base URL.
+      DATABASE_URL: postgresql://gira:gira@localhost:5432/gira?schema=public
+      SESSION_SECRET: ci-only-session-secret-0000000000000000
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm --filter @gira/db generate
+      - name: Typecheck
+        run: pnpm -r typecheck
+      - name: Test
+        run: pnpm -r test
+      - name: Build
+        run: pnpm -r build
