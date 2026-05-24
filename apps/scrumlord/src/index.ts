@@ -32,38 +32,56 @@ async function main(): Promise<void> {
 
   await boss.start();
 
-  // Register scheduled jobs (idempotent — safe to call every restart).
-  await boss.schedule(QUEUE_OUTBOX_DISPATCH, '* * * * *', {});
-  await boss.schedule(QUEUE_SPRINT_AUTOCLOSE, '*/5 * * * *', {});
-  await boss.schedule(QUEUE_VELOCITY_SNAPSHOT, '*/5 * * * *', {});
-  await boss.schedule(QUEUE_TIMER_REAP, '*/10 * * * *', {});
-  await boss.schedule(QUEUE_INCIDENT_ESCALATE, '*/2 * * * *', {});
+  // pg-boss v10 enforces a foreign key from schedule.name -> queue.name, so each
+  // queue must exist before we schedule or work it. createQueue is idempotent.
+  const jobs: Array<{ queue: string; cron: string; run: () => Promise<void> }> = [
+    {
+      queue: QUEUE_OUTBOX_DISPATCH,
+      cron: '* * * * *',
+      run: async () => {
+        const count = await runOutboxDispatch();
+        if (count > 0) console.log(`[scrumlord] outbox-dispatch processed ${count} event(s)`);
+      },
+    },
+    {
+      queue: QUEUE_SPRINT_AUTOCLOSE,
+      cron: '*/5 * * * *',
+      run: async () => {
+        const count = await runSprintAutoclose();
+        if (count > 0) console.log(`[scrumlord] sprint-autoclose closed ${count} sprint(s)`);
+      },
+    },
+    {
+      queue: QUEUE_VELOCITY_SNAPSHOT,
+      cron: '*/5 * * * *',
+      run: async () => {
+        const count = await runVelocitySnapshot();
+        if (count > 0) console.log(`[scrumlord] velocity-snapshot updated ${count} sprint(s)`);
+      },
+    },
+    {
+      queue: QUEUE_TIMER_REAP,
+      cron: '*/10 * * * *',
+      run: async () => {
+        const count = await runTimerReap();
+        if (count > 0) console.log(`[scrumlord] timer-reap reaped ${count} timer(s)`);
+      },
+    },
+    {
+      queue: QUEUE_INCIDENT_ESCALATE,
+      cron: '*/2 * * * *',
+      run: async () => {
+        const count = await escalateOpenIncidents({ intervalMinutes: 5, maxLevel: 3 });
+        if (count > 0) console.log(`[scrumlord] incident-escalate re-paged ${count} incident(s)`);
+      },
+    },
+  ];
 
-  // Wire up job handlers.
-  await boss.work(QUEUE_OUTBOX_DISPATCH, async () => {
-    const count = await runOutboxDispatch();
-    if (count > 0) console.log(`[scrumlord] outbox-dispatch processed ${count} event(s)`);
-  });
-
-  await boss.work(QUEUE_SPRINT_AUTOCLOSE, async () => {
-    const count = await runSprintAutoclose();
-    if (count > 0) console.log(`[scrumlord] sprint-autoclose closed ${count} sprint(s)`);
-  });
-
-  await boss.work(QUEUE_VELOCITY_SNAPSHOT, async () => {
-    const count = await runVelocitySnapshot();
-    if (count > 0) console.log(`[scrumlord] velocity-snapshot updated ${count} sprint(s)`);
-  });
-
-  await boss.work(QUEUE_TIMER_REAP, async () => {
-    const count = await runTimerReap();
-    if (count > 0) console.log(`[scrumlord] timer-reap reaped ${count} timer(s)`);
-  });
-
-  await boss.work(QUEUE_INCIDENT_ESCALATE, async () => {
-    const count = await escalateOpenIncidents({ intervalMinutes: 5, maxLevel: 3 });
-    if (count > 0) console.log(`[scrumlord] incident-escalate re-paged ${count} incident(s)`);
-  });
+  for (const job of jobs) {
+    await boss.createQueue(job.queue);
+    await boss.work(job.queue, () => job.run());
+    await boss.schedule(job.queue, job.cron, {});
+  }
 
   console.log('🌀 scrumlord awakened — the dailies have a master');
 
