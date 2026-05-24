@@ -108,11 +108,23 @@ drawer** (edit / comments / worklogs / cost / timer / audit), **backlog + sprint
 
 Real steps. They actually work. (We left the prayer in, just in case.)
 
+### Ship it — the whole app, one command
+
 ```bash
-# clone the repo (an act of bravery)
 git clone https://github.com/your-username/gira-scrumlord.git
 cd gira-scrumlord
 
+# postgres · migrate · api · scrumlord · sauron · web — with fictional demo data
+docker compose -f docker-compose.full.yml --profile seed up --build
+```
+
+Open **http://localhost:8080**, sign in as `boss@example.test`, grab the magic
+link from **Mailpit (http://localhost:8025)**. Sauron watches on **:666**. Full
+deploy + production checklist in [`DEPLOY.md`](./DEPLOY.md).
+
+### Develop it — apps on the host, infra in Docker
+
+```bash
 # one package manager to rule them all
 corepack enable pnpm
 pnpm install
