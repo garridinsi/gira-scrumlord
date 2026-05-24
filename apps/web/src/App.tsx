@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
+import { ClientPortalLayout } from './components/layout/ClientPortalLayout';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { BacklogPage } from './pages/BacklogPage';
 import { BoardPage } from './pages/BoardPage';
@@ -11,6 +12,10 @@ import { ProjectsPage } from './pages/ProjectsPage';
 import { SauronPage } from './pages/SauronPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SprintsPage } from './pages/SprintsPage';
+import { PortalOverviewPage } from './pages/portal/PortalOverviewPage';
+import { PortalTicketsPage } from './pages/portal/PortalTicketsPage';
+import { PortalIssueDetailPage } from './pages/portal/PortalIssueDetailPage';
+import { PortalRequestPage } from './pages/portal/PortalRequestPage';
 
 export function App() {
   return (
@@ -19,7 +24,15 @@ export function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-      {/* Protected app routes (auth-guarded shell) */}
+      {/* Client portal routes (auth-guarded, client-only chrome) */}
+      <Route element={<ClientPortalLayout />}>
+        <Route path="/portal" element={<PortalOverviewPage />} />
+        <Route path="/portal/issues" element={<PortalTicketsPage />} />
+        <Route path="/portal/issues/:key" element={<PortalIssueDetailPage />} />
+        <Route path="/portal/request" element={<PortalRequestPage />} />
+      </Route>
+
+      {/* Staff app routes (auth-guarded shell — redirects client users to portal) */}
       <Route element={<AppLayout />}>
         <Route index element={<Navigate to="/projects" replace />} />
         <Route path="/projects" element={<ProjectsPage />} />
