@@ -11,11 +11,13 @@ RUN apt-get update \
 RUN corepack enable
 WORKDIR /app
 
-# Run as the non-root `node` user (CWE-250). sauron can't bind privileged :666 as
-# non-root, so inside the container it falls back to :6660 (its built-in behaviour);
-# compose maps host 666 -> container 6660 so the canonical port still works.
-COPY --chown=node:node . .
+# Run as the non-root `node` user (CWE-250). The /app directory itself (created by
+# WORKDIR as root) must be node-owned too, or pnpm can't write its temp files.
+# sauron can't bind privileged :666 as non-root, so inside the container it falls
+# back to :6660 (its built-in behaviour); compose maps host 666 -> container 6660.
+RUN chown node:node /app
 USER node
+COPY --chown=node:node . .
 RUN pnpm install --frozen-lockfile \
   && pnpm --filter @gira/db generate
 
