@@ -8,7 +8,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 loadEnv({ path: path.resolve(here, '../../.env') });
 
 const base =
-  process.env.DATABASE_URL ?? 'postgresql://gira:gira@localhost:5432/gira?schema=public';
+  process.env.DATABASE_URL ?? 'postgresql://gira:gira@127.0.0.1:5432/gira?schema=public';
 const testUrl = base.replace(/\/([^/?]+)(\?|$)/, '/gira_notify_test$2');
 process.env.DATABASE_URL = testUrl;
 

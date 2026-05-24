@@ -23,6 +23,68 @@ const QUEUE_INCIDENT_ESCALATE = 'incident-escalate';
 // velocity-snapshot:  every 5 min   (*/5 * * * *)
 // timer-reap:         every 10 min  (*/10 * * * *)
 
+export interface ScheduledJob {
+  queue: string;
+  cron: string;
+  run: () => Promise<void>;
+}
+
+export const JOBS: ScheduledJob[] = [
+  {
+    queue: QUEUE_OUTBOX_DISPATCH,
+    cron: '* * * * *',
+    run: async () => {
+      const count = await runOutboxDispatch();
+      if (count > 0) console.log(`[scrumlord] outbox-dispatch processed ${count} event(s)`);
+    },
+  },
+  {
+    queue: QUEUE_SPRINT_AUTOCLOSE,
+    cron: '*/5 * * * *',
+    run: async () => {
+      const count = await runSprintAutoclose();
+      if (count > 0) console.log(`[scrumlord] sprint-autoclose closed ${count} sprint(s)`);
+    },
+  },
+  {
+    queue: QUEUE_VELOCITY_SNAPSHOT,
+    cron: '*/5 * * * *',
+    run: async () => {
+      const count = await runVelocitySnapshot();
+      if (count > 0) console.log(`[scrumlord] velocity-snapshot updated ${count} sprint(s)`);
+    },
+  },
+  {
+    queue: QUEUE_TIMER_REAP,
+    cron: '*/10 * * * *',
+    run: async () => {
+      const count = await runTimerReap();
+      if (count > 0) console.log(`[scrumlord] timer-reap reaped ${count} timer(s)`);
+    },
+  },
+  {
+    queue: QUEUE_INCIDENT_ESCALATE,
+    cron: '*/2 * * * *',
+    run: async () => {
+      const count = await escalateOpenIncidents({ intervalMinutes: 5, maxLevel: 3 });
+      if (count > 0) console.log(`[scrumlord] incident-escalate re-paged ${count} incident(s)`);
+    },
+  },
+];
+
+/**
+ * pg-boss v10 enforces a foreign key from schedule.name -> queue.name, so each
+ * queue must exist before we schedule or work it. createQueue is idempotent.
+ * Exported (and decoupled from process startup) so the boot path is testable.
+ */
+export async function registerJobs(boss: PgBoss): Promise<void> {
+  for (const job of JOBS) {
+    await boss.createQueue(job.queue);
+    await boss.work(job.queue, () => job.run());
+    await boss.schedule(job.queue, job.cron, {});
+  }
+}
+
 async function main(): Promise<void> {
   const boss = new PgBoss(DATABASE_URL);
 
@@ -31,57 +93,7 @@ async function main(): Promise<void> {
   });
 
   await boss.start();
-
-  // pg-boss v10 enforces a foreign key from schedule.name -> queue.name, so each
-  // queue must exist before we schedule or work it. createQueue is idempotent.
-  const jobs: Array<{ queue: string; cron: string; run: () => Promise<void> }> = [
-    {
-      queue: QUEUE_OUTBOX_DISPATCH,
-      cron: '* * * * *',
-      run: async () => {
-        const count = await runOutboxDispatch();
-        if (count > 0) console.log(`[scrumlord] outbox-dispatch processed ${count} event(s)`);
-      },
-    },
-    {
-      queue: QUEUE_SPRINT_AUTOCLOSE,
-      cron: '*/5 * * * *',
-      run: async () => {
-        const count = await runSprintAutoclose();
-        if (count > 0) console.log(`[scrumlord] sprint-autoclose closed ${count} sprint(s)`);
-      },
-    },
-    {
-      queue: QUEUE_VELOCITY_SNAPSHOT,
-      cron: '*/5 * * * *',
-      run: async () => {
-        const count = await runVelocitySnapshot();
-        if (count > 0) console.log(`[scrumlord] velocity-snapshot updated ${count} sprint(s)`);
-      },
-    },
-    {
-      queue: QUEUE_TIMER_REAP,
-      cron: '*/10 * * * *',
-      run: async () => {
-        const count = await runTimerReap();
-        if (count > 0) console.log(`[scrumlord] timer-reap reaped ${count} timer(s)`);
-      },
-    },
-    {
-      queue: QUEUE_INCIDENT_ESCALATE,
-      cron: '*/2 * * * *',
-      run: async () => {
-        const count = await escalateOpenIncidents({ intervalMinutes: 5, maxLevel: 3 });
-        if (count > 0) console.log(`[scrumlord] incident-escalate re-paged ${count} incident(s)`);
-      },
-    },
-  ];
-
-  for (const job of jobs) {
-    await boss.createQueue(job.queue);
-    await boss.work(job.queue, () => job.run());
-    await boss.schedule(job.queue, job.cron, {});
-  }
+  await registerJobs(boss);
 
   console.log('🌀 scrumlord awakened — the dailies have a master');
 
@@ -97,7 +109,10 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 }
 
-main().catch((err: unknown) => {
-  console.error('[scrumlord] fatal startup error:', err);
-  process.exit(1);
-});
+// Only launch the daemon when run as a process — not when imported by a test.
+if (!process.env.VITEST) {
+  main().catch((err: unknown) => {
+    console.error('[scrumlord] fatal startup error:', err);
+    process.exit(1);
+  });
+}

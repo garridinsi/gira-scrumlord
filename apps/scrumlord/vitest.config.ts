@@ -13,7 +13,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 loadEnv({ path: path.resolve(here, '../../.env') });
 
 const base =
-  process.env['DATABASE_URL'] ?? 'postgresql://gira:gira@localhost:5432/gira?schema=public';
+  process.env['DATABASE_URL'] ?? 'postgresql://gira:gira@127.0.0.1:5432/gira?schema=public';
 
 // Swap db name to gira_scrumlord_test, preserving any query string.
 const testUrl = base.replace(/\/([^/?]+)(\?|$)/, '/gira_scrumlord_test$2');
