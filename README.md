@@ -66,6 +66,7 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 | Backlog & sprints | ✅ | They start. Closing one snapshots velocity before it collapses into the next, like a cyclical universe. |
 | Time tracking (worklogs + timers) | ✅ | One running timer per human. `scrumlord` reaps the ones you forget after 12h. |
 | Money (rates + accrued cost) | ✅ | Rates resolve issue → project → client → default. Stored in cents, because floats lie about money. |
+| Invoicing (generate → issue → pay) | ✅ | Turns logged hours into a frozen bill: each line snapshots the rate at generation, so reprinting an old invoice never lies. No hour billed twice. Printable receipt. |
 | Velocity reports | ✅ | Real committed-vs-completed points. Still rendered as a hurricane. Soothing. |
 | Passwordless auth (magic links) | ✅ | OIDC-ready. The first login to a fresh install becomes the dark lord (admin). |
 | User permissions & client isolation | ✅ | **NOT** everyone is admin anymore. We learned. Clients see only their own data, enforced server-side. |
@@ -75,10 +76,10 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 | Grafana / WordPress intake | ✅ | A Grafana `critical` alert auto-files an `emergency` ticket (deduped) and pages you. WordPress forms become tickets. (`packages/chaos`) |
 | Auto-assignment | ✅ | Rule-based: new intake issues get an owner by type/priority/label. |
 | Slack intake | 🚧 | Same adapter pattern, later. Notifications still drafted in ancient Aramaic. |
-| Client portal | 🚧 | M2 — a frontend job. The data isolation it needs already exists. |
+| Client portal | ✅ | Clients log in and get their own world: open/done/in-progress, time, money, their invoices, and a form to file requests (capped to `medium` — no self-declared emergencies). |
 | Dark mode | ✅ | Still the only mode. Darkness is the PM's natural state. |
 | AI | ❌ | We vibe by hand here, the way the gods intended. |
-| Tests | ✅ | **113 of them.** The README used to say we don't test. The README was coping. |
+| Tests | ✅ | **124 of them.** The README used to say we don't test. The README was coping. |
 
 ---
 
