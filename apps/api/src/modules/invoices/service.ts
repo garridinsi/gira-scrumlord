@@ -1,0 +1,309 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Invoicing. Turn accrued cost into a frozen bill. Generation snapshots the
+// resolved rate into each line and claims the worklogs it bills, so an invoice
+// is a historical record — not a live recomputation — and no hour is billed twice.
+
+import { type Prisma, type Rate, prisma } from '@gira/db';
+import { type ResolvedRate, accruedCents, resolveRate } from '@gira/domain';
+import type { GenerateInvoice, InvoiceListItemView, InvoiceView } from '@gira/shared';
+import { recordAudit } from '@gira/sauron';
+import { badRequest, notFound } from '../../lib/http-error.js';
+
+const toResolved = (r: Rate | null | undefined): ResolvedRate | null =>
+  r ? { hourlyCents: r.hourlyCents, currency: r.currency } : null;
+
+// What we load to map an invoice to its view.
+const invoiceInclude = {
+  lines: { orderBy: { issueKey: 'asc' } },
+  client: { select: { name: true } },
+} satisfies Prisma.InvoiceInclude;
+
+type InvoiceWithRelations = Prisma.InvoiceGetPayload<{ include: typeof invoiceInclude }>;
+
+function toInvoiceListItem(i: InvoiceWithRelations): InvoiceListItemView {
+  return {
+    id: i.id,
+    number: i.number,
+    clientId: i.clientId,
+    clientName: i.client.name,
+    status: i.status,
+    currency: i.currency,
+    subtotalCents: i.subtotalCents,
+    periodStart: i.periodStart?.toISOString() ?? null,
+    periodEnd: i.periodEnd?.toISOString() ?? null,
+    createdAt: i.createdAt.toISOString(),
+    issuedAt: i.issuedAt?.toISOString() ?? null,
+    paidAt: i.paidAt?.toISOString() ?? null,
+  };
+}
+
+export function toInvoiceView(i: InvoiceWithRelations): InvoiceView {
+  return {
+    ...toInvoiceListItem(i),
+    notes: i.notes,
+    lines: i.lines.map((l) => ({
+      id: l.id,
+      issueKey: l.issueKey,
+      description: l.description,
+      minutes: l.minutes,
+      hourlyCents: l.hourlyCents,
+      amountCents: l.amountCents,
+    })),
+  };
+}
+
+async function loadInvoiceOr404(id: string): Promise<InvoiceWithRelations> {
+  const invoice = await prisma.invoice.findUnique({ where: { id }, include: invoiceInclude });
+  if (!invoice) throw notFound('invoice not found');
+  return invoice;
+}
+
+export async function getInvoice(id: string): Promise<InvoiceWithRelations> {
+  return loadInvoiceOr404(id);
+}
+
+export async function listClientInvoices(clientId: string): Promise<InvoiceListItemView[]> {
+  const invoices = await prisma.invoice.findMany({
+    where: { clientId },
+    orderBy: { createdAt: 'desc' },
+    include: invoiceInclude,
+  });
+  return invoices.map(toInvoiceListItem);
+}
+
+/**
+ * Generate a draft invoice. Pulls every billable, not-yet-invoiced worklog for the
+ * client (optionally bounded by period), groups by issue, and writes one frozen
+ * line per issue. Fixed-price issues bill their price once — on the first invoice
+ * that touches them; later invoices consume their hours without re-charging.
+ */
+export async function generateInvoice(
+  clientId: string,
+  input: GenerateInvoice,
+  actorId: string,
+): Promise<InvoiceView> {
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { id: true, name: true, currency: true },
+  });
+  if (!client) throw notFound('client not found');
+
+  const loggedAt: Prisma.DateTimeFilter = {};
+  if (input.periodStart) loggedAt.gte = input.periodStart;
+  if (input.periodEnd) {
+    const end = new Date(input.periodEnd);
+    end.setUTCHours(23, 59, 59, 999); // inclusive of the whole end day
+    loggedAt.lte = end;
+  }
+
+  const invoice = await prisma.$transaction(async (tx) => {
+    const worklogs = await tx.worklog.findMany({
+      where: {
+        billable: true,
+        invoiceId: null,
+        issue: { project: { clientId } },
+        ...(input.periodStart || input.periodEnd ? { loggedAt } : {}),
+      },
+      select: { id: true, minutes: true, issueId: true },
+    });
+
+    if (worklogs.length === 0) {
+      throw badRequest('no billable, un-invoiced work found for this client and period');
+    }
+
+    const byIssue = new Map<string, { minutes: number }>();
+    for (const w of worklogs) {
+      const g = byIssue.get(w.issueId) ?? { minutes: 0 };
+      g.minutes += w.minutes;
+      byIssue.set(w.issueId, g);
+    }
+    const issueIds = [...byIssue.keys()];
+
+    const issues = await tx.issue.findMany({
+      where: { id: { in: issueIds } },
+      select: {
+        id: true,
+        key: true,
+        title: true,
+        billingMode: true,
+        fixedPriceCents: true,
+        projectId: true,
+      },
+    });
+    const projectIds = [...new Set(issues.map((i) => i.projectId))];
+
+    const [issueRates, projectRates, clientRate, defaultRate, priorClaims] = await Promise.all([
+      tx.rate.findMany({ where: { issueId: { in: issueIds } } }),
+      tx.rate.findMany({ where: { projectId: { in: projectIds } } }),
+      tx.rate.findUnique({ where: { clientId } }),
+      tx.rate.findFirst({ where: { scope: 'default' } }),
+      // Issues whose hours were already billed on a prior invoice (fixed price guard).
+      tx.worklog.findMany({
+        where: { issueId: { in: issueIds }, invoiceId: { not: null } },
+        select: { issueId: true },
+        distinct: ['issueId'],
+      }),
+    ]);
+    const issueRateById = new Map(issueRates.map((r) => [r.issueId, r]));
+    const projectRateById = new Map(projectRates.map((r) => [r.projectId, r]));
+    const alreadyBilled = new Set(priorClaims.map((w) => w.issueId));
+
+    const lineData: Prisma.InvoiceLineCreateWithoutInvoiceInput[] = [];
+    let subtotal = 0;
+    for (const issue of issues.sort((a, b) => a.key.localeCompare(b.key))) {
+      const minutes = byIssue.get(issue.id)?.minutes ?? 0;
+
+      if (issue.billingMode === 'fixed') {
+        if (alreadyBilled.has(issue.id)) continue; // price already charged; just consume hours
+        const amount = issue.fixedPriceCents ?? 0;
+        subtotal += amount;
+        lineData.push({
+          issueId: issue.id,
+          issueKey: issue.key,
+          description: `${issue.title} · precio fijo / fixed price`,
+          minutes,
+          hourlyCents: null,
+          amountCents: amount,
+        });
+        continue;
+      }
+
+      const resolved = resolveRate({
+        issue: toResolved(issueRateById.get(issue.id)),
+        project: toResolved(projectRateById.get(issue.projectId)),
+        client: toResolved(clientRate),
+        fallback: toResolved(defaultRate),
+      });
+      const hourlyCents = resolved?.hourlyCents ?? null;
+      const amount = accruedCents({ billingMode: 'hourly', billableMinutes: minutes, hourlyCents });
+      subtotal += amount;
+      lineData.push({
+        issueId: issue.id,
+        issueKey: issue.key,
+        description: issue.title,
+        minutes,
+        hourlyCents,
+        amountCents: amount,
+      });
+    }
+
+    const year = new Date().getFullYear();
+    const seq = await tx.invoice.count({ where: { number: { startsWith: `INV-${year}-` } } });
+    const number = `INV-${year}-${String(seq + 1).padStart(4, '0')}`;
+
+    const created = await tx.invoice.create({
+      data: {
+        number,
+        clientId,
+        status: 'draft',
+        currency: client.currency,
+        subtotalCents: subtotal,
+        periodStart: input.periodStart ?? null,
+        periodEnd: input.periodEnd ?? null,
+        notes: input.notes ?? null,
+        createdById: actorId,
+        lines: { create: lineData },
+      },
+      include: invoiceInclude,
+    });
+
+    // Claim every candidate worklog (even fixed-issue hours with no line) so it
+    // can't land on a second invoice. Deleting/voiding this invoice frees them.
+    await tx.worklog.updateMany({
+      where: { id: { in: worklogs.map((w) => w.id) } },
+      data: { invoiceId: created.id },
+    });
+
+    await recordAudit(tx, {
+      actorId,
+      action: 'invoice.generate',
+      entityType: 'Invoice',
+      entityId: created.id,
+      after: { number, subtotalCents: subtotal, lines: lineData.length },
+    });
+
+    return created;
+  });
+
+  return toInvoiceView(invoice);
+}
+
+export async function issueInvoice(id: string, actorId: string): Promise<InvoiceView> {
+  const invoice = await loadInvoiceOr404(id);
+  if (invoice.status !== 'draft') throw badRequest('only a draft invoice can be issued');
+  const updated = await prisma.invoice.update({
+    where: { id },
+    data: { status: 'issued', issuedAt: new Date() },
+    include: invoiceInclude,
+  });
+  await recordAudit(prisma, {
+    actorId,
+    action: 'invoice.issue',
+    entityType: 'Invoice',
+    entityId: id,
+    before: { status: 'draft' },
+    after: { status: 'issued', number: updated.number },
+  });
+  return toInvoiceView(updated);
+}
+
+export async function payInvoice(id: string, actorId: string): Promise<InvoiceView> {
+  const invoice = await loadInvoiceOr404(id);
+  if (invoice.status !== 'issued') throw badRequest('only an issued invoice can be marked paid');
+  const updated = await prisma.invoice.update({
+    where: { id },
+    data: { status: 'paid', paidAt: new Date() },
+    include: invoiceInclude,
+  });
+  await recordAudit(prisma, {
+    actorId,
+    action: 'invoice.pay',
+    entityType: 'Invoice',
+    entityId: id,
+    before: { status: 'issued' },
+    after: { status: 'paid', number: updated.number },
+  });
+  return toInvoiceView(updated);
+}
+
+/** Cancel an invoice and release its worklogs back to the un-invoiced pool. */
+export async function voidInvoice(id: string, actorId: string): Promise<InvoiceView> {
+  const invoice = await loadInvoiceOr404(id);
+  if (invoice.status === 'paid') throw badRequest('a paid invoice cannot be voided');
+  if (invoice.status === 'void') throw badRequest('invoice is already void');
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.worklog.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
+    const u = await tx.invoice.update({
+      where: { id },
+      data: { status: 'void' },
+      include: invoiceInclude,
+    });
+    await recordAudit(tx, {
+      actorId,
+      action: 'invoice.void',
+      entityType: 'Invoice',
+      entityId: id,
+      before: { status: invoice.status },
+      after: { status: 'void' },
+    });
+    return u;
+  });
+  return toInvoiceView(updated);
+}
+
+/** Delete a draft. Cascades lines; the worklog FK is SetNull, freeing the hours. */
+export async function deleteInvoice(id: string, actorId: string): Promise<void> {
+  const invoice = await loadInvoiceOr404(id);
+  if (invoice.status !== 'draft') throw badRequest('only a draft invoice can be deleted');
+  await prisma.$transaction(async (tx) => {
+    await tx.worklog.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
+    await tx.invoice.delete({ where: { id } });
+    await recordAudit(tx, {
+      actorId,
+      action: 'invoice.delete',
+      entityType: 'Invoice',
+      entityId: id,
+      before: { number: invoice.number, status: 'draft' },
+    });
+  });
+}

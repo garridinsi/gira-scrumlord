@@ -7,6 +7,7 @@ import { forbidden, notFound } from '../../lib/http-error.js';
 import { toIssueView } from '../../lib/views.js';
 import { computePortalOverview } from './service.js';
 import { createIssue } from '../issues/service.js';
+import { getInvoice, listClientInvoices, toInvoiceView } from '../invoices/service.js';
 
 function clientUser(req: Parameters<typeof currentUser>[0]) {
   const user = currentUser(req);
@@ -46,5 +47,23 @@ export async function portalRoutes(app: FastifyInstance): Promise<void> {
       user.id,
     );
     return reply.code(201).send(toIssueView(issue));
+  });
+
+  // A client sees only their own *issued/paid* invoices — drafts stay staff-side.
+  app.get('/portal/invoices', { preHandler: requireAuth }, async (req) => {
+    const user = clientUser(req);
+    const invoices = await listClientInvoices(user.clientId);
+    return invoices.filter((i) => i.status !== 'draft');
+  });
+
+  app.get('/portal/invoices/:id', { preHandler: requireAuth }, async (req) => {
+    const user = clientUser(req);
+    const { id } = req.params as { id: string };
+    const invoice = await getInvoice(id);
+    // 404 (not 403) on someone else's or a draft — never confirm it exists.
+    if (invoice.clientId !== user.clientId || invoice.status === 'draft') {
+      throw notFound('invoice not found');
+    }
+    return toInvoiceView(invoice);
   });
 }

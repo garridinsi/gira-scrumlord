@@ -8,6 +8,7 @@ import type {
   ChannelScope,
   IncidentStatus,
   IntakeKind,
+  InvoiceStatus,
   IssueType,
   Priority,
   SprintState,
@@ -200,4 +201,37 @@ export interface IncidentView {
   lastNotifiedAt: string | null;
   acknowledgedAt: string | null;
   createdAt: string;
+}
+
+// ── Invoicing (M5) ─────────────────────────────────────────────────────────
+export interface InvoiceLineView {
+  id: string;
+  issueKey: string;
+  description: string;
+  minutes: number;
+  /** Frozen resolved rate; null for fixed-price lines. */
+  hourlyCents: number | null;
+  amountCents: number;
+}
+
+/** Summary row for invoice lists — no lines. */
+export interface InvoiceListItemView {
+  id: string;
+  number: string;
+  clientId: string;
+  clientName: string;
+  status: InvoiceStatus;
+  currency: string;
+  subtotalCents: number;
+  periodStart: string | null;
+  periodEnd: string | null;
+  createdAt: string;
+  issuedAt: string | null;
+  paidAt: string | null;
+}
+
+/** Full invoice with its lines — what the printable receipt renders from. */
+export interface InvoiceView extends InvoiceListItemView {
+  notes: string | null;
+  lines: InvoiceLineView[];
 }

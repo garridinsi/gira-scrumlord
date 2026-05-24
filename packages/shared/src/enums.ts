@@ -15,6 +15,7 @@ export const channelKind = z.enum(['email', 'webhook']);
 export const channelScope = z.enum(['global', 'project']);
 export const incidentStatus = z.enum(['open', 'acked', 'resolved']);
 export const intakeKind = z.enum(['grafana', 'wordpress', 'generic']);
+export const invoiceStatus = z.enum(['draft', 'issued', 'paid', 'void']);
 
 export type IssueType = z.infer<typeof issueType>;
 export type Priority = z.infer<typeof priority>;
@@ -28,6 +29,7 @@ export type ChannelKind = z.infer<typeof channelKind>;
 export type ChannelScope = z.infer<typeof channelScope>;
 export type IncidentStatus = z.infer<typeof incidentStatus>;
 export type IntakeKind = z.infer<typeof intakeKind>;
+export type InvoiceStatus = z.infer<typeof invoiceStatus>;
 
 /** Urgency ranking, highest first. `emergency` is the paging tier. */
 export const PRIORITY_ORDER: Record<Priority, number> = {

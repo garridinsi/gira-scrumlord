@@ -95,6 +95,15 @@ enum IntakeKind {
   generic
 }
 
+/// draft = editable, recomputable. issued = sent, worklogs locked. paid = settled.
+/// void = cancelled (frees its worklogs). Money only leaves draft once.
+enum InvoiceStatus {
+  draft
+  issued
+  paid
+  void
+}
+
 // ───────────────────────────────────────────────────────────── identity ──
 
 model Client {
@@ -109,6 +118,7 @@ model Client {
   users    User[]
   projects Project[]
   rate     Rate?
+  invoices Invoice[]
 }
 
 model User {
@@ -322,8 +332,14 @@ model Worklog {
   loggedAt  DateTime @default(now())
   createdAt DateTime @default(now())
 
+  // A worklog belongs to at most one invoice. Set when invoiced; SetNull on
+  // invoice delete frees the hours to be re-billed. This is the no-double-bill seam.
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
   @@index([issueId])
   @@index([userId])
+  @@index([invoiceId])
 }
 
 /// A running stopwatch. At most one active timer per user. Stopping writes a Worklog.
@@ -336,6 +352,46 @@ model Timer {
   startedAt DateTime @default(now())
 
   @@index([issueId])
+}
+
+/// A bill to a client. Lines snapshot the resolved rate at generation time, so a
+/// reprinted invoice always shows the money as it was charged — never recomputed.
+model Invoice {
+  id            String        @id @default(cuid())
+  number        String        @unique // INV-YYYY-NNNN, assigned at creation
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  status        InvoiceStatus @default(draft)
+  currency      String // ISO 4217, snapshot of the client's currency
+  subtotalCents Int           @default(0) // sum of line amounts, frozen
+  periodStart   DateTime?
+  periodEnd     DateTime?
+  notes         String?
+  createdById   String?
+  createdAt     DateTime      @default(now())
+  issuedAt      DateTime?
+  paidAt        DateTime?
+
+  lines    InvoiceLine[]
+  worklogs Worklog[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+/// One line per billed issue. amountCents and hourlyCents are frozen at generation.
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  issueId     String? // nullable: the issue may be deleted later; key kept for display
+  issueKey    String
+  description String
+  minutes     Int     @default(0)
+  hourlyCents Int? // snapshot of the resolved hourly rate; null for fixed-price lines
+  amountCents Int
+
+  @@index([invoiceId])
 }
 
 /// One row per scope. Resolution at read time: issue → project → client → default.
