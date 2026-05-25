@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { IssueView } from '@gira/shared';
@@ -8,8 +8,10 @@ import type { SprintRecord } from '../api/client';
 import { Avatar, LabelChip, Plate, PriorityChip, SpinGlyph, TypeChip } from '../ui/atoms';
 import { Subbar } from '../ui/Subbar';
 import { useToast } from '../ui/Toast';
-import { formatMinutes } from '../lib/format';
+import { formatDate, formatMinutes } from '../lib/format';
 import { formatMoney } from '../lib/money';
+import { FilterBar } from '../ui/FilterBar';
+import { useMe } from '../hooks/useAuth';
 
 // ── Stat cell inside sprint header ──────────────────────────────────────────
 function Stat({
@@ -68,11 +70,15 @@ function BacklogRow({
       ? `${(issue.loggedMinutes / 60).toFixed(1)}h`
       : '—';
 
+  const isDone = issue.statusCategory === 'done';
+  const dueDate = issue.dueAt ? new Date(issue.dueAt) : null;
+  const isOverdue = dueDate != null && !isDone && dueDate.getTime() < Date.now();
+
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '64px 22px 1fr auto auto auto auto auto',
+        gridTemplateColumns: '64px 22px 1fr auto auto auto auto auto auto',
         gap: 14,
         alignItems: 'center',
         padding: '9px 14px',
@@ -113,6 +119,26 @@ function BacklogRow({
       >
         {loggedH}
       </span>
+      {dueDate != null ? (
+        <span
+          className="mono"
+          style={{
+            fontSize: 10,
+            padding: '1px 5px',
+            border: '1px solid',
+            borderColor: isOverdue ? 'var(--eg-red)' : 'var(--eg-iron)',
+            background: isOverdue ? 'var(--eg-red)' : 'transparent',
+            color: isOverdue ? 'var(--eg-paper)' : 'var(--eg-iron)',
+            fontWeight: isOverdue ? 700 : 400,
+            whiteSpace: 'nowrap',
+          }}
+          title={`Vencimiento · Due: ${formatDate(issue.dueAt!)}`}
+        >
+          {isOverdue ? '!!' : ''}{formatDate(issue.dueAt!)}
+        </span>
+      ) : (
+        <span />
+      )}
       {issue.assignee ? (
         <Avatar user={issue.assignee} />
       ) : (
@@ -669,9 +695,16 @@ export function BacklogPage() {
   const [searchParams] = useSearchParams();
   const q = searchParams.get('q')?.toLowerCase() ?? '';
   const toast = useToast();
+  const me = useMe();
 
   const [showCreateSprint, setShowCreateSprint] = useState(false);
   const [showCreateIssue, setShowCreateIssue] = useState(false);
+  // Filtered results from FilterBar (null = no filter active, use full backlog)
+  const [filterResults, setFilterResults] = useState<IssueView[] | null>(null);
+
+  const handleFilterResults = useCallback((results: IssueView[] | null) => {
+    setFilterResults(results);
+  }, []);
 
   const qc = useQueryClient();
 
@@ -719,8 +752,11 @@ export function BacklogPage() {
 
   const allIssues = backlogQ.data ?? [];
 
-  // Filter by search query from URL
-  const filtered = q
+  // FilterBar results override URL search query
+  // filterResults === null means no filter bar active; fall back to URL q
+  const filtered = filterResults
+    ? filterResults
+    : q
     ? allIssues.filter((i) => i.title.toLowerCase().includes(q))
     : allIssues;
 
@@ -769,7 +805,7 @@ export function BacklogPage() {
         tabs={tabs}
         right={
           <>
-            {q && (
+            {q && !filterResults && (
               <span className="f-pill">
                 BÚSQUEDA <b>{q}</b>
               </span>
@@ -782,6 +818,12 @@ export function BacklogPage() {
             </button>
           </>
         }
+      />
+
+      <FilterBar
+        projectKey={key}
+        myId={me.data?.id ?? null}
+        onResults={handleFilterResults}
       />
 
       <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px' }}>

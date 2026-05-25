@@ -20,6 +20,7 @@ function makeIssue(key: string): IssueView {
     storyPoints: null,
     estimateMinutes: null,
     rank: key,
+    dueAt: null,
     billingMode: 'hourly',
     fixedPriceCents: null,
     labels: [],

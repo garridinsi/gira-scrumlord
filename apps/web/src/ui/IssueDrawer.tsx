@@ -599,7 +599,7 @@ function DrawerSidebar({
   issue: IssueView;
   statuses: StatusView[];
   labels: LabelView[];
-  onUpdate: (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[] }>) => void;
+  onUpdate: (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null }>) => void;
   onAssigneeChange: (assigneeId: string | null) => void;
   toast: ReturnType<typeof useToast>;
 }) {
@@ -714,6 +714,61 @@ function DrawerSidebar({
         <span className="disp" style={{ fontSize: 20, color: 'var(--eg-iron)' }}>
           {issue.storyPoints ?? '—'}
         </span>
+      </SideField>
+
+      <SideField labelEs="vencimiento" labelEn="due date">
+        <input
+          type="date"
+          value={issue.dueAt ? issue.dueAt.slice(0, 10) : ''}
+          onChange={(e) => {
+            onUpdate({ dueAt: e.target.value ? new Date(e.target.value) : null });
+          }}
+          style={{
+            width: '100%',
+            padding: '4px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            color: 'var(--eg-iron)',
+            boxSizing: 'border-box',
+          }}
+        />
+        {issue.dueAt && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            {(() => {
+              const isDone = statuses.find((s) => s.id === issue.statusId)?.category === 'done';
+              const isOverdue = !isDone && new Date(issue.dueAt!).getTime() < Date.now();
+              return (
+                <>
+                  <span
+                    className="mono"
+                    style={{
+                      fontSize: 10,
+                      padding: '1px 5px',
+                      border: '1px solid',
+                      borderColor: isOverdue ? 'var(--eg-red)' : 'var(--eg-iron)',
+                      background: isOverdue ? 'var(--eg-red)' : 'var(--eg-paper-3)',
+                      color: isOverdue ? 'var(--eg-paper)' : 'var(--eg-iron)',
+                      fontWeight: isOverdue ? 700 : 400,
+                    }}
+                  >
+                    {isOverdue ? '!! VENCIDO · OVERDUE' : formatDate(issue.dueAt!)}
+                  </span>
+                  <button
+                    type="button"
+                    className="b-btn b-btn--ghost"
+                    style={{ fontSize: 10, padding: '1px 6px' }}
+                    onClick={() => onUpdate({ dueAt: null })}
+                    title="Quitar fecha · Clear due date"
+                  >
+                    ✕
+                  </button>
+                </>
+              );
+            })()}
+          </div>
+        )}
       </SideField>
 
       {issue.estimateMinutes != null && (
@@ -855,6 +910,9 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
         toast({ tone: 'ok', title: 'Asignación actualizada · Assignee updated', body: name });
       } else if ('labelIds' in vars) {
         toast({ tone: 'ok', title: 'Etiquetas actualizadas · Labels updated' });
+      } else if ('dueAt' in vars) {
+        const dateStr = updated.dueAt ? formatDate(updated.dueAt) : 'sin fecha · cleared';
+        toast({ tone: 'ok', title: 'Vencimiento actualizado · Due date updated', body: dateStr });
       } else {
         toast({ tone: 'ok', title: 'Ticket actualizado · Issue updated' });
       }
@@ -886,7 +944,7 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleUpdate = (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[] }>) => {
+  const handleUpdate = (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null }>) => {
     if (data.statusId) {
       moveMutation.mutate({ statusId: data.statusId });
     } else {

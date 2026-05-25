@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import type { IssueView } from '@gira/shared';
 import { formatMoney } from '../lib/money';
+import { formatDate } from '../lib/format';
 import { Avatar, LabelChip, PriorityChip, TypeChip } from './atoms';
 
 export function IssueCard({
@@ -17,6 +18,11 @@ export function IssueCard({
   const emergency = issue.priority === 'emergency';
   const isFixed = issue.billingMode === 'fixed';
   const loggedH = Math.round(((issue.loggedMinutes ?? 0) / 60) * 10) / 10;
+
+  // Due date badge logic
+  const isDone = issue.statusCategory === 'done';
+  const dueDate = issue.dueAt ? new Date(issue.dueAt) : null;
+  const isOverdue = dueDate != null && !isDone && dueDate.getTime() < Date.now();
 
   return (
     <article
@@ -123,14 +129,34 @@ export function IssueCard({
               </span>
             )}
           </div>
-          {issue.estimateMinutes != null && issue.estimateMinutes > 0 && (
-            <span
-              className="mono"
-              style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.1em' }}
-            >
-              EST {Math.round((issue.estimateMinutes / 60) * 10) / 10}h
-            </span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {issue.estimateMinutes != null && issue.estimateMinutes > 0 && (
+              <span
+                className="mono"
+                style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.1em' }}
+              >
+                EST {Math.round((issue.estimateMinutes / 60) * 10) / 10}h
+              </span>
+            )}
+            {dueDate != null && (
+              <span
+                className="mono"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: '0.08em',
+                  padding: '1px 5px',
+                  border: '1px solid',
+                  borderColor: isOverdue ? 'var(--eg-red)' : 'var(--eg-iron)',
+                  background: isOverdue ? 'var(--eg-red)' : 'var(--eg-paper-3)',
+                  color: isOverdue ? 'var(--eg-paper)' : 'var(--eg-iron)',
+                  fontWeight: isOverdue ? 700 : 400,
+                }}
+                title={`Vencimiento · Due: ${formatDate(issue.dueAt!)}`}
+              >
+                {isOverdue ? '!!' : ''}{formatDate(issue.dueAt!)}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </article>

@@ -146,6 +146,8 @@ function SprintStrip({
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalDraft, setGoalDraft] = useState('');
 
   const closeMutation = useMutation({
     mutationFn: () => sprints.close(sprint.id),
@@ -158,6 +160,23 @@ function SprintStrip({
     },
   });
 
+  const goalMutation = useMutation({
+    mutationFn: (goal: string | null) => sprints.update(sprint.id, { goal: goal ?? undefined }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['sprints', projectKey] });
+      toast({ tone: 'ok', title: 'Objetivo guardado · Goal saved', body: sprint.name });
+      setEditingGoal(false);
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al guardar objetivo · Goal save failed', body: err instanceof ApiError ? err.message : 'Error' });
+    },
+  });
+
+  const handleGoalSave = () => {
+    const trimmed = goalDraft.trim();
+    goalMutation.mutate(trimmed || null);
+  };
+
   // Day progress
   const now = Date.now();
   const start = sprint.startDate ? new Date(sprint.startDate).getTime() : now;
@@ -167,71 +186,176 @@ function SprintStrip({
   const pct = Math.min(100, Math.round((dayNum / totalDays) * 100));
 
   const committed = sprint.committedPoints ?? 0;
+  const hasGoal = !!(sprint.goal && sprint.goal.trim());
 
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'auto 1fr auto auto',
-        gap: 18,
-        alignItems: 'center',
-        padding: '10px 20px',
         background: 'var(--eg-iron)',
         color: 'var(--eg-paper)',
         borderBottom: '2px solid var(--eg-iron)',
         flexShrink: 0,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span className="plate plate--yellow">SPRINT · ACTIVO</span>
-        <Bi
-          es={sprint.name}
-          en={sprint.name}
-          tone="ink"
-          style={{
-            color: 'var(--eg-paper)',
-            fontFamily: 'var(--font-display)',
-            fontSize: 18,
-            fontWeight: 800,
-            textTransform: 'uppercase',
-            letterSpacing: '-0.01em',
-          }}
-        />
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-5)', letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-          Día {dayNum} / {totalDays}
-        </span>
-        <div style={{ position: 'relative', height: 8, background: 'var(--eg-iron-2)', border: '1px solid var(--eg-fg-3)', flex: 1, maxWidth: 320 }}>
-          <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: 'var(--eg-yellow)' }} />
+      {/* Main strip row */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'auto 1fr auto auto',
+          gap: 18,
+          alignItems: 'center',
+          padding: '10px 20px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span className="plate plate--yellow">SPRINT · ACTIVO</span>
+          <Bi
+            es={sprint.name}
+            en={sprint.name}
+            tone="ink"
+            style={{
+              color: 'var(--eg-paper)',
+              fontFamily: 'var(--font-display)',
+              fontSize: 18,
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '-0.01em',
+            }}
+          />
         </div>
-        {committed > 0 && (
-          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-paper)', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
-            {committed} PTS
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-5)', letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+            Día {dayNum} / {totalDays}
           </span>
-        )}
+          <div style={{ position: 'relative', height: 8, background: 'var(--eg-iron-2)', border: '1px solid var(--eg-fg-3)', flex: 1, maxWidth: 320 }}>
+            <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: 'var(--eg-yellow)' }} />
+          </div>
+          {committed > 0 && (
+            <span className="mono" style={{ fontSize: 10, color: 'var(--eg-paper)', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+              {committed} PTS
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', color: 'var(--eg-paper)' }}>
+          <span
+            className="mono lore"
+            data-lore="velocidad · comprometido vs completado"
+            style={{ fontSize: 11, letterSpacing: '0.1em', color: 'var(--eg-yellow)' }}
+          >
+            <SpinGlyph /> <b>{committed} PTS</b>
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            className="b-btn b-btn--yellow"
+            disabled={closeMutation.isPending}
+            onClick={() => closeMutation.mutate()}
+          >
+            Cerrar sprint
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center', color: 'var(--eg-paper)' }}>
-        <span
-          className="mono lore"
-          data-lore="velocidad · comprometido vs completado"
-          style={{ fontSize: 11, letterSpacing: '0.1em', color: 'var(--eg-yellow)' }}
-        >
-          <SpinGlyph /> <b>{committed} PTS</b>
+      {/* Goal row */}
+      <div
+        style={{
+          padding: '6px 20px 8px',
+          borderTop: '1px solid var(--eg-iron-2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          minHeight: 36,
+        }}
+      >
+        <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)', letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+          // objetivo · goal
         </span>
-      </div>
 
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button
-          type="button"
-          className="b-btn b-btn--yellow"
-          disabled={closeMutation.isPending}
-          onClick={() => closeMutation.mutate()}
-        >
-          Cerrar sprint
-        </button>
+        {editingGoal ? (
+          <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+            <input
+              autoFocus
+              type="text"
+              value={goalDraft}
+              onChange={(e) => setGoalDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleGoalSave();
+                if (e.key === 'Escape') setEditingGoal(false);
+              }}
+              placeholder="Describe el objetivo del sprint… · Sprint goal…"
+              style={{
+                flex: 1,
+                padding: '3px 8px',
+                background: 'var(--eg-iron-2)',
+                border: '1.5px solid var(--eg-yellow)',
+                color: 'var(--eg-paper)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                letterSpacing: '0.02em',
+              }}
+            />
+            <button
+              type="button"
+              className="b-btn b-btn--yellow"
+              style={{ fontSize: 11, padding: '2px 10px' }}
+              disabled={goalMutation.isPending}
+              onClick={handleGoalSave}
+            >
+              Guardar · Save
+            </button>
+            <button
+              type="button"
+              className="b-btn b-btn--ghost"
+              style={{ color: 'var(--eg-fg-4)', fontSize: 11, padding: '2px 8px' }}
+              onClick={() => setEditingGoal(false)}
+            >
+              ✕
+            </button>
+          </div>
+        ) : hasGoal ? (
+          <button
+            type="button"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '2px 4px',
+              fontFamily: 'var(--font-display)',
+              fontSize: 14,
+              fontWeight: 700,
+              color: 'var(--eg-yellow)',
+              letterSpacing: '-0.01em',
+              textTransform: 'uppercase',
+              textAlign: 'left',
+            }}
+            title="Haz clic para editar · Click to edit goal"
+            onClick={() => { setGoalDraft(sprint.goal ?? ''); setEditingGoal(true); }}
+          >
+            {sprint.goal}
+          </button>
+        ) : (
+          <button
+            type="button"
+            style={{
+              background: 'none',
+              border: '1px dashed var(--eg-iron-3)',
+              cursor: 'pointer',
+              padding: '2px 10px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              color: 'var(--eg-fg-4)',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+            }}
+            onClick={() => { setGoalDraft(''); setEditingGoal(true); }}
+          >
+            + Añadir objetivo · Add goal
+          </button>
+        )}
       </div>
     </div>
   );
