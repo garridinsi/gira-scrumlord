@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Settings: Clientes, Tarifas, Avisos, Integraciones — EG "Mantenedor" design.
+// Settings: Clientes, Tarifas, Avisos, Integraciones, Equipo — EG "Mantenedor" design.
 import { useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ChannelView, IntakeSourceView } from '@gira/shared';
-import { clients, rates, projects, channels, intake, ApiError } from '../api/client';
+import type { ChannelView, IntakeSourceView, UserView, UserKind, UserRole } from '@gira/shared';
+import type { CreateUser, UpdateUser } from '@gira/shared';
+import { clients, rates, projects, channels, intake, users, ApiError } from '../api/client';
 import type { ClientRecord, RateRecord } from '../api/client';
 import type { CreateClient, UpdateClient, UpsertRate, CreateChannel, CreateIntakeSource } from '@gira/shared';
 import { Subbar } from '../ui/Subbar';
 import { Avatar, Plate } from '../ui/atoms';
 import { formatRatePerHour } from '../lib/money';
 import { useToast } from '../ui/Toast';
+import { useMe } from '../hooks/useAuth';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'clients' | 'rates' | 'channels' | 'intake';
+type Tab = 'clients' | 'rates' | 'channels' | 'intake' | 'team';
 
 const CURRENCIES = ['EUR', 'USD', 'GBP'] as const;
 
@@ -1633,13 +1635,493 @@ function IntakeTab() {
   );
 }
 
+// ── Team / Users Tab ─────────────────────────────────────────────────────────
+
+const SELECT_STYLE: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12,
+  padding: '6px 10px',
+  border: '1.5px solid var(--eg-iron)',
+  background: 'var(--eg-paper)',
+  color: 'var(--eg-iron)',
+  outline: 'none',
+};
+
+function TeamTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const me = useMe();
+  const isAdmin = me.data?.role === 'admin';
+
+  const usersList = useQuery({
+    queryKey: ['users', 'all'],
+    queryFn: () => users.list(true),
+  });
+  const clientsList = useQuery({ queryKey: ['clients'], queryFn: () => clients.list() });
+
+  const clientMap: Record<string, ClientRecord> = Object.fromEntries(
+    (clientsList.data ?? []).map((c) => [c.id, c]),
+  );
+
+  // ── Create form state ──────────────────────────────────────────────────────
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState<{
+    email: string;
+    name: string;
+    kind: UserKind;
+    role: UserRole;
+    clientId: string;
+  }>({
+    email: '',
+    name: '',
+    kind: 'staff',
+    role: 'member',
+    clientId: '',
+  });
+
+  const createMut = useMutation({
+    mutationFn: (data: CreateUser) => users.create(data),
+    onSuccess: (user) => {
+      void qc.invalidateQueries({ queryKey: ['users'] });
+      setShowCreate(false);
+      setForm({ email: '', name: '', kind: 'staff', role: 'member', clientId: '' });
+      toast({ tone: 'ok', title: 'Persona creada · User created', body: user.name });
+    },
+    onError: (err) => {
+      toast({
+        tone: 'danger',
+        title: 'Error al crear persona · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
+    },
+  });
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateUser }) => users.update(id, data),
+    onSuccess: (user) => {
+      void qc.invalidateQueries({ queryKey: ['users'] });
+      toast({ tone: 'ok', title: 'Persona actualizada · User updated', body: user.name });
+    },
+    onError: (err) => {
+      toast({
+        tone: 'danger',
+        title: 'Error al actualizar · Update failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
+    },
+  });
+
+  const inviteMut = useMutation({
+    mutationFn: (id: string) => users.invite(id),
+    onSuccess: () => {
+      toast({ tone: 'ok', title: 'Enlace enviado · Link sent' });
+    },
+    onError: (err) => {
+      toast({
+        tone: 'danger',
+        title: 'Error al invitar · Invite failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
+    },
+  });
+
+  function handleCreate() {
+    const payload: CreateUser =
+      form.kind === 'client'
+        ? { email: form.email, name: form.name, kind: form.kind, role: form.role, clientId: form.clientId }
+        : { email: form.email, name: form.name, kind: form.kind, role: form.role };
+    createMut.mutate(payload);
+  }
+
+  const createDisabled =
+    createMut.isPending ||
+    !form.email ||
+    !form.name ||
+    (form.kind === 'client' && !form.clientId);
+
+  if (usersList.isLoading) {
+    return (
+      <div className="gs-state">
+        <span className="gs-loading">cargando personas · loading users</span>
+      </div>
+    );
+  }
+  if (usersList.isError) {
+    return (
+      <div className="gs-state">
+        <span className="mono" style={{ color: 'var(--eg-red)' }}>
+          // error al cargar personas · failed to load
+        </span>
+      </div>
+    );
+  }
+
+  const data: UserView[] = usersList.data ?? [];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* Description header */}
+      <div
+        style={{
+          background: 'var(--eg-paper-2)',
+          border: '1.5px solid var(--eg-rule)',
+          padding: '10px 14px',
+        }}
+      >
+        <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)', lineHeight: 1.6 }}>
+          Sin contraseñas · acceso por enlace mágico — al crear una persona puede entrar por email.
+          <br />
+          No passwords — magic-link access. Create a person and they sign in by email.
+        </div>
+        {!isAdmin && (
+          <div
+            className="mono"
+            style={{
+              marginTop: 8,
+              fontSize: 11,
+              color: 'var(--eg-red)',
+              letterSpacing: '0.1em',
+            }}
+          >
+            // Solo admins gestionan el equipo · Only admins manage the team
+          </div>
+        )}
+      </div>
+
+      {/* Create form — admin only */}
+      {isAdmin && showCreate && (
+        <section style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)' }}>
+          <div
+            className="tag-head"
+            style={{ background: 'var(--eg-yellow)', borderColor: 'var(--eg-iron)' }}
+          >
+            <span>// INVITAR PERSONA · ADD PERSON</span>
+            <button
+              className="b-btn b-btn--ghost"
+              style={{ fontSize: 11, padding: '2px 6px' }}
+              onClick={() => setShowCreate(false)}
+            >
+              ✕ cancelar
+            </button>
+          </div>
+          <div
+            style={{
+              padding: '16px 18px',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 120px 140px',
+              gap: 12,
+              alignItems: 'end',
+            }}
+          >
+            <Field
+              label="email"
+              value={form.email}
+              type="email"
+              onChange={(v) => setForm((f) => ({ ...f, email: v }))}
+              placeholder="persona@ejemplo.com"
+            />
+            <Field
+              label="nombre · name"
+              value={form.name}
+              onChange={(v) => setForm((f) => ({ ...f, name: v }))}
+              placeholder="Nombre Apellido"
+            />
+            {/* Kind toggle */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+                // tipo · kind
+              </label>
+              <select
+                value={form.kind}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    kind: e.currentTarget.value as UserKind,
+                    clientId: '',
+                  }))
+                }
+                style={SELECT_STYLE}
+              >
+                <option value="staff">staff · equipo</option>
+                <option value="client">client · cliente</option>
+              </select>
+            </div>
+            {/* Role */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+                // rol · role
+              </label>
+              <select
+                value={form.role}
+                onChange={(e) => setForm((f) => ({ ...f, role: e.currentTarget.value as UserRole }))}
+                style={SELECT_STYLE}
+              >
+                <option value="admin">Admin</option>
+                <option value="member">Miembro · Member</option>
+                <option value="viewer">Lector · Viewer</option>
+              </select>
+            </div>
+          </div>
+          {/* Client picker — conditional on kind === 'client' */}
+          {form.kind === 'client' && (
+            <div style={{ padding: '0 18px 14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 280 }}>
+                <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+                  // cliente · client (obligatorio · required)
+                </label>
+                <select
+                  value={form.clientId}
+                  onChange={(e) => setForm((f) => ({ ...f, clientId: e.currentTarget.value }))}
+                  style={{ ...SELECT_STYLE, borderColor: !form.clientId ? 'var(--eg-red)' : 'var(--eg-iron)' }}
+                >
+                  <option value="">— seleccionar cliente —</option>
+                  {(clientsList.data ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          <div
+            style={{ padding: '0 18px 16px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}
+          >
+            {createMut.isError && (
+              <span
+                className="mono"
+                style={{ color: 'var(--eg-red)', fontSize: 11, alignSelf: 'center' }}
+              >
+                // error · check fields
+              </span>
+            )}
+            <button
+              className="b-btn b-btn--ink"
+              onClick={handleCreate}
+              disabled={createDisabled}
+            >
+              {createMut.isPending ? '...' : '+ Invitar Persona · Add Person'}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Users table */}
+      <section style={{ border: '2px solid var(--eg-iron)' }}>
+        <div
+          className="tag-head"
+          style={{ background: 'var(--eg-iron)', color: 'var(--eg-yellow)', padding: '8px 14px', borderColor: 'var(--eg-iron)' }}
+        >
+          <span>// EQUIPO · TEAM · {data.length}</span>
+          <span>ACCESO POR ENLACE MÁGICO · MAGIC-LINK ACCESS</span>
+        </div>
+
+        {/* Column headers */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '44px 1.4fr 1.6fr 110px 90px 90px auto',
+            gap: 0,
+            background: 'var(--eg-paper-3)',
+            borderBottom: '1.5px solid var(--eg-iron)',
+            padding: '7px 14px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color: 'var(--eg-fg-3)',
+          }}
+        >
+          <span />
+          <span>// nombre · name</span>
+          <span>// email</span>
+          <span>// tipo · kind</span>
+          <span>// rol · role</span>
+          <span>// estado · status</span>
+          <span />
+        </div>
+
+        {data.length === 0 && (
+          <div className="gs-state" style={{ minHeight: 80 }}>
+            <span
+              className="mono"
+              style={{ color: 'var(--eg-fg-3)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase' }}
+            >
+              // sin personas · no users yet
+            </span>
+          </div>
+        )}
+
+        {data.map((u, i) => {
+          const isInactive = u.isActive === false;
+          const clientName = u.clientId ? (clientMap[u.clientId]?.name ?? u.clientId) : null;
+          return (
+            <div
+              key={u.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '44px 1.4fr 1.6fr 110px 90px 90px auto',
+                gap: 0,
+                alignItems: 'center',
+                padding: '10px 14px',
+                borderBottom: i < data.length - 1 ? '1px dashed var(--eg-rule)' : 'none',
+                background: isInactive
+                  ? 'var(--eg-paper-3)'
+                  : i % 2
+                    ? 'var(--eg-paper)'
+                    : 'var(--eg-paper-2)',
+                opacity: isInactive ? 0.55 : 1,
+              }}
+            >
+              {/* Avatar */}
+              <Avatar
+                name={u.name}
+                seed={u.id}
+                style={{ width: 30, height: 30, fontSize: 11 }}
+              />
+
+              {/* Name */}
+              <div>
+                <div
+                  className="disp"
+                  style={{ fontSize: 16, color: 'var(--eg-iron)', lineHeight: 1 }}
+                >
+                  {u.name}
+                </div>
+                {u.kind === 'client' && clientName && (
+                  <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', marginTop: 2 }}>
+                    {clientName}
+                  </div>
+                )}
+              </div>
+
+              {/* Email */}
+              <div
+                className="mono"
+                style={{
+                  fontSize: 11,
+                  color: 'var(--eg-fg-2)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {u.email}
+              </div>
+
+              {/* Kind badge */}
+              <span>
+                <span
+                  className="plate"
+                  style={{
+                    background: u.kind === 'staff' ? 'var(--eg-iron)' : 'var(--eg-gold)',
+                    color: u.kind === 'staff' ? 'var(--eg-yellow)' : 'var(--eg-iron)',
+                    fontSize: 9,
+                    borderColor: 'var(--eg-iron)',
+                  }}
+                >
+                  {u.kind}
+                </span>
+              </span>
+
+              {/* Role — inline select for admins, plain text for others */}
+              {isAdmin ? (
+                <select
+                  value={u.role}
+                  disabled={updateMut.isPending}
+                  onChange={(e) =>
+                    updateMut.mutate({
+                      id: u.id,
+                      data: { role: e.currentTarget.value as UserRole },
+                    })
+                  }
+                  style={{ ...SELECT_STYLE, fontSize: 11, padding: '3px 6px' }}
+                >
+                  <option value="admin">admin</option>
+                  <option value="member">member</option>
+                  <option value="viewer">viewer</option>
+                </select>
+              ) : (
+                <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-2)' }}>
+                  {u.role}
+                </span>
+              )}
+
+              {/* Status */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: isInactive ? 'var(--eg-rule)' : 'var(--eg-green)',
+                    flexShrink: 0,
+                  }}
+                />
+                <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)' }}>
+                  {isInactive ? 'inact.' : 'activa'}
+                </span>
+              </div>
+
+              {/* Actions — admin only */}
+              {isAdmin ? (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {/* Activate / Deactivate */}
+                  <button
+                    className="b-btn b-btn--ghost"
+                    style={{ fontSize: 10, padding: '3px 6px' }}
+                    disabled={updateMut.isPending}
+                    onClick={() =>
+                      updateMut.mutate({ id: u.id, data: { isActive: isInactive } })
+                    }
+                  >
+                    {isInactive
+                      ? 'Activar · Activate'
+                      : 'Desact. · Deactivate'}
+                  </button>
+                  {/* Invite — only active users */}
+                  {!isInactive && (
+                    <button
+                      className="b-btn b-btn--ghost"
+                      style={{ fontSize: 10, padding: '3px 6px' }}
+                      disabled={inviteMut.isPending}
+                      onClick={() => inviteMut.mutate(u.id)}
+                    >
+                      Invitar · Invite
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <span />
+              )}
+            </div>
+          );
+        })}
+      </section>
+
+      {/* Add person button — admin only */}
+      {isAdmin && !showCreate && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button className="b-btn b-btn--ink" onClick={() => setShowCreate(true)}>
+            + Persona
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawTab = searchParams.get('tab');
   const tab: Tab =
-    rawTab === 'rates' || rawTab === 'channels' || rawTab === 'intake' || rawTab === 'clients'
+    rawTab === 'rates' ||
+    rawTab === 'channels' ||
+    rawTab === 'intake' ||
+    rawTab === 'clients' ||
+    rawTab === 'team'
       ? rawTab
       : 'clients';
 
@@ -1652,6 +2134,7 @@ export function SettingsPage() {
   const ratesQ = useQuery({ queryKey: ['rates'], queryFn: () => rates.list() });
   const channelsQ = useQuery({ queryKey: ['channels'], queryFn: () => channels.list() });
   const intakeQ = useQuery({ queryKey: ['intake-sources'], queryFn: () => intake.sources.list() });
+  const usersQ = useQuery({ queryKey: ['users', 'all'], queryFn: () => users.list(true) });
 
   return (
     <div className="body">
@@ -1684,6 +2167,13 @@ export function SettingsPage() {
             count: intakeQ.data?.length ?? null,
             active: tab === 'intake',
             onClick: () => setTab('intake'),
+          },
+          {
+            es: 'Equipo',
+            en: 'Team',
+            count: usersQ.data?.length ?? null,
+            active: tab === 'team',
+            onClick: () => setTab('team'),
           },
         ]}
         right={
@@ -1761,6 +2251,7 @@ export function SettingsPage() {
         {tab === 'rates' && <RatesTab />}
         {tab === 'channels' && <ChannelsTab />}
         {tab === 'intake' && <IntakeTab />}
+        {tab === 'team' && <TeamTab />}
       </div>
     </div>
   );

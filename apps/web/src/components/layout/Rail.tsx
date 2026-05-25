@@ -51,6 +51,7 @@ export function Rail() {
   const adminItems: RailItem[] = [
     { id: 'billing', es: 'Facturación', en: 'Billing', to: '/billing' },
     { id: 'rates', es: 'Tarifas', en: 'Rates', to: '/settings?tab=rates' },
+    { id: 'team', es: 'Equipo', en: 'Team', to: '/settings?tab=team' },
     { id: 'clients', es: 'Clientes', en: 'Clients', to: '/settings?tab=clients' },
     { id: 'settings', es: 'Ajustes', en: 'Settings', to: '/settings' },
   ];
