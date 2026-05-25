@@ -27,6 +27,6 @@ describe('scrumlord boot path', () => {
     for (const job of JOBS) {
       expect(scheduled.has(job.queue)).toBe(true);
     }
-    expect(JOBS.length).toBe(5);
+    expect(JOBS.length).toBe(6);
   });
 });

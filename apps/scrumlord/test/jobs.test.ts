@@ -8,6 +8,7 @@ import { prisma, resetDb } from './helpers/db.js';
 import { runTimerReap } from '../src/jobs/timer-reap.js';
 import { runSprintAutoclose } from '../src/jobs/sprint-autoclose.js';
 import { runOutboxDispatch } from '../src/jobs/outbox-dispatch.js';
+import { runHousekeeping } from '../src/jobs/housekeeping.js';
 
 // ── Shared fixture IDs ───────────────────────────────────────────────────────
 
@@ -315,5 +316,42 @@ describe('runOutboxDispatch', () => {
 
     const row = await prisma.outbox.findFirstOrThrow();
     expect(row.processedAt).toEqual(processedEarlier);
+  });
+});
+
+// ── (d) housekeeping ─────────────────────────────────────────────────────────
+
+describe('runHousekeeping', () => {
+  it('reaps expired/revoked sessions, spent tokens, and old processed outbox — keeps fresh rows', async () => {
+    const { user } = await createBaseFixtures();
+    const now = new Date();
+    const past = new Date(now.getTime() - 60 * 60 * 1000); // 1h ago
+    const future = new Date(now.getTime() + 60 * 60 * 1000); // 1h ahead
+    const longAgo = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000); // 8 days ago
+    const recent = new Date(now.getTime() - 60 * 60 * 1000); // 1h ago
+
+    // Sessions: expired, revoked, and a live one.
+    await prisma.session.create({ data: { userId: user.id, tokenHash: 'h1', expiresAt: past } });
+    await prisma.session.create({ data: { userId: user.id, tokenHash: 'h2', expiresAt: future, revokedAt: past } });
+    const liveSession = await prisma.session.create({ data: { userId: user.id, tokenHash: 'h3', expiresAt: future } });
+
+    // Tokens: expired, consumed, and a live one.
+    await prisma.magicLinkToken.create({ data: { email: 'a@x.test', tokenHash: 't1', expiresAt: past } });
+    await prisma.magicLinkToken.create({ data: { email: 'b@x.test', tokenHash: 't2', expiresAt: future, consumedAt: past } });
+    const liveToken = await prisma.magicLinkToken.create({ data: { email: 'c@x.test', tokenHash: 't3', expiresAt: future } });
+
+    // Outbox: old-processed (reaped), recent-processed (kept), unprocessed (kept).
+    await prisma.outbox.create({ data: { type: 'x', payload: {}, processedAt: longAgo } });
+    await prisma.outbox.create({ data: { type: 'y', payload: {}, processedAt: recent } });
+    await prisma.outbox.create({ data: { type: 'z', payload: {} } });
+
+    const reaped = await runHousekeeping(now);
+    expect(reaped).toBe(5); // 2 sessions + 2 tokens + 1 outbox
+
+    expect(await prisma.session.findMany()).toHaveLength(1);
+    expect((await prisma.session.findMany())[0]!.id).toBe(liveSession.id);
+    expect(await prisma.magicLinkToken.findMany()).toHaveLength(1);
+    expect((await prisma.magicLinkToken.findMany())[0]!.id).toBe(liveToken.id);
+    expect(await prisma.outbox.findMany()).toHaveLength(2);
   });
 });

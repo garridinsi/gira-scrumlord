@@ -180,11 +180,15 @@ function SprintRow({
         {sprint.committedPoints != null && (
           <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}>
             {sprint.committedPoints} pts comprometidos
+            {isClosed && sprint.completedPoints != null && ` · ${sprint.completedPoints} hechos`}
           </span>
         )}
       </div>
 
-      <PointsBar committed={sprint.committedPoints} completed={undefined} />
+      <PointsBar
+        committed={sprint.committedPoints}
+        completed={sprint.velocity?.completedPoints ?? sprint.completedPoints ?? undefined}
+      />
 
       <div style={{ display: 'flex', gap: 6 }}>
         {isFuture && (

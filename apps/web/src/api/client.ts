@@ -14,6 +14,7 @@ import type {
   PortalOverviewView,
   InvoiceView,
   InvoiceListItemView,
+  VelocityView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -208,13 +209,15 @@ export const projects = {
 
 export interface SprintRecord {
   id: string;
-  projectKey: string;
+  projectId: string;
   name: string;
-  goal?: string;
-  startDate?: string;
-  endDate?: string;
+  goal?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   state: 'future' | 'active' | 'closed';
-  committedPoints?: number;
+  committedPoints?: number | null;
+  completedPoints?: number | null;
+  velocity?: VelocityView;
 }
 
 export const sprints = {

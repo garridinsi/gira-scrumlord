@@ -5,6 +5,7 @@
 import { escalateOpenIncidents } from '@gira/notify';
 import PgBoss from 'pg-boss';
 import { DATABASE_URL } from './config.js';
+import { runHousekeeping } from './jobs/housekeeping.js';
 import { runSprintAutoclose } from './jobs/sprint-autoclose.js';
 import { runTimerReap } from './jobs/timer-reap.js';
 import { runOutboxDispatch } from './jobs/outbox-dispatch.js';
@@ -16,6 +17,7 @@ const QUEUE_SPRINT_AUTOCLOSE = 'sprint-autoclose';
 const QUEUE_VELOCITY_SNAPSHOT = 'velocity-snapshot';
 const QUEUE_TIMER_REAP = 'timer-reap';
 const QUEUE_INCIDENT_ESCALATE = 'incident-escalate';
+const QUEUE_HOUSEKEEPING = 'housekeeping';
 
 // ── Cron cadences ────────────────────────────────────────────────────────────
 // outbox-dispatch:    every minute  (* * * * *)
@@ -68,6 +70,14 @@ export const JOBS: ScheduledJob[] = [
     run: async () => {
       const count = await escalateOpenIncidents({ intervalMinutes: 5, maxLevel: 3 });
       if (count > 0) console.log(`[scrumlord] incident-escalate re-paged ${count} incident(s)`);
+    },
+  },
+  {
+    queue: QUEUE_HOUSEKEEPING,
+    cron: '17 * * * *', // hourly — sweep expired sessions/tokens + old processed outbox
+    run: async () => {
+      const count = await runHousekeeping();
+      if (count > 0) console.log(`[scrumlord] housekeeping reaped ${count} stale row(s)`);
     },
   },
 ];
