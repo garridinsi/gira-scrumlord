@@ -74,6 +74,7 @@ export async function createIssue(
         parentId: input.parentId ?? null,
         storyPoints: input.storyPoints ?? null,
         estimateMinutes: input.estimateMinutes ?? null,
+        dueAt: input.dueAt ?? null,
         rank,
         billingMode: input.billingMode,
         fixedPriceCents: input.fixedPriceCents ?? null,

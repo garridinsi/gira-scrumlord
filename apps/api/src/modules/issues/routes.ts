@@ -120,6 +120,7 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
       billingMode: input.billingMode,
       fixedPriceCents: input.fixedPriceCents,
     };
+    if ('dueAt' in input) data.dueAt = input.dueAt ?? null;
     if (input.statusId) data.status = { connect: { id: input.statusId } };
     if (closedAt !== undefined) data.closedAt = closedAt;
     if ('assigneeId' in input) {
@@ -143,6 +144,20 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
           data: {
             type: 'issue.assigned',
             payload: { issueKey: u.key, projectKey: before.project.key, assigneeId: u.assigneeId, title: u.title },
+          },
+        });
+      }
+      if (input.statusId && u.statusId !== before.statusId) {
+        await tx.outbox.create({
+          data: {
+            type: 'issue.status_changed',
+            payload: {
+              issueKey: u.key,
+              projectKey: before.project.key,
+              title: u.title,
+              fromStatusId: before.statusId,
+              toStatusId: u.statusId,
+            },
           },
         });
       }

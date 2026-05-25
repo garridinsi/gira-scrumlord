@@ -70,6 +70,7 @@ export interface IssueView {
   storyPoints: number | null;
   estimateMinutes: number | null;
   rank: string;
+  dueAt: string | null;
   billingMode: BillingMode;
   fixedPriceCents: number | null;
   labels: LabelView[];

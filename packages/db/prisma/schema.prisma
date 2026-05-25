@@ -280,6 +280,7 @@ model Issue {
   children        Issue[]     @relation("IssueChildren")
   storyPoints     Int?
   estimateMinutes Int?
+  dueAt           DateTime? // optional deadline; drives due/overdue badges
   rank            String // fractional LexoRank for board ordering
   billingMode     BillingMode @default(hourly)
   fixedPriceCents Int? // used when billingMode = fixed

@@ -115,4 +115,20 @@ describe('issues', () => {
     expect((await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { sprintId: foreignSprint } })).statusCode).toBe(400);
     expect((await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { labelIds: [foreignLabel] } })).statusCode).toBe(400);
   });
+
+  it('round-trips a due date and emits a status-changed event on column moves', async () => {
+    const { cookie, projectKey, byName } = await setup();
+    const due = '2026-07-01T00:00:00.000Z';
+    const created = await create(app, cookie, { projectKey, title: 'With deadline', dueAt: due });
+    expect(created.json().dueAt).toBe(due);
+
+    await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { statusId: byName['In Progress']!.id } });
+    const event = await prisma.outbox.findFirst({ where: { type: 'issue.status_changed' } });
+    expect(event).not.toBeNull();
+    expect((event!.payload as { issueKey: string }).issueKey).toBe('GIRA-1');
+
+    // Clearing the due date sticks.
+    const cleared = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { dueAt: null } });
+    expect(cleared.json().dueAt).toBeNull();
+  });
 });

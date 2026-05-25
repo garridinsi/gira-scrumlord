@@ -163,6 +163,7 @@ export function toIssueView(i: IssueWithRelations, projectKey?: string): IssueVi
     storyPoints: i.storyPoints,
     estimateMinutes: i.estimateMinutes,
     rank: i.rank,
+    dueAt: i.dueAt ? i.dueAt.toISOString() : null,
     billingMode: i.billingMode,
     fixedPriceCents: i.fixedPriceCents,
     labels: (i.labels ?? []).map(toLabelView),
