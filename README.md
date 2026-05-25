@@ -69,6 +69,7 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 | Invoicing (generate → issue → pay) | ✅ | Turns logged hours into a frozen bill: each line snapshots the rate at generation, so reprinting an old invoice never lies. No hour billed twice. Printable receipt. |
 | Velocity reports | ✅ | Real committed-vs-completed points. Still rendered as a hurricane. Soothing. |
 | Passwordless auth (magic links) | ✅ | OIDC-ready. The first login to a fresh install becomes the dark lord (admin). |
+| Team & user management | ✅ | Admins onboard people (staff or client logins) from Settings → Equipo; set roles, deactivate, and email a one-click sign-in invite. No passwords to leak. |
 | User permissions & client isolation | ✅ | **NOT** everyone is admin anymore. We learned. Clients see only their own data, enforced server-side. |
 | `sauron` — audit log | ✅ | Append-only. Read-only. Listens on **port 666**. It only watches. Don't touch. |
 | `scrumlord` — the daemon | ✅ | A real `pg-boss` worker. Governs the dailies: rolls sprints, reaps timers, drains the outbox. |
@@ -79,7 +80,7 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 | Client portal | ✅ | Clients log in and get their own world: open/done/in-progress, time, money, their invoices, and a form to file requests (capped to `medium` — no self-declared emergencies). |
 | Dark mode | ✅ | Still the only mode. Darkness is the PM's natural state. |
 | AI | ❌ | We vibe by hand here, the way the gods intended. |
-| Tests | ✅ | **124 of them.** The README used to say we don't test. The README was coping. |
+| Tests | ✅ | **130 of them.** The README used to say we don't test. The README was coping. |
 
 ---
 
