@@ -77,6 +77,18 @@ describe('invoicing (M5)', () => {
     expect(reread.json().lines[0]).toMatchObject({ hourlyCents: 6000, amountCents: 12000 });
   });
 
+  it('refuses to generate when an hourly issue has no rate (no silent €0)', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Unrated work' });
+    await logWork(staff.cookie, 'ACME-1', 120);
+    // No rate configured at any scope.
+    const gen = await generate(staff.cookie, client.id);
+    expect(gen.statusCode).toBe(400);
+    expect(gen.json().error ?? gen.json().message).toMatch(/rate/i);
+    // And nothing was created.
+    expect((await app.inject({ method: 'GET', url: `/clients/${client.id}/invoices`, headers: { cookie: staff.cookie } })).json()).toEqual([]);
+  });
+
   it('never bills the same hours twice', async () => {
     const { client, staff } = await setup();
     await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });

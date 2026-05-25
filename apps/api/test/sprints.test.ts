@@ -80,4 +80,38 @@ describe('sprints + backlog + velocity', () => {
     expect(backlog.json()).toHaveLength(1);
     expect(backlog.json()[0].title).toBe('In backlog');
   });
+
+  it('refuses to re-start a sprint or run two active sprints in a project', async () => {
+    const { user, cookie } = await actingAs({ role: 'member' });
+    const { projectKey } = await seedProject({ reporterId: user.id });
+    const mk = (name: string) =>
+      app.inject({ method: 'POST', url: `/projects/${projectKey}/sprints`, headers: { cookie }, payload: { name } }).then((r) => r.json().id);
+    const a = await mk('A');
+    const b = await mk('B');
+
+    expect((await app.inject({ method: 'POST', url: `/sprints/${a}/start`, headers: { cookie } })).statusCode).toBe(200);
+    // can't re-start A (no longer future)
+    expect((await app.inject({ method: 'POST', url: `/sprints/${a}/start`, headers: { cookie } })).statusCode).toBe(409);
+    // can't start B while A is active
+    expect((await app.inject({ method: 'POST', url: `/sprints/${b}/start`, headers: { cookie } })).statusCode).toBe(409);
+  });
+
+  it('returns unfinished issues to the backlog when a sprint closes', async () => {
+    const { user, cookie } = await actingAs({ role: 'member' });
+    const { projectKey, byName } = await seedProject({ reporterId: user.id });
+    const sprintId = (
+      await app.inject({ method: 'POST', url: `/projects/${projectKey}/sprints`, headers: { cookie }, payload: { name: 'S' } })
+    ).json().id;
+    for (const t of ['done one', 'unfinished one']) {
+      await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey, title: t, sprintId } });
+    }
+    await app.inject({ method: 'POST', url: `/sprints/${sprintId}/start`, headers: { cookie } });
+    await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { statusId: byName.Done!.id } });
+
+    await app.inject({ method: 'POST', url: `/sprints/${sprintId}/close`, headers: { cookie } });
+
+    // The unfinished GIRA-2 is back in the backlog; the done GIRA-1 stays put.
+    const backlog = await app.inject({ method: 'GET', url: `/projects/${projectKey}/backlog`, headers: { cookie } });
+    expect(backlog.json().map((i: { key: string }) => i.key)).toEqual(['GIRA-2']);
+  });
 });

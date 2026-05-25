@@ -81,6 +81,35 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
       closedAt = status.category === 'done' ? (before.closedAt ?? new Date()) : null;
     }
 
+    // Every connected entity must belong to this issue's project (and a client
+    // assignee to this project's client) — otherwise you could graft another
+    // client's sprint/parent/labels/assignee onto the issue.
+    if (input.sprintId) {
+      const s = await prisma.sprint.findUnique({ where: { id: input.sprintId }, select: { projectId: true } });
+      if (!s || s.projectId !== before.projectId) throw badRequest('invalid sprintId');
+    }
+    if (input.parentId) {
+      const p = await prisma.issue.findUnique({ where: { id: input.parentId }, select: { projectId: true } });
+      if (!p || p.projectId !== before.projectId) throw badRequest('invalid parentId');
+    }
+    if (input.labelIds?.length) {
+      const labels = await prisma.label.findMany({
+        where: { id: { in: input.labelIds } },
+        select: { projectId: true },
+      });
+      if (labels.length !== input.labelIds.length || labels.some((l) => l.projectId !== before.projectId)) {
+        throw badRequest('invalid labelIds');
+      }
+    }
+    if (input.assigneeId) {
+      const a = await prisma.user.findUnique({
+        where: { id: input.assigneeId },
+        select: { isActive: true, kind: true, clientId: true },
+      });
+      if (!a || !a.isActive) throw badRequest('invalid assigneeId');
+      if (a.kind === 'client' && a.clientId !== before.project.clientId) throw badRequest('invalid assigneeId');
+    }
+
     const data: Prisma.IssueUpdateInput = {
       title: input.title,
       description: input.description,

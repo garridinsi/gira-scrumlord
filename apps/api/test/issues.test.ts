@@ -100,4 +100,19 @@ describe('issues', () => {
     });
     expect(res.statusCode).toBe(403);
   });
+
+  it('rejects grafting another project’s sprint/label onto an issue (PATCH)', async () => {
+    const { user, cookie, projectKey } = await setup();
+    await create(app, cookie, { projectKey, title: 'Mine' }); // GIRA-1
+    const other = await seedProject({ reporterId: user.id, key: 'OTHR' });
+    const foreignSprint = (
+      await app.inject({ method: 'POST', url: `/projects/${other.projectKey}/sprints`, headers: { cookie }, payload: { name: 'X' } })
+    ).json().id;
+    const foreignLabel = (
+      await app.inject({ method: 'POST', url: `/projects/${other.projectKey}/labels`, headers: { cookie }, payload: { name: 'foreign' } })
+    ).json().id;
+
+    expect((await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { sprintId: foreignSprint } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { labelIds: [foreignLabel] } })).statusCode).toBe(400);
+  });
 });

@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { prisma } from '@gira/db';
+import { velocity } from '@gira/domain';
 import { createSprintSchema, updateSprintSchema } from '@gira/shared';
 import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
+import { conflict } from '../../lib/http-error.js';
 import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
 import { toIssueView, toSprintView } from '../../lib/views.js';
 import { issueInclude } from '../issues/service.js';
@@ -107,6 +109,14 @@ export async function sprintRoutes(app: FastifyInstance): Promise<void> {
     const { id } = req.params as { id: string };
     const sprint = await loadSprintOr404(id);
     assertCanAccessProject(user, { clientId: sprint.project.clientId });
+    // Guard the committed-points snapshot: only a future sprint can be started, and
+    // a project may have at most one active sprint at a time.
+    if (sprint.state !== 'future') throw conflict('only a future sprint can be started');
+    const alreadyActive = await prisma.sprint.findFirst({
+      where: { projectId: sprint.projectId, state: 'active' },
+      select: { id: true },
+    });
+    if (alreadyActive) throw conflict('this project already has an active sprint');
     const v = await computeVelocity(id);
     const updated = await prisma.$transaction(async (tx) => {
       const s = await tx.sprint.update({
@@ -135,8 +145,22 @@ export async function sprintRoutes(app: FastifyInstance): Promise<void> {
     const { id } = req.params as { id: string };
     const sprint = await loadSprintOr404(id);
     assertCanAccessProject(user, { clientId: sprint.project.clientId });
-    const v = await computeVelocity(id, sprint.committedPoints);
-    const updated = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      // Snapshot velocity atomically with the close so it can't drift, then return
+      // unfinished issues to the backlog (else they're orphaned to a closed sprint
+      // and vanish from both board and backlog).
+      const issues = await tx.issue.findMany({
+        where: { sprintId: id },
+        include: { status: { select: { category: true } } },
+      });
+      const v = velocity(
+        issues.map((i) => ({ storyPoints: i.storyPoints, statusCategory: i.status.category })),
+        sprint.committedPoints,
+      );
+      await tx.issue.updateMany({
+        where: { sprintId: id, status: { category: { not: 'done' } } },
+        data: { sprintId: null },
+      });
       const s = await tx.sprint.update({
         where: { id },
         data: { state: 'closed', completedPoints: v.completedPoints, endDate: sprint.endDate ?? new Date() },
@@ -146,10 +170,10 @@ export async function sprintRoutes(app: FastifyInstance): Promise<void> {
         action: 'sprint.close',
         entityType: 'Sprint',
         entityId: id,
-        after: { completedPoints: s.completedPoints },
+        after: { completedPoints: s.completedPoints, carriedOver: v.totalCount - v.completedCount },
       });
-      return s;
+      return { s, v };
     });
-    return toSprintView(updated, v);
+    return toSprintView(result.s, result.v);
   });
 }

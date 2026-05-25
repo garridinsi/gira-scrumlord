@@ -75,20 +75,29 @@ export async function dispatchEvent(event: DomainEvent) {
   return { channelsMatched: channels.length, delivered, incidentId };
 }
 
-/** Drain unprocessed Outbox events. Each is marked processed so it isn't replayed. */
+/**
+ * Drain unprocessed Outbox events. An event is marked processed ONLY after a
+ * successful dispatch — an unexpected throw (e.g. a DB blip mid-delivery) leaves
+ * processedAt null so the next run retries it, instead of silently losing it
+ * (which, for emergency paging, would mean a missed page).
+ */
 export async function dispatchOutboxBatch(limit = 100): Promise<number> {
   const events = await prisma.outbox.findMany({
     where: { processedAt: null },
     orderBy: { createdAt: 'asc' },
     take: limit,
   });
+  let processed = 0;
   for (const e of events) {
     try {
       await dispatchEvent({ type: e.type, payload: (e.payload as Record<string, unknown>) ?? {} });
     } catch {
-      // swallow per-event delivery errors; the Notification row records failures.
+      // Leave it unprocessed for retry. Per-channel delivery failures are already
+      // captured on the Notification row inside dispatchEvent and do NOT throw.
+      continue;
     }
     await prisma.outbox.update({ where: { id: e.id }, data: { processedAt: new Date() } });
+    processed += 1;
   }
-  return events.length;
+  return processed;
 }

@@ -149,6 +149,7 @@ export async function generateInvoice(
     const alreadyBilled = new Set(priorClaims.map((w) => w.issueId));
 
     const lineData: Prisma.InvoiceLineCreateWithoutInvoiceInput[] = [];
+    const unrated: string[] = [];
     let subtotal = 0;
     for (const issue of issues.sort((a, b) => a.key.localeCompare(b.key))) {
       const minutes = byIssue.get(issue.id)?.minutes ?? 0;
@@ -175,6 +176,11 @@ export async function generateInvoice(
         fallback: toResolved(defaultRate),
       });
       const hourlyCents = resolved?.hourlyCents ?? null;
+      if (hourlyCents == null) {
+        // Billable hours with no rate at any scope would silently bill €0 — refuse.
+        unrated.push(issue.key);
+        continue;
+      }
       const amount = accruedCents({ billingMode: 'hourly', billableMinutes: minutes, hourlyCents });
       subtotal += amount;
       lineData.push({
@@ -185,6 +191,12 @@ export async function generateInvoice(
         hourlyCents,
         amountCents: amount,
       });
+    }
+
+    if (unrated.length > 0) {
+      throw badRequest(
+        `no hourly rate configured for ${unrated.join(', ')} — set a rate before invoicing`,
+      );
     }
 
     const year = new Date().getFullYear();
