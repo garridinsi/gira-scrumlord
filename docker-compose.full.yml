@@ -8,6 +8,11 @@
 #
 # For real deploys: put a TLS terminator in front of `web`, set a strong
 # SESSION_SECRET and COOKIE_SECURE=true, and point SMTP_* at a real mail server.
+#
+# Heads-up: docker compose auto-reads a repo-root `.env` for ${VAR} interpolation.
+# A *dev* .env (APP_URL=…5173, etc.) will override the defaults below — fine on a
+# fresh clone (no .env), but to run the demo against your dev .env use a clean env,
+# e.g.  APP_URL=http://localhost:8080 docker compose -f docker-compose.full.yml up
 
 x-env: &env
   NODE_ENV: production
