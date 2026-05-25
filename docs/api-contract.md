@@ -46,7 +46,11 @@ Seed login for local dev: **`boss@example.test`** (admin).
 ## Endpoints
 
 ### Users / clients
-- `GET /users` → `UserView[]` (assignee pickers; scoped — clients see only their own people)
+- `GET /users` → `UserView[]` (assignee pickers; scoped — clients see only their own people). Admins may pass `?includeInactive=true` to also list deactivated users (for the Team admin view). `UserView` now carries `isActive`.
+- `POST /users` (admin, `createUserSchema`: `{ email, name, kind: staff|client, role: admin|member|viewer, clientId? }` — `clientId` required iff `kind=client`) → creates the user **+ a magic-link identity** so they can sign in. `409` on duplicate email.
+- `PATCH /users/:id` (admin, `updateUserSchema`: `{ name?, role?, isActive?, clientId? }`) — change role, rename, deactivate/reactivate, reassign client. Guards: can't self-deactivate, can't drop your own admin, can't remove the last active admin (`400`).
+- `POST /users/:id/invite` (admin) → emails the user a fresh single-use sign-in link → `{ sent }`.
+- **Onboarding model:** there is no open signup. An admin creates the user here; the person then signs in via the normal magic-link flow (or the admin clicks Invite). The very first login to a fresh install bootstraps an admin.
 - `GET /clients` → admin only; `POST /clients` (`createClientSchema`); `GET|PATCH|DELETE /clients/:id`
 
 ### Projects / workflow

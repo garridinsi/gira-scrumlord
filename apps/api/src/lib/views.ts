@@ -43,7 +43,15 @@ export function toIntakeSourceView(s: IntakeSource): IntakeSourceView {
 }
 
 export function toUserView(u: User): UserView {
-  return { id: u.id, email: u.email, name: u.name, kind: u.kind, role: u.role, clientId: u.clientId };
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    kind: u.kind,
+    role: u.role,
+    clientId: u.clientId,
+    isActive: u.isActive,
+  };
 }
 
 export function toLabelView(l: Label): LabelView {

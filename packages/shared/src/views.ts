@@ -34,6 +34,8 @@ export interface UserView {
   kind: UserKind;
   role: UserRole;
   clientId: string | null;
+  /** Present on management/list responses; omitted from the session identity. */
+  isActive?: boolean;
 }
 
 export interface LabelView {

@@ -34,4 +34,88 @@ describe('users', () => {
     const res = await app.inject({ method: 'GET', url: '/users', headers: { cookie: a.cookie } });
     expect(res.json().map((u: { name: string }) => u.name)).toEqual(['A person']);
   });
+
+  // ── management (M6) ────────────────────────────────────────────────────────
+  const post = (cookie: string, url: string, payload: object) =>
+    app.inject({ method: 'POST', url, headers: { cookie }, payload });
+  const patch = (cookie: string, url: string, payload: object) =>
+    app.inject({ method: 'PATCH', url, headers: { cookie }, payload });
+
+  it('admin onboards a teammate who can then sign in by email', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const res = await post(admin.cookie, '/users', {
+      email: 'rex@example.test',
+      name: 'Rex',
+      kind: 'staff',
+      role: 'member',
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toMatchObject({ email: 'rex@example.test', kind: 'staff', role: 'member', isActive: true });
+
+    // The new user now exists with a magic-link identity → the login flow mints a token.
+    const link = await app.inject({
+      method: 'POST',
+      url: '/auth/magic-link',
+      payload: { email: 'rex@example.test' },
+    });
+    expect(link.statusCode).toBe(202);
+    expect(await prisma.magicLinkToken.findFirst({ where: { email: 'rex@example.test' } })).not.toBeNull();
+  });
+
+  it('creates a client user bound to a client, and rejects one without a client', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const client = await prisma.client.create({ data: { name: 'Acme', slug: 'acme' } });
+
+    const ok = await post(admin.cookie, '/users', {
+      email: 'wile@acme.test',
+      name: 'Wile',
+      kind: 'client',
+      clientId: client.id,
+    });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json()).toMatchObject({ kind: 'client', clientId: client.id });
+
+    const bad = await post(admin.cookie, '/users', { email: 'orphan@acme.test', name: 'Orphan', kind: 'client' });
+    expect(bad.statusCode).toBe(400);
+  });
+
+  it('rejects duplicate email and non-admin creators', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    await post(admin.cookie, '/users', { email: 'dup@example.test', name: 'A' });
+    expect((await post(admin.cookie, '/users', { email: 'dup@example.test', name: 'B' })).statusCode).toBe(409);
+
+    const member = await actingAs({ role: 'member' });
+    expect((await post(member.cookie, '/users', { email: 'x@example.test', name: 'X' })).statusCode).toBe(403);
+  });
+
+  it('changes roles but blocks self-demotion and removing the last admin', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const other = await makeUser({ role: 'member', name: 'Other' });
+
+    expect((await patch(admin.cookie, `/users/${other.id}`, { role: 'admin' })).json().role).toBe('admin');
+    expect((await patch(admin.cookie, `/users/${admin.user.id}`, { role: 'member' })).statusCode).toBe(400);
+    // Two admins exist now, so demoting the other one is allowed.
+    expect((await patch(admin.cookie, `/users/${other.id}`, { role: 'viewer' })).json().role).toBe('viewer');
+  });
+
+  it('deactivates a user; deactivated are hidden from the default list', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const victim = await makeUser({ role: 'member', name: 'Gone' });
+
+    expect((await patch(admin.cookie, `/users/${victim.id}`, { isActive: false })).json().isActive).toBe(false);
+
+    const def = await app.inject({ method: 'GET', url: '/users', headers: { cookie: admin.cookie } });
+    expect(def.json().some((u: { id: string }) => u.id === victim.id)).toBe(false);
+    const all = await app.inject({ method: 'GET', url: '/users?includeInactive=true', headers: { cookie: admin.cookie } });
+    expect(all.json().some((u: { id: string }) => u.id === victim.id)).toBe(true);
+  });
+
+  it('invite mints a sign-in link for an active user', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const u = (await post(admin.cookie, '/users', { email: 'invitee@example.test', name: 'Inv' })).json();
+    const res = await post(admin.cookie, `/users/${u.id}/invite`, {});
+    expect(res.statusCode).toBe(200);
+    expect(res.json().sent).toBe(true);
+    expect(await prisma.magicLinkToken.findFirst({ where: { email: 'invitee@example.test' } })).not.toBeNull();
+  });
 });

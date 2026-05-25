@@ -38,6 +38,8 @@ import type {
   UpsertRate,
   IssueFilter,
   CreateRequest,
+  CreateUser,
+  UpdateUser,
 } from '@gira/shared';
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000';
@@ -98,7 +100,12 @@ function json(body: unknown): RequestInit {
 // ---------------------------------------------------------------------------
 
 export const users = {
-  list: () => request<UserView[]>('/users'),
+  list: (includeInactive = false) =>
+    request<UserView[]>(`/users${includeInactive ? '?includeInactive=true' : ''}`),
+  create: (data: CreateUser) => request<UserView>('/users', { method: 'POST', ...json(data) }),
+  update: (id: string, data: UpdateUser) =>
+    request<UserView>(`/users/${id}`, { method: 'PATCH', ...json(data) }),
+  invite: (id: string) => request<{ sent: boolean }>(`/users/${id}/invite`, { method: 'POST' }),
 };
 
 // ---------------------------------------------------------------------------

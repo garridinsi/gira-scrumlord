@@ -7,6 +7,7 @@ export * from './client.js';
 export * from './project.js';
 export * from './issue.js';
 export * from './sprint.js';
+export * from './user.js';
 export * from './worklog.js';
 export * from './rate.js';
 export * from './channel.js';
