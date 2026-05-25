@@ -84,5 +84,32 @@ describe('notifications + incidents API', () => {
     const ack = await app.inject({ method: 'POST', url: `/incidents/${incident.id}/ack`, headers: { cookie } });
     expect(ack.statusCode).toBe(200);
     expect(ack.json().status).toBe('acked');
+
+    const resolve = await app.inject({ method: 'POST', url: `/incidents/${incident.id}/resolve`, headers: { cookie } });
+    expect(resolve.statusCode).toBe(200);
+    expect(resolve.json().status).toBe('resolved');
+  });
+
+  it('refuses an SSRF-prone webhook target at write time', async () => {
+    const { cookie } = await actingAs({ role: 'member' });
+    for (const target of ['http://169.254.169.254/latest/meta-data', 'http://localhost:6660/audit', 'http://127.0.0.1/']) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/channels',
+        headers: { cookie },
+        payload: { name: 'evil', kind: 'webhook', target, events: ['issue.emergency'] },
+      });
+      expect(res.statusCode).toBe(400);
+    }
+  });
+
+  it('refuses cross-origin mutations (CSRF guard)', async () => {
+    const evil = await app.inject({
+      method: 'POST',
+      url: '/auth/magic-link',
+      headers: { origin: 'https://evil.example' },
+      payload: { email: 'boss@example.test' },
+    });
+    expect(evil.statusCode).toBe(403);
   });
 });

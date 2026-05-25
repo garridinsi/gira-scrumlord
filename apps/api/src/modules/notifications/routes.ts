@@ -1,17 +1,29 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { type Prisma, prisma } from '@gira/db';
-import { deliver } from '@gira/notify';
+import { assertSafeWebhookUrl, deliver } from '@gira/notify';
 import { createChannelSchema, incidentStatus, updateChannelSchema } from '@gira/shared';
 import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
-import { notFound } from '../../lib/http-error.js';
+import { badRequest, notFound } from '../../lib/http-error.js';
 import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
 import { toChannelView, toIncidentView } from '../../lib/views.js';
 
 const incidentInclude = {
   issue: { select: { key: true, title: true, project: { select: { key: true, clientId: true } } } },
 } satisfies Prisma.IncidentInclude;
+
+// Reject SSRF-prone webhook targets at write time (loopback/private/link-local),
+// not just at delivery — so a bad target can never be stored.
+function validateWebhookTarget(kind: string, target?: string): void {
+  if (kind === 'webhook' && target) {
+    try {
+      assertSafeWebhookUrl(target);
+    } catch (e) {
+      throw badRequest((e as Error).message);
+    }
+  }
+}
 
 export async function notificationRoutes(app: FastifyInstance): Promise<void> {
   // ── channels (staff config) ─────────────────────────────────────────────
@@ -25,6 +37,7 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
     const user = currentUser(req);
     assertCanWrite(user);
     const input = createChannelSchema.parse(req.body);
+    validateWebhookTarget(input.kind, input.target);
     if (input.scope === 'project') {
       const project = await prisma.project.findUnique({ where: { id: input.projectId! } });
       if (!project) throw notFound('project not found');
@@ -54,6 +67,11 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
     assertCanWrite(currentUser(req));
     const { id } = req.params as { id: string };
     const input = updateChannelSchema.parse(req.body);
+    if (input.target !== undefined) {
+      const existing = await prisma.notificationChannel.findUnique({ where: { id }, select: { kind: true } });
+      if (!existing) throw notFound('channel not found');
+      validateWebhookTarget(existing.kind, input.target);
+    }
     const channel = await prisma.notificationChannel.update({ where: { id }, data: input });
     return toChannelView(channel);
   });

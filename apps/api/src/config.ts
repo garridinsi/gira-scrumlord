@@ -36,6 +36,15 @@ const envSchema = z.object({
   MAIL_FROM: z.string().default('gira-scrumlord <no-reply@gira.local>'),
 });
 
-export const config = envSchema.parse(process.env);
+const parsed = envSchema.parse(process.env);
+
+export const config = {
+  ...parsed,
+  // Secure cookies default ON in production (unless explicitly overridden), so a
+  // deploy that forgets to set COOKIE_SECURE doesn't ship the session cookie over
+  // plain HTTP. Dev/test stay false so plain-HTTP localhost still works.
+  COOKIE_SECURE:
+    process.env.COOKIE_SECURE != null ? parsed.COOKIE_SECURE : parsed.NODE_ENV === 'production',
+};
 export const APP_VERSION = '0.1.0';
 export type AppConfig = typeof config;
