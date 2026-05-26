@@ -28,20 +28,31 @@ export function Rail() {
     queryFn: () => projects.backlog(key!),
     enabled: !!key,
   });
+  const project = useQuery({
+    queryKey: ['project', key],
+    queryFn: () => projects.get(key!),
+    enabled: !!key,
+  });
+  const isMonthly = project.data?.cadence === 'monthly';
   const sprints = useQuery({
     queryKey: ['sprints', key],
     queryFn: () => projects.sprints.list(key!),
-    enabled: !!key,
+    enabled: !!key && !isMonthly,
   });
   const health = useQuery({ queryKey: ['health'], queryFn: () => system.health(), refetchInterval: 30_000 });
 
   const boardTotal = board.data?.columns.reduce((n, c) => n + c.issues.length, 0);
   const p = key ? `/projects/${key}` : '';
 
+  // Maintenance projects organize by calendar month, not sprints.
+  const cadenceItem: RailItem = isMonthly
+    ? { id: 'monthly', es: 'Mensual', en: 'Monthly', to: `${p}/monthly` }
+    : { id: 'sprints', es: 'Sprints', en: 'Sprints', to: `${p}/sprints`, num: sprints.data ? String(sprints.data.length) : '' };
+
   const projectItems: RailItem[] = [
     { id: 'board', es: 'Tablero', en: 'Board', to: `${p}/board`, num: boardTotal != null ? String(boardTotal) : '' },
     { id: 'backlog', es: 'Pendientes', en: 'Backlog', to: `${p}/backlog`, num: backlog.data ? String(backlog.data.length) : '' },
-    { id: 'sprints', es: 'Sprints', en: 'Sprints', to: `${p}/sprints`, num: sprints.data ? String(sprints.data.length) : '' },
+    cadenceItem,
     { id: 'summary', es: 'Resumen', en: 'Summary', to: `${p}` },
   ];
   const loreItems: RailItem[] = [
