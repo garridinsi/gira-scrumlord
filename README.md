@@ -64,6 +64,7 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 |---|---|---|
 | Issues & Kanban board (drag-drop) | ✅ | Real `@dnd-kit` board with fractional ranks. Columns still warn you past 5 cards in _In Progress_. Game mechanic, now documented. |
 | Backlog & sprints | ✅ | They start. Closing one snapshots velocity before it collapses into the next, like a cyclical universe. |
+| Monthly / maintenance cadence | ✅ | Not everything is a sprint. Flag a project _Monthly_ and it tracks + bills by calendar month — hours, accrued cost, one-click "invoice this month". |
 | Time tracking (worklogs + timers) | ✅ | One running timer per human. `scrumlord` reaps the ones you forget after 12h. |
 | Money (rates + accrued cost) | ✅ | Rates resolve issue → project → client → default. Stored in cents, because floats lie about money. |
 | Invoicing (generate → issue → pay) | ✅ | Turns logged hours into a frozen bill: each line snapshots the rate at generation, so reprinting an old invoice never lies. No hour billed twice. Printable receipt. |
@@ -81,7 +82,7 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 | Client portal | ✅ | Clients log in and get their own world: open/done/in-progress, time, money, their invoices, and a form to file requests (capped to `medium` — no self-declared emergencies). |
 | Dark mode | ✅ | Still the only mode. Darkness is the PM's natural state. |
 | AI | ❌ | We vibe by hand here, the way the gods intended. |
-| Tests | ✅ | **138 of them.** The README used to say we don't test. The README was coping. |
+| Tests | ✅ | **140 of them.** The README used to say we don't test. The README was coping. |
 
 ---
 
