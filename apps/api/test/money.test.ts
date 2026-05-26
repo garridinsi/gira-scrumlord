@@ -100,4 +100,31 @@ describe('money: rates + accrued cost', () => {
     const res = await setRate(cookie, { scope: 'default', hourlyCents: 9999 });
     expect(res.statusCode).toBe(403);
   });
+
+  it('rolls time + accrued cost up by calendar month (the monthly lens)', async () => {
+    const { user, cookie } = await actingAs({ role: 'member' });
+    const { projectKey } = await seedProject({ reporterId: user.id });
+    await setRate(cookie, { scope: 'default', hourlyCents: 6000 }); // €60/h
+    const created = await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey, title: 'Maint' } });
+    const issueId = created.json().id as string;
+
+    // Two worklogs in different calendar months (loggedAt set directly).
+    await prisma.worklog.create({ data: { issueId, userId: user.id, minutes: 120, billable: true, loggedAt: new Date('2026-03-10T09:00:00Z') } });
+    await prisma.worklog.create({ data: { issueId, userId: user.id, minutes: 60, billable: true, loggedAt: new Date('2026-04-02T09:00:00Z') } });
+
+    const res = await app.inject({ method: 'GET', url: `/projects/${projectKey}/monthly`, headers: { cookie } });
+    expect(res.statusCode).toBe(200);
+    const months = res.json().months as Array<{ month: string; billableMinutes: number; accruedCents: number }>;
+    expect(months.map((m) => m.month)).toEqual(['2026-04', '2026-03']); // most recent first
+    expect(months[0]).toMatchObject({ billableMinutes: 60, accruedCents: 6000 }); // 1h @ 60
+    expect(months[1]).toMatchObject({ billableMinutes: 120, accruedCents: 12000 }); // 2h @ 60
+  });
+
+  it('persists project cadence (sprints | monthly)', async () => {
+    const { cookie } = await actingAs({ role: 'admin' });
+    const made = await app.inject({ method: 'POST', url: '/projects', headers: { cookie }, payload: { key: 'MNT', name: 'Maintenance', cadence: 'monthly' } });
+    expect(made.json().cadence).toBe('monthly');
+    const patched = await app.inject({ method: 'PATCH', url: '/projects/MNT', headers: { cookie }, payload: { cadence: 'sprints' } });
+    expect(patched.json().cadence).toBe('sprints');
+  });
 });

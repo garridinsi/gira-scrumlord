@@ -166,6 +166,20 @@ export interface ProjectSummaryView {
   activeSprint: { id: string; name: string; velocity: VelocityView } | null;
 }
 
+/** One calendar month of logged time + accrued cost (the maintenance/monthly lens). */
+export interface MonthlyRollupView {
+  month: string; // 'YYYY-MM'
+  totalMinutes: number;
+  billableMinutes: number;
+  accruedCents: number;
+}
+
+export interface ProjectMonthlyView {
+  projectKey: string;
+  currency: string;
+  months: MonthlyRollupView[]; // most recent first
+}
+
 export interface TimerView {
   id: string;
   issueKey: string;

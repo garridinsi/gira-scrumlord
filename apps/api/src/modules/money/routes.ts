@@ -7,7 +7,7 @@ import { currentUser, requireAuth } from '../../lib/auth.js';
 import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
 import { loadIssueOr404 } from '../issues/service.js';
 import { getProjectByKeyOr404 } from '../projects/service.js';
-import { computeIssueCost, computeProjectSummary } from './service.js';
+import { computeIssueCost, computeProjectMonthly, computeProjectSummary } from './service.js';
 
 export async function moneyRoutes(app: FastifyInstance): Promise<void> {
   // Rate config is staff-only (clients never see how rates are set).
@@ -78,5 +78,15 @@ export async function moneyRoutes(app: FastifyInstance): Promise<void> {
     const project = await getProjectByKeyOr404(key);
     assertCanAccessProject(currentUser(req), project);
     return computeProjectSummary(key);
+  });
+
+  // Per-calendar-month time + accrued cost (the maintenance/monthly lens).
+  app.get('/projects/:key/monthly', { preHandler: requireAuth }, async (req) => {
+    const { key } = req.params as { key: string };
+    const { months } = req.query as { months?: string };
+    const project = await getProjectByKeyOr404(key);
+    assertCanAccessProject(currentUser(req), project);
+    const n = Math.min(Math.max(Number(months) || 12, 1), 36);
+    return computeProjectMonthly(key, n);
   });
 }

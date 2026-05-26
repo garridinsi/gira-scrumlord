@@ -20,6 +20,7 @@ export async function createProject(input: CreateProject, actorId: string): Prom
         key: input.key,
         name: input.name,
         description: input.description ?? '',
+        cadence: input.cadence,
         clientId: input.clientId ?? null,
       },
     });

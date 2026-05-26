@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { z } from 'zod';
-import { statusCategory } from './enums.js';
+import { projectCadence, statusCategory } from './enums.js';
 
 export const projectKey = z
   .string()
@@ -11,6 +11,7 @@ export const createProjectSchema = z.object({
   key: projectKey,
   name: z.string().trim().min(1).max(120),
   description: z.string().max(5000).optional(),
+  cadence: projectCadence.default('sprints'),
   clientId: z.string().cuid().nullish(),
 });
 export type CreateProject = z.infer<typeof createProjectSchema>;
@@ -18,6 +19,7 @@ export type CreateProject = z.infer<typeof createProjectSchema>;
 export const updateProjectSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().max(5000).optional(),
+  cadence: projectCadence.optional(),
   clientId: z.string().cuid().nullish(),
 });
 export type UpdateProject = z.infer<typeof updateProjectSchema>;

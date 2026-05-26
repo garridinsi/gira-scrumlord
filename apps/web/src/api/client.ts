@@ -15,6 +15,7 @@ import type {
   InvoiceView,
   InvoiceListItemView,
   VelocityView,
+  ProjectMonthlyView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -163,6 +164,7 @@ export interface ProjectRecord {
   key: string;
   name: string;
   description?: string;
+  cadence?: 'sprints' | 'monthly';
   clientId?: string | null;
 }
 
@@ -195,6 +197,8 @@ export const projects = {
   board: (key: string) => request<BoardView>(`/projects/${key}/board`),
   backlog: (key: string) => request<IssueView[]>(`/projects/${key}/backlog`),
   summary: (key: string) => request<ProjectSummaryView>(`/projects/${key}/summary`),
+  monthly: (key: string, months?: number) =>
+    request<ProjectMonthlyView>(`/projects/${key}/monthly${months ? `?months=${months}` : ''}`),
 
   sprints: {
     list: (key: string) => request<SprintRecord[]>(`/projects/${key}/sprints`),

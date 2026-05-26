@@ -4,7 +4,7 @@
 
 import { type Rate, prisma } from '@gira/db';
 import { type ResolvedRate, accruedCents, resolveRate } from '@gira/domain';
-import type { CostView, ProjectSummaryView } from '@gira/shared';
+import type { CostView, ProjectMonthlyView, ProjectSummaryView } from '@gira/shared';
 import { notFound } from '../../lib/http-error.js';
 import { computeVelocity } from '../sprints/service.js';
 
@@ -129,5 +129,75 @@ export async function computeProjectSummary(projectKey: string): Promise<Project
           velocity: await computeVelocity(activeSprint.id, activeSprint.committedPoints),
         }
       : null,
+  };
+}
+
+/**
+ * Time + accrued cost bucketed by calendar month — the maintenance/monthly lens.
+ * Hourly issues accrue billable-minutes × resolved rate; fixed-price issues are
+ * excluded from the per-month cost (their price isn't time-based). Most recent first.
+ */
+export async function computeProjectMonthly(
+  projectKey: string,
+  monthsBack = 12,
+): Promise<ProjectMonthlyView> {
+  const project = await prisma.project.findUnique({
+    where: { key: projectKey },
+    include: { client: { select: { currency: true } } },
+  });
+  if (!project) throw notFound('project not found');
+
+  const [issues, projectRate, clientRate, defaultRate] = await Promise.all([
+    prisma.issue.findMany({ where: { projectId: project.id }, select: { id: true, billingMode: true } }),
+    prisma.rate.findUnique({ where: { projectId: project.id } }),
+    project.clientId
+      ? prisma.rate.findUnique({ where: { clientId: project.clientId } })
+      : Promise.resolve(null),
+    prisma.rate.findFirst({ where: { scope: 'default' } }),
+  ]);
+  const issueRates = await prisma.rate.findMany({ where: { issueId: { in: issues.map((i) => i.id) } } });
+  const issueRateById = new Map(issueRates.map((r) => [r.issueId, r]));
+  const billingModeById = new Map(issues.map((i) => [i.id, i.billingMode]));
+  const rateFor = (issueId: string) =>
+    resolveRate({
+      issue: toResolved(issueRateById.get(issueId)),
+      project: toResolved(projectRate),
+      client: toResolved(clientRate),
+      fallback: toResolved(defaultRate),
+    });
+
+  const worklogs = await prisma.worklog.findMany({
+    where: { issue: { projectId: project.id } },
+    select: { minutes: true, billable: true, loggedAt: true, issueId: true },
+  });
+
+  const buckets = new Map<string, { totalMinutes: number; billableMinutes: number; accruedCents: number }>();
+  for (const w of worklogs) {
+    const month = w.loggedAt.toISOString().slice(0, 7); // YYYY-MM (UTC)
+    const b = buckets.get(month) ?? { totalMinutes: 0, billableMinutes: 0, accruedCents: 0 };
+    b.totalMinutes += w.minutes;
+    if (w.billable) {
+      b.billableMinutes += w.minutes;
+      if ((billingModeById.get(w.issueId) ?? 'hourly') === 'hourly') {
+        const r = rateFor(w.issueId);
+        b.accruedCents += accruedCents({
+          billingMode: 'hourly',
+          billableMinutes: w.minutes,
+          hourlyCents: r?.hourlyCents ?? null,
+        });
+      }
+    }
+    buckets.set(month, b);
+  }
+
+  const months = [...buckets.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .slice(0, monthsBack)
+    .map(([month, v]) => ({ month, ...v }));
+
+  return {
+    projectKey,
+    currency: clientRate?.currency ?? defaultRate?.currency ?? project.client?.currency ?? 'EUR',
+    months,
   };
 }

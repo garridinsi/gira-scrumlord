@@ -7,10 +7,11 @@ export async function seedProject(opts: {
   reporterId: string;
   key?: string;
   clientId?: string | null;
+  cadence?: 'sprints' | 'monthly';
 }): Promise<{ projectKey: string; byName: Record<string, Status> }> {
   const key = opts.key ?? 'GIRA';
   const project = await createProject(
-    { key, name: key, clientId: opts.clientId ?? null },
+    { key, name: key, cadence: opts.cadence ?? 'sprints', clientId: opts.clientId ?? null },
     opts.reporterId,
   );
   const statuses = await prisma.status.findMany({

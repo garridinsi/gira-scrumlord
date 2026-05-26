@@ -104,6 +104,13 @@ enum InvoiceStatus {
   void
 }
 
+/// How a project organizes work: agile `sprints`, or `monthly` calendar periods
+/// (the maintenance/retainer case — tracked + billed by the month, no sprints).
+enum ProjectCadence {
+  sprints
+  monthly
+}
+
 // ───────────────────────────────────────────────────────────── identity ──
 
 model Client {
@@ -193,10 +200,11 @@ model Project {
   id           String   @id @default(cuid())
   key          String   @unique // e.g. GIRA
   name         String
-  description  String   @default("")
+  description  String        @default("")
+  cadence      ProjectCadence @default(sprints)
   clientId     String?
-  client       Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  issueCounter Int      @default(0) // atomic source of PROJ-N keys
+  client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  issueCounter Int           @default(0) // atomic source of PROJ-N keys
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
