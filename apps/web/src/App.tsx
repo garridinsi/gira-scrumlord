@@ -13,6 +13,7 @@ import { ProjectSummaryPage } from './pages/ProjectSummaryPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { SauronPage } from './pages/SauronPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { MonthlyPage } from './pages/MonthlyPage';
 import { SprintsPage } from './pages/SprintsPage';
 import { PortalOverviewPage } from './pages/portal/PortalOverviewPage';
 import { PortalTicketsPage } from './pages/portal/PortalTicketsPage';
@@ -46,6 +47,7 @@ export function App() {
         <Route path="/projects/:key/board" element={<BoardPage />} />
         <Route path="/projects/:key/backlog" element={<BacklogPage />} />
         <Route path="/projects/:key/sprints" element={<SprintsPage />} />
+        <Route path="/projects/:key/monthly" element={<MonthlyPage />} />
         <Route path="/issues/:key" element={<IssueDetailPage />} />
         <Route path="/audit" element={<SauronPage />} />
         <Route path="/billing" element={<BillingPage />} />

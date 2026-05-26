@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { projects, sprints as sprintsApi, ApiError } from '../api/client';
 import type { SprintRecord } from '../api/client';
 import { Plate, SpinGlyph } from '../ui/atoms';
 import { Subbar } from '../ui/Subbar';
 import { useToast } from '../ui/Toast';
+import { useProjectTabs } from '../hooks/useProjectTabs';
 
 // ── State badge ───────────────────────────────────────────────────────────────
 function StateBadge({ state }: { state: SprintRecord['state'] }) {
@@ -369,7 +370,6 @@ function CreateSprintInline({
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function SprintsPage() {
   const { key = '' } = useParams<{ key: string }>();
-  const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
 
   const sprintsQ = useQuery({
@@ -378,13 +378,7 @@ export function SprintsPage() {
     enabled: !!key,
   });
 
-  const p = `/projects/${key}`;
-  const tabs = [
-    { es: 'Tablero', en: 'Board', onClick: () => navigate(`${p}/board`) },
-    { es: 'Pendientes', en: 'Backlog', onClick: () => navigate(`${p}/backlog`) },
-    { es: 'Sprints', en: 'Sprints', active: true },
-    { es: 'Informes', en: 'Reports', onClick: () => navigate(`${p}`) },
-  ];
+  const tabs = useProjectTabs(key, 'sprints');
 
   if (sprintsQ.isLoading) {
     return (

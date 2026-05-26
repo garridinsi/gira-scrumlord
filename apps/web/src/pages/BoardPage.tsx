@@ -13,6 +13,7 @@ import { IssueDrawer } from '../ui/IssueDrawer';
 import { getDropNeighbors } from '../lib/board';
 import { formatMoney, formatRatePerHour } from '../lib/money';
 import { formatMinutes } from '../lib/format';
+import { useProjectTabs } from '../hooks/useProjectTabs';
 
 // ── WIP limits by status name (matching the design) ──────────────────────────
 const WIP_LIMITS: Record<string, number> = {
@@ -820,18 +821,12 @@ export function BoardPage() {
   const statuses = board?.columns.map((c) => c.status) ?? [];
 
   // ── Subbar tabs ───────────────────────────────────────────────────────────
-  const tabClick = (path: string) => navigate(path);
-  const base = `/projects/${projectKey}`;
+  const boardTabs = useProjectTabs(projectKey, 'board');
 
   return (
     <div className="body">
       <Subbar
-        tabs={[
-          { es: 'Tablero', en: 'Board', count: totalIssues, active: true, onClick: () => tabClick(`${base}/board`) },
-          { es: 'Pendientes', en: 'Backlog', onClick: () => tabClick(`${base}/backlog`) },
-          { es: 'Sprints', en: 'Sprints', onClick: () => tabClick(`${base}/sprints`) },
-          { es: 'Resumen', en: 'Summary', onClick: () => tabClick(`${base}`) },
-        ]}
+        tabs={boardTabs.map((t, i) => i === 0 ? { ...t, count: totalIssues } : t)}
         right={
           <>
             {/* Label filter pill */}

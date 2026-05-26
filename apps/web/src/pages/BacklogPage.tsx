@@ -12,6 +12,7 @@ import { formatDate, formatMinutes } from '../lib/format';
 import { formatMoney } from '../lib/money';
 import { FilterBar } from '../ui/FilterBar';
 import { useMe } from '../hooks/useAuth';
+import { useProjectTabs } from '../hooks/useProjectTabs';
 
 // ── Stat cell inside sprint header ──────────────────────────────────────────
 function Stat({
@@ -742,13 +743,7 @@ export function BacklogPage() {
   };
 
   // Subbar navigation
-  const p = `/projects/${key}`;
-  const tabs = [
-    { es: 'Tablero', en: 'Board', onClick: () => navigate(`${p}/board`) },
-    { es: 'Pendientes', en: 'Backlog', active: true },
-    { es: 'Sprints', en: 'Sprints', onClick: () => navigate(`${p}/sprints`) },
-    { es: 'Informes', en: 'Reports', onClick: () => navigate(`${p}`) },
-  ];
+  const tabs = useProjectTabs(key, 'backlog');
 
   const allIssues = backlogQ.data ?? [];
 

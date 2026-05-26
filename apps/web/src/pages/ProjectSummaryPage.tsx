@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ProjectSummaryView } from '@gira/shared';
-import { projects } from '../api/client';
+import { projects, ApiError } from '../api/client';
 import type { SprintRecord } from '../api/client';
 import { Plate, SpinGlyph } from '../ui/atoms';
 import { Subbar } from '../ui/Subbar';
 import { formatMinutes } from '../lib/format';
 import { formatMoney } from '../lib/money';
+import { useProjectTabs } from '../hooks/useProjectTabs';
+import { useToast } from '../ui/Toast';
 
 // ── Big stat tile (the 4 top-row tiles) ──────────────────────────────────────
 function BigStat({
@@ -567,10 +569,84 @@ function ActiveSprintPanel({
   );
 }
 
+// ── Cadence toggle strip ───────────────────────────────────────────────────────
+function CadenceStrip({ projectKey }: { projectKey: string }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+
+  const projectQ = useQuery({
+    queryKey: ['project', projectKey],
+    queryFn: () => projects.get(projectKey),
+    enabled: !!projectKey,
+    staleTime: 60_000,
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (cadence: 'sprints' | 'monthly') =>
+      projects.update(projectKey, { cadence }),
+    onSuccess: (p) => {
+      void qc.invalidateQueries({ queryKey: ['project', projectKey] });
+      const label = p.cadence === 'monthly' ? 'Mensual · Monthly' : 'Sprints';
+      toast({ tone: 'ok', title: 'Cadencia actualizada · Cadence updated', body: label });
+    },
+    onError: (err) => {
+      toast({
+        tone: 'danger',
+        title: 'Error al cambiar cadencia · Cadence update failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
+    },
+  });
+
+  if (!projectQ.data) return null;
+  const current = projectQ.data.cadence ?? 'sprints';
+
+  return (
+    <section style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)', marginBottom: 18 }}>
+      <div className="tag-head" style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}>
+        <span>// CADENCIA · CADENCE</span>
+        <span className="mono" style={{ fontSize: 10, letterSpacing: '0.1em' }}>
+          SPRINTS / MENSUAL · MONTHLY
+        </span>
+      </div>
+      <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 16 }}>
+        <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}>
+          Modo de seguimiento del proyecto · Project tracking cadence
+        </span>
+        <div style={{ display: 'flex', gap: 0, border: '1.5px solid var(--eg-iron)', marginLeft: 'auto' }}>
+          {(['sprints', 'monthly'] as const).map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => { if (current !== c) updateMut.mutate(c); }}
+              disabled={updateMut.isPending}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                padding: '6px 14px',
+                border: 'none',
+                borderRight: c === 'sprints' ? '1.5px solid var(--eg-iron)' : 'none',
+                cursor: current === c ? 'default' : 'pointer',
+                background: current === c ? 'var(--eg-iron)' : 'var(--eg-paper)',
+                color: current === c ? 'var(--eg-yellow)' : 'var(--eg-iron)',
+                opacity: updateMut.isPending ? 0.6 : 1,
+              }}
+            >
+              {c === 'sprints' ? 'Sprints' : 'Mensual · Monthly'}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function ProjectSummaryPage() {
   const { key = '' } = useParams<{ key: string }>();
-  const navigate = useNavigate();
 
   const summaryQ = useQuery({
     queryKey: ['summary', key],
@@ -584,13 +660,7 @@ export function ProjectSummaryPage() {
     enabled: !!key,
   });
 
-  const p = `/projects/${key}`;
-  const tabs = [
-    { es: 'Tablero', en: 'Board', onClick: () => navigate(`${p}/board`) },
-    { es: 'Pendientes', en: 'Backlog', onClick: () => navigate(`${p}/backlog`) },
-    { es: 'Sprints', en: 'Sprints', onClick: () => navigate(`${p}/sprints`) },
-    { es: 'Informes', en: 'Reports', active: true },
-  ];
+  const tabs = useProjectTabs(key, 'summary');
 
   if (summaryQ.isLoading || sprintsQ.isLoading) {
     return (
@@ -791,6 +861,9 @@ export function ProjectSummaryPage() {
 
         {/* Sprint history table */}
         {sprintsList.length > 0 && <SprintVelocityTable sprintsData={sprintsList} />}
+
+        {/* Cadence toggle */}
+        <CadenceStrip projectKey={key} />
 
         {/* Empty state if no sprints at all */}
         {sprintsList.length === 0 && summary.openIssues === 0 && summary.doneIssues === 0 && (
