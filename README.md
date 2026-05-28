@@ -77,13 +77,14 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 | `sauron` — audit log | ✅ | Append-only. Read-only. Listens on **port 666**. It only watches. Don't touch. |
 | `scrumlord` — the daemon | ✅ | A real `pg-boss` worker. Governs the dailies: rolls sprints, reaps timers, drains the outbox. |
 | Notifications & **emergency paging** | ✅ | Email/webhook channels; an `emergency` opens an incident and the pager keeps nudging until someone acks. |
+| Personal notifications | ✅ | Get an email when an issue is **assigned to you**, and when **your reported/assigned issue changes status** — you never get spammed about your own actions. |
 | Grafana / WordPress intake | ✅ | A Grafana `critical` alert auto-files an `emergency` ticket (deduped) and pages you. WordPress forms become tickets. (`packages/chaos`) |
 | Auto-assignment | ✅ | Rule-based: new intake issues get an owner by type/priority/label. |
 | Slack intake | 🚧 | Same adapter pattern, later. Notifications still drafted in ancient Aramaic. |
 | Client portal | ✅ | Clients log in and get their own world: open/done/in-progress, time, money, their invoices, and a form to file requests (capped to `medium` — no self-declared emergencies). |
 | Dark mode | ✅ | Still the only mode. Darkness is the PM's natural state. |
 | AI | ❌ | We vibe by hand here, the way the gods intended. |
-| Tests | ✅ | **141 of them.** The README used to say we don't test. The README was coping. |
+| Tests | ✅ | **143 of them.** The README used to say we don't test. The README was coping. |
 
 ---
 

@@ -143,7 +143,7 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
         await tx.outbox.create({
           data: {
             type: 'issue.assigned',
-            payload: { issueKey: u.key, projectKey: before.project.key, assigneeId: u.assigneeId, title: u.title },
+            payload: { issueKey: u.key, projectKey: before.project.key, assigneeId: u.assigneeId, title: u.title, actorId: user.id },
           },
         });
       }
@@ -157,6 +157,7 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
               title: u.title,
               fromStatusId: before.statusId,
               toStatusId: u.statusId,
+              actorId: user.id,
             },
           },
         });

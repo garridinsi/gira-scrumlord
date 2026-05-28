@@ -21,6 +21,20 @@ export interface DeliverResult {
   error?: string;
 }
 
+/** Send a plain email to one person (per-user notifications, not a channel). */
+export async function sendUserEmail(
+  to: string,
+  subject: string,
+  text: string,
+): Promise<DeliverResult> {
+  try {
+    await transport.sendMail({ from: notifyConfig.mailFrom, to, subject, text });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export async function deliver(
   channel: Channel,
   payload: Record<string, unknown>,

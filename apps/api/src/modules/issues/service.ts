@@ -92,7 +92,7 @@ export async function createIssue(
       await tx.outbox.create({
         data: {
           type: 'issue.assigned',
-          payload: { issueKey: key, projectKey: project.key, assigneeId: issue.assigneeId, title: issue.title },
+          payload: { issueKey: key, projectKey: project.key, assigneeId: issue.assigneeId, title: issue.title, actorId: reporterId },
         },
       });
     }

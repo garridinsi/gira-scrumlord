@@ -3,7 +3,7 @@
 // the Outbox) and by the API (test-send).
 
 import { type Prisma, prisma } from '@gira/db';
-import { type Channel, deliver } from './deliver.js';
+import { type Channel, deliver, sendUserEmail } from './deliver.js';
 
 export interface DomainEvent {
   type: string;
@@ -26,6 +26,68 @@ export async function resolveChannels(type: string, projectKey?: string) {
   return channels.filter(
     (c) => c.scope === 'global' || (c.scope === 'project' && c.projectId === projectId),
   );
+}
+
+const asString = (v: unknown): string | null => (typeof v === 'string' ? v : null);
+
+/**
+ * Personal emails (distinct from admin-configured channels): the assignee hears
+ * when an issue lands on them; the reporter + assignee hear when its status moves.
+ * The actor who made the change is never emailed about their own action.
+ */
+export async function deliverPersonal(event: DomainEvent): Promise<number> {
+  const actorId = asString(event.payload.actorId);
+
+  if (event.type === 'issue.assigned') {
+    const assigneeId = asString(event.payload.assigneeId);
+    if (!assigneeId || assigneeId === actorId) return 0;
+    const u = await prisma.user.findUnique({
+      where: { id: assigneeId },
+      select: { email: true, isActive: true },
+    });
+    if (!u?.isActive) return 0;
+    const key = asString(event.payload.issueKey) ?? 'an issue';
+    const title = asString(event.payload.title) ?? '';
+    const r = await sendUserEmail(
+      u.email,
+      `Te asignaron · Assigned to you: ${key}`,
+      `${key} — ${title}\n\nSe te ha asignado esta incidencia · You've been assigned this issue.`,
+    );
+    return r.ok ? 1 : 0;
+  }
+
+  if (event.type === 'issue.status_changed') {
+    const key = asString(event.payload.issueKey);
+    if (!key) return 0;
+    const issue = await prisma.issue.findUnique({
+      where: { key },
+      select: {
+        title: true,
+        reporterId: true,
+        assigneeId: true,
+        status: { select: { name: true } },
+        reporter: { select: { email: true, isActive: true } },
+        assignee: { select: { id: true, email: true, isActive: true } },
+      },
+    });
+    if (!issue) return 0;
+    const recipients = new Set<string>();
+    if (issue.reporter?.isActive && issue.reporterId !== actorId) recipients.add(issue.reporter.email);
+    if (issue.assignee?.isActive && issue.assignee.id !== actorId) recipients.add(issue.assignee.email);
+    const title = asString(event.payload.title) ?? issue.title;
+    let sent = 0;
+    for (const email of recipients) {
+      const r = await sendUserEmail(
+        email,
+        `${key} → ${issue.status.name}`,
+        `${key} — ${title}\n\nEstado actualizado a · Status changed to "${issue.status.name}".`,
+      );
+      if (r.ok) sent += 1;
+    }
+    return sent;
+  }
+
+  return 0;
 }
 
 /** One open incident per issue (deduped while open). */
@@ -72,7 +134,9 @@ export async function dispatchEvent(event: DomainEvent) {
   if (incidentId) {
     await prisma.incident.update({ where: { id: incidentId }, data: { lastNotifiedAt: new Date() } });
   }
-  return { channelsMatched: channels.length, delivered, incidentId };
+
+  const userEmails = await deliverPersonal(event);
+  return { channelsMatched: channels.length, delivered, incidentId, userEmails };
 }
 
 /**

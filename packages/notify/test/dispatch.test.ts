@@ -80,4 +80,32 @@ describe('dispatch', () => {
       expect(JSON.parse(received!.body)).toMatchObject({ type: 'issue.emergency', issueKey: 'T-1' });
     });
   });
+
+  describe('per-user notifications', () => {
+    it('emails the assignee on assignment, but not when they assigned themselves', async () => {
+      const { issue } = await makeIssue('T-9', 'T9');
+      const assignee = await prisma.user.create({ data: { email: 'dev@example.test', name: 'Dev' } });
+      await prisma.issue.update({ where: { id: issue.id }, data: { assigneeId: assignee.id } });
+
+      const payload = { issueKey: 'T-9', assigneeId: assignee.id, title: 'PROD DOWN', actorId: 'someone-else' };
+      expect((await dispatchEvent({ type: 'issue.assigned', payload })).userEmails).toBe(1);
+      // self-assignment → no email to yourself
+      expect(
+        (await dispatchEvent({ type: 'issue.assigned', payload: { ...payload, actorId: assignee.id } })).userEmails,
+      ).toBe(0);
+      // inactive assignee → skipped
+      await prisma.user.update({ where: { id: assignee.id }, data: { isActive: false } });
+      expect((await dispatchEvent({ type: 'issue.assigned', payload })).userEmails).toBe(0);
+    });
+
+    it('emails the reporter on status change, skipping the actor', async () => {
+      const { user } = await makeIssue('T-10', 'T10'); // user = reporter
+      const payload = { issueKey: 'T-10', title: 'PROD DOWN', actorId: 'staff-x' };
+      expect((await dispatchEvent({ type: 'issue.status_changed', payload })).userEmails).toBe(1);
+      // the reporter made the change → no self-email
+      expect(
+        (await dispatchEvent({ type: 'issue.status_changed', payload: { ...payload, actorId: user.id } })).userEmails,
+      ).toBe(0);
+    });
+  });
 });

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-export { deliver, type Channel, type DeliverResult } from './deliver.js';
+export { deliver, sendUserEmail, type Channel, type DeliverResult } from './deliver.js';
 export { assertSafeWebhookUrl, isPrivateHost } from './ssrf.js';
 export {
   dispatchEvent,
   dispatchOutboxBatch,
+  deliverPersonal,
   resolveChannels,
   ensureIncident,
   type DomainEvent,
