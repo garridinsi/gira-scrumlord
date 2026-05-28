@@ -58,7 +58,7 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 ## 🐉 Features (which exist, actually)
 
 > Status is honest now. The jokes moved to the _Reality_ column where they belong.
-> Full engineering plan: [`PLAN.md`](./PLAN.md). Design spec: [`docs/superpowers/specs/`](./docs/superpowers/specs/).
+> Full engineering plan: [`PLAN.md`](./PLAN.md).
 
 | Feature | Status | Reality |
 |---|---|---|
@@ -100,9 +100,8 @@ Screens, all wired to the live API: passwordless **login** (poster + boarding pa
 **Kanban board** (drag-drop, emergency banner, WIP-breach hazard warnings), **issue
 drawer** (edit / comments / worklogs / cost / timer / audit), **backlog + sprints**,
 **summary** (time + money + 🌀 velocity), **Sauron audit** (`:666`), and **settings**
-(clients + the rate-resolution chain). The design source lives in
-[`docs/design/`](./docs/design/); the contract the UI builds against is
-[`docs/api-contract.md`](./docs/api-contract.md).
+(clients + the rate-resolution chain). The design source and the API contract the
+UI builds against live under `docs/` (kept out of version control).
 
 > _Four rules, non-negotiable: the system is a promise · bilingual by default · sharp
 > by default · honesty over polish (empty states with a voice, errors with a cause)._
@@ -175,7 +174,6 @@ gira-scrumlord/
 │   ├── sauron/            # the eye. it only watches. listens on 666. don't touch.
 │   ├── chaos/             # where the stuff that works by accident WILL live (M4)
 │   └── shared/            # Zod contracts shared by api + web
-├── docs/                  # no longer a lie. there's a spec and a plan in there.
 └── README.md              # you are here. brave of you.
 ```
 
