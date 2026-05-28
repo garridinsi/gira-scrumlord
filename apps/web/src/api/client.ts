@@ -402,6 +402,8 @@ export const invoices = {
   pay: (id: string) => request<InvoiceView>(`/invoices/${id}/pay`, { method: 'POST' }),
   void: (id: string) => request<InvoiceView>(`/invoices/${id}/void`, { method: 'POST' }),
   delete: (id: string) => request<void>(`/invoices/${id}`, { method: 'DELETE' }),
+  setExternalRef: (id: string, externalInvoiceRef: string | null) =>
+    request<InvoiceView>(`/invoices/${id}/external-ref`, { method: 'POST', ...json({ externalInvoiceRef }) }),
 };
 
 // ---------------------------------------------------------------------------

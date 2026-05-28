@@ -6,6 +6,12 @@ import { z } from 'zod';
  * billable worklogs get pulled in — by loggedAt. Omit both to bill everything
  * not yet invoiced. Dates arrive as ISO strings and become inclusive bounds.
  */
+/** Record the external TicketBAI fiscal-invoice number on a billing annex. */
+export const setExternalRefSchema = z.object({
+  externalInvoiceRef: z.string().trim().max(120).nullable(),
+});
+export type SetExternalRef = z.infer<typeof setExternalRefSchema>;
+
 export const generateInvoiceSchema = z
   .object({
     periodStart: z.coerce.date().optional(),

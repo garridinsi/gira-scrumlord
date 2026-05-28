@@ -2,7 +2,7 @@
 // Staff billing surface. Clients never reach these — they read their own issued
 // invoices through the portal. Generation/transitions require a writer role.
 
-import { generateInvoiceSchema } from '@gira/shared';
+import { generateInvoiceSchema, setExternalRefSchema } from '@gira/shared';
 import type { FastifyInstance } from 'fastify';
 import { type AuthUser, currentUser, requireAuth } from '../../lib/auth.js';
 import { forbidden } from '../../lib/http-error.js';
@@ -14,6 +14,7 @@ import {
   issueInvoice,
   listClientInvoices,
   payInvoice,
+  setInvoiceExternalRef,
   toInvoiceView,
   voidInvoice,
 } from './service.js';
@@ -59,6 +60,16 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
     assertCanWrite(user);
     const { id } = req.params as { id: string };
     return payInvoice(id, user.id);
+  });
+
+  // Record the external TicketBAI fiscal-invoice number this annex supports.
+  app.post('/invoices/:id/external-ref', { preHandler: requireAuth }, async (req) => {
+    const user = currentUser(req);
+    assertStaff(user);
+    assertCanWrite(user);
+    const { id } = req.params as { id: string };
+    const { externalInvoiceRef } = setExternalRefSchema.parse(req.body);
+    return setInvoiceExternalRef(id, externalInvoiceRef, user.id);
   });
 
   app.post('/invoices/:id/void', { preHandler: requireAuth }, async (req) => {

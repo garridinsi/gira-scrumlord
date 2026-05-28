@@ -234,10 +234,12 @@ export interface InvoiceLineView {
   amountCents: number;
 }
 
-/** Summary row for invoice lists — no lines. */
+/** Summary row for the non-fiscal billing-annex list — no lines. */
 export interface InvoiceListItemView {
   id: string;
   number: string;
+  /** The external TicketBAI fiscal-invoice reference, once recorded; else null. */
+  externalInvoiceRef: string | null;
   clientId: string;
   clientName: string;
   status: InvoiceStatus;

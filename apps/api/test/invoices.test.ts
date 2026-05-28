@@ -62,7 +62,7 @@ describe('invoicing (M5)', () => {
     const inv = gen.json();
     expect(inv.status).toBe('draft');
     expect(inv.currency).toBe('EUR');
-    expect(inv.number).toMatch(/^INV-\d{4}-0001$/);
+    expect(inv.number).toMatch(/^ANX-\d{4}-0001$/); // non-fiscal annex, not a TicketBAI invoice
     expect(inv.lines).toHaveLength(1);
     expect(inv.lines[0]).toMatchObject({ issueKey: 'ACME-1', minutes: 120, hourlyCents: 6000, amountCents: 12000 });
     expect(inv.subtotalCents).toBe(12000);
@@ -87,6 +87,26 @@ describe('invoicing (M5)', () => {
     expect(gen.json().error ?? gen.json().message).toMatch(/rate/i);
     // And nothing was created.
     expect((await app.inject({ method: 'GET', url: `/clients/${client.id}/invoices`, headers: { cookie: staff.cookie } })).json()).toEqual([]);
+  });
+
+  it('records the external TicketBAI fiscal-invoice reference on the annex', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
+    await logWork(staff.cookie, 'ACME-1', 60);
+    await setRate(staff.cookie, 6000);
+    const id = (await generate(staff.cookie, client.id)).json().id as string;
+
+    const set = await app.inject({
+      method: 'POST',
+      url: `/invoices/${id}/external-ref`,
+      headers: { cookie: staff.cookie },
+      payload: { externalInvoiceRef: 'TBAI-2026-000123' },
+    });
+    expect(set.statusCode).toBe(200);
+    expect(set.json().externalInvoiceRef).toBe('TBAI-2026-000123');
+    // and it persists on the fetched annex
+    const got = await app.inject({ method: 'GET', url: `/invoices/${id}`, headers: { cookie: staff.cookie } });
+    expect(got.json().externalInvoiceRef).toBe('TBAI-2026-000123');
   });
 
   it('never bills the same hours twice', async () => {

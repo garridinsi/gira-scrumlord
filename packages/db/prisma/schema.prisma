@@ -368,9 +368,12 @@ model Timer {
 
 /// A bill to a client. Lines snapshot the resolved rate at generation time, so a
 /// reprinted invoice always shows the money as it was charged — never recomputed.
+/// NOTE: this is a NON-FISCAL billing annex, not a legal invoice. Fiscal invoices
+/// are issued externally via TicketBAI/Batuz; `externalInvoiceRef` links to that.
 model Invoice {
   id            String        @id @default(cuid())
-  number        String        @unique // INV-YYYY-NNNN, assigned at creation
+  number        String        @unique // ANX-YYYY-NNNN annex ref, assigned at creation
+  externalInvoiceRef String?   // the real TicketBAI fiscal invoice number, recorded by staff
   clientId      String
   client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   status        InvoiceStatus @default(draft)

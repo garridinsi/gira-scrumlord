@@ -24,6 +24,7 @@ function toInvoiceListItem(i: InvoiceWithRelations): InvoiceListItemView {
   return {
     id: i.id,
     number: i.number,
+    externalInvoiceRef: i.externalInvoiceRef,
     clientId: i.clientId,
     clientName: i.client.name,
     status: i.status,
@@ -199,9 +200,10 @@ export async function generateInvoice(
       );
     }
 
+    // ANX = non-fiscal billing annex (the fiscal invoice is issued via TicketBAI).
     const year = new Date().getFullYear();
-    const seq = await tx.invoice.count({ where: { number: { startsWith: `INV-${year}-` } } });
-    const number = `INV-${year}-${String(seq + 1).padStart(4, '0')}`;
+    const seq = await tx.invoice.count({ where: { number: { startsWith: `ANX-${year}-` } } });
+    const number = `ANX-${year}-${String(seq + 1).padStart(4, '0')}`;
 
     const created = await tx.invoice.create({
       data: {
@@ -238,6 +240,29 @@ export async function generateInvoice(
   });
 
   return toInvoiceView(invoice);
+}
+
+/** Record (or clear) the external TicketBAI fiscal-invoice reference on an annex. */
+export async function setInvoiceExternalRef(
+  id: string,
+  externalInvoiceRef: string | null,
+  actorId: string,
+): Promise<InvoiceView> {
+  const invoice = await loadInvoiceOr404(id);
+  const updated = await prisma.invoice.update({
+    where: { id },
+    data: { externalInvoiceRef: externalInvoiceRef || null },
+    include: invoiceInclude,
+  });
+  await recordAudit(prisma, {
+    actorId,
+    action: 'invoice.external_ref',
+    entityType: 'Invoice',
+    entityId: id,
+    before: { externalInvoiceRef: invoice.externalInvoiceRef },
+    after: { externalInvoiceRef: updated.externalInvoiceRef },
+  });
+  return toInvoiceView(updated);
 }
 
 export async function issueInvoice(id: string, actorId: string): Promise<InvoiceView> {
