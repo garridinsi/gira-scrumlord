@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import type { ProjectSummaryView } from '@gira/shared';
 import { projects, ApiError } from '../api/client';
 import type { SprintRecord } from '../api/client';
@@ -10,6 +11,7 @@ import { formatMinutes } from '../lib/format';
 import { formatMoney } from '../lib/money';
 import { useProjectTabs } from '../hooks/useProjectTabs';
 import { useToast } from '../ui/Toast';
+import { useMe } from '../hooks/useAuth';
 
 // ── Big stat tile (the 4 top-row tiles) ──────────────────────────────────────
 function BigStat({
@@ -569,6 +571,207 @@ function ActiveSprintPanel({
   );
 }
 
+// ── Monthly budget editor ─────────────────────────────────────────────────────
+function BudgetEditorStrip({ projectKey }: { projectKey: string }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const me = useMe();
+
+  const projectQ = useQuery({
+    queryKey: ['project', projectKey],
+    queryFn: () => projects.get(projectKey),
+    enabled: !!projectKey,
+    staleTime: 60_000,
+  });
+
+  // Local input state in user-facing units (hours, whole currency units)
+  const currentHours =
+    projectQ.data?.monthlyBudgetMinutes != null
+      ? String(Math.round(projectQ.data.monthlyBudgetMinutes / 60))
+      : '';
+  const currentAmount =
+    projectQ.data?.monthlyBudgetCents != null
+      ? String(Math.round(projectQ.data.monthlyBudgetCents / 100))
+      : '';
+
+  const [hours, setHours] = useState<string | null>(null);
+  const [amount, setAmount] = useState<string | null>(null);
+
+  // Controlled: fall back to server-derived value when untouched
+  const hoursVal = hours ?? currentHours;
+  const amountVal = amount ?? currentAmount;
+
+  const saveMut = useMutation({
+    mutationFn: () => {
+      const monthlyBudgetMinutes =
+        hoursVal.trim() !== '' ? Math.round(parseFloat(hoursVal) * 60) : null;
+      const monthlyBudgetCents =
+        amountVal.trim() !== '' ? Math.round(parseFloat(amountVal) * 100) : null;
+      return projects.update(projectKey, { monthlyBudgetMinutes, monthlyBudgetCents });
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['project', projectKey] });
+      void qc.invalidateQueries({ queryKey: ['monthly', projectKey] });
+      // Reset local state so inputs sync from the refetched server value
+      setHours(null);
+      setAmount(null);
+      toast({
+        tone: 'ok',
+        title: 'Presupuesto guardado · Budget saved',
+        body: `${projectKey} · ${hoursVal !== '' ? hoursVal + 'h' : 'sin horas · no hours'} / ${amountVal !== '' ? amountVal : 'sin importe · no amount'}`,
+      });
+    },
+    onError: (err) => {
+      toast({
+        tone: 'danger',
+        title: 'Error al guardar presupuesto · Budget save failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
+    },
+  });
+
+  const isWriter = me.data?.role === 'admin' || me.data?.role === 'member';
+
+  if (!projectQ.data || !isWriter) return null;
+
+  return (
+    <section
+      style={{
+        border: '2px solid var(--eg-iron)',
+        background: 'var(--eg-paper)',
+        marginBottom: 18,
+      }}
+    >
+      <div className="tag-head" style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}>
+        <span>// PRESUPUESTO MENSUAL · MONTHLY BUDGET</span>
+        <span className="mono" style={{ fontSize: 10, letterSpacing: '0.1em' }}>
+          RETAINER · CAP
+        </span>
+      </div>
+      <div
+        style={{
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 20,
+          flexWrap: 'wrap',
+        }}
+      >
+        <span
+          className="mono"
+          style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.08em', alignSelf: 'center' }}
+        >
+          Límite mensual del retainer · Monthly retainer cap
+        </span>
+
+        {/* Hours field */}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span
+            className="mono"
+            style={{
+              fontSize: 9,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'var(--eg-fg-4)',
+            }}
+          >
+            Horas/mes · Hours/month
+          </span>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            placeholder="ej. 40"
+            value={hoursVal}
+            onChange={(e) => setHours(e.target.value)}
+            disabled={saveMut.isPending}
+            style={{
+              width: 96,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 14,
+              fontWeight: 700,
+              border: '1.5px solid var(--eg-iron)',
+              background: 'var(--eg-paper)',
+              color: 'var(--eg-iron)',
+              padding: '5px 8px',
+              outline: 'none',
+            }}
+          />
+        </label>
+
+        {/* Amount field */}
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span
+            className="mono"
+            style={{
+              fontSize: 9,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'var(--eg-fg-4)',
+            }}
+          >
+            Importe/mes · Amount/month
+          </span>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            placeholder="ej. 2400"
+            value={amountVal}
+            onChange={(e) => setAmount(e.target.value)}
+            disabled={saveMut.isPending}
+            style={{
+              width: 120,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 14,
+              fontWeight: 700,
+              border: '1.5px solid var(--eg-iron)',
+              background: 'var(--eg-paper)',
+              color: 'var(--eg-iron)',
+              padding: '5px 8px',
+              outline: 'none',
+            }}
+          />
+        </label>
+
+        <button
+          type="button"
+          className="b-btn b-btn--ink"
+          style={{ fontSize: 11, padding: '6px 14px', alignSelf: 'flex-end' }}
+          onClick={() => saveMut.mutate()}
+          disabled={saveMut.isPending}
+        >
+          {saveMut.isPending ? '...' : 'Guardar · Save'}
+        </button>
+
+        {/* Current cap summary */}
+        {(projectQ.data.monthlyBudgetMinutes != null ||
+          projectQ.data.monthlyBudgetCents != null) && (
+          <span
+            className="mono"
+            style={{
+              fontSize: 10,
+              color: 'var(--eg-fg-3)',
+              letterSpacing: '0.1em',
+              alignSelf: 'center',
+              marginLeft: 'auto',
+            }}
+          >
+            ACTUAL:{' '}
+            {projectQ.data.monthlyBudgetMinutes != null
+              ? formatMinutes(projectQ.data.monthlyBudgetMinutes)
+              : '—'}
+            {' / '}
+            {projectQ.data.monthlyBudgetCents != null
+              ? `${Math.round(projectQ.data.monthlyBudgetCents / 100)} u.m.`
+              : '—'}
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ── Cadence toggle strip ───────────────────────────────────────────────────────
 function CadenceStrip({ projectKey }: { projectKey: string }) {
   const qc = useQueryClient();
@@ -864,6 +1067,9 @@ export function ProjectSummaryPage() {
 
         {/* Cadence toggle */}
         <CadenceStrip projectKey={key} />
+
+        {/* Monthly budget editor */}
+        <BudgetEditorStrip projectKey={key} />
 
         {/* Empty state if no sprints at all */}
         {sprintsList.length === 0 && summary.openIssues === 0 && summary.doneIssues === 0 && (

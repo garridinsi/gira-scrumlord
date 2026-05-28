@@ -35,6 +35,104 @@ function lastDayOf(ym: string): string {
   return `${ym}-${String(last).padStart(2, '0')}`;
 }
 
+// ── Budget progress bar ───────────────────────────────────────────────────────
+function BudgetBar({
+  spent,
+  cap,
+  label,
+}: {
+  spent: number;
+  cap: number;
+  label: string;
+}) {
+  const pct = cap > 0 ? Math.min(Math.round((spent / cap) * 100), 999) : 0;
+  const isOver = spent > cap;
+  const isWarn = !isOver && pct >= 80;
+
+  const barColor = isOver
+    ? 'var(--eg-red)'
+    : isWarn
+      ? 'var(--eg-yellow)'
+      : 'var(--eg-iron)';
+
+  const barWidth = Math.min(pct, 100);
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+        <span
+          className="mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.08em',
+            color: isOver ? 'var(--eg-red)' : 'var(--eg-fg-3)',
+            fontWeight: isOver ? 700 : 400,
+          }}
+        >
+          {label}
+        </span>
+        <span
+          className="mono"
+          style={{
+            fontSize: 9,
+            letterSpacing: '0.1em',
+            color: isOver ? 'var(--eg-red)' : isWarn ? 'var(--eg-iron)' : 'var(--eg-fg-4)',
+            fontWeight: isOver ? 700 : 400,
+          }}
+        >
+          {pct}%
+        </span>
+      </div>
+      {/* Track */}
+      <div
+        style={{
+          height: 5,
+          background: 'var(--eg-paper-3)',
+          border: '1px solid var(--eg-iron)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: `${barWidth}%`,
+            background: barColor,
+            transition: 'width 400ms',
+          }}
+        />
+        {/* Overflow hatch when over budget */}
+        {isOver && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'repeating-linear-gradient(45deg, var(--eg-red) 0px, var(--eg-red) 3px, transparent 3px, transparent 6px)',
+              opacity: 0.35,
+            }}
+          />
+        )}
+      </div>
+      {isOver && (
+        <div
+          className="mono"
+          style={{
+            fontSize: 8,
+            letterSpacing: '0.12em',
+            color: 'var(--eg-red)',
+            fontWeight: 800,
+            marginTop: 2,
+            textTransform: 'uppercase',
+          }}
+        >
+          SOBRE PRESUPUESTO · OVER BUDGET
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Single month row ──────────────────────────────────────────────────────────
 function MonthRow({
   row,
@@ -42,12 +140,16 @@ function MonthRow({
   clientId,
   canInvoice,
   odd,
+  budgetMinutes,
+  budgetCents,
 }: {
   row: MonthlyRollupView;
   currency: string;
   clientId: string | null | undefined;
   canInvoice: boolean;
   odd: boolean;
+  budgetMinutes: number | null;
+  budgetCents: number | null;
 }) {
   const navigate = useNavigate();
   const toast = useToast();
@@ -119,6 +221,13 @@ function MonthRow({
             {formatMinutes(row.totalMinutes)} total
           </div>
         )}
+        {budgetMinutes != null && (
+          <BudgetBar
+            spent={row.billableMinutes}
+            cap={budgetMinutes}
+            label={`${formatMinutes(row.billableMinutes)} / ${formatMinutes(budgetMinutes)}`}
+          />
+        )}
       </div>
 
       {/* Cost */}
@@ -129,6 +238,13 @@ function MonthRow({
         >
           {formatMoney(row.accruedCents, currency)}
         </span>
+        {budgetCents != null && (
+          <BudgetBar
+            spent={row.accruedCents}
+            cap={budgetCents}
+            label={`${formatMoney(row.accruedCents, currency)} / ${formatMoney(budgetCents, currency)}`}
+          />
+        )}
       </div>
 
       {/* Invoice action */}
@@ -204,6 +320,9 @@ export function MonthlyPage() {
   const project = projectQ.data;
   const clientId = project?.clientId ?? null;
   const canInvoice = me.data?.role === 'admin' || me.data?.role === 'member';
+  const budgetMinutes = data.budgetMinutes ?? null;
+  const budgetCents = data.budgetCents ?? null;
+  const hasBudget = budgetMinutes != null || budgetCents != null;
 
   return (
     <div className="body">
@@ -232,6 +351,23 @@ export function MonthlyPage() {
           >
             TIEMPO Y COSTE POR MES · TIME &amp; COST PER MONTH · {data.months.length} MESES · {data.currency}
           </span>
+          {hasBudget && (
+            <span
+              className="mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.1em',
+                marginLeft: 'auto',
+                color: 'var(--eg-yellow)',
+                fontWeight: 700,
+              }}
+            >
+              CAP:{' '}
+              {budgetMinutes != null ? formatMinutes(budgetMinutes) : '—'}
+              {' / '}
+              {budgetCents != null ? formatMoney(budgetCents, data.currency) : '—'}
+            </span>
+          )}
         </div>
 
         {/* Column headings */}
@@ -278,6 +414,8 @@ export function MonthlyPage() {
               clientId={clientId}
               canInvoice={canInvoice}
               odd={i % 2 === 1}
+              budgetMinutes={budgetMinutes}
+              budgetCents={budgetCents}
             />
           ))
         )}
