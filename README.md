@@ -68,7 +68,7 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 | Retainer budgets / caps | ✅ | Set a monthly hours/€ cap per project; the monthly view shows spent-vs-cap and turns **red + "over budget"** when you blow through it. |
 | Time tracking (worklogs + timers) | ✅ | One running timer per human. `scrumlord` reaps the ones you forget after 12h. |
 | Money (rates + accrued cost) | ✅ | Rates resolve issue → project → client → default. Stored in cents, because floats lie about money. |
-| Invoicing (generate → issue → pay) | ✅ | Turns logged hours into a frozen bill: each line snapshots the rate at generation, so reprinting an old invoice never lies. No hour billed twice. Printable receipt. |
+| Billing annex (not a fiscal invoice) | ✅ | Turns logged hours into a frozen, printable **billing annex** (rate snapshotted per line, no hour billed twice). It is **not** a fiscal invoice — those go through **TicketBAI / Batuz**; record the real invoice ref on the annex. |
 | Velocity reports | ✅ | Real committed-vs-completed points. Still rendered as a hurricane. Soothing. |
 | Search, filters & due dates | ✅ | Filter the backlog by assignee/type/priority/label + full-text, and save your own views. Due dates badge red when overdue. |
 | Passwordless auth (magic links) | ✅ | OIDC-ready. The first login to a fresh install becomes the dark lord (admin). |
@@ -84,7 +84,7 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 | Client portal | ✅ | Clients log in and get their own world: open/done/in-progress, time, money, their invoices, and a form to file requests (capped to `medium` — no self-declared emergencies). |
 | Dark mode | ✅ | Still the only mode. Darkness is the PM's natural state. |
 | AI | ❌ | We vibe by hand here, the way the gods intended. |
-| Tests | ✅ | **143 of them.** The README used to say we don't test. The README was coping. |
+| Tests | ✅ | **144 of them.** The README used to say we don't test. The README was coping. |
 
 ---
 
