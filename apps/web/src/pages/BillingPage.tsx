@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Staff billing page — client selector, invoice list, generate form.
+// Staff billing page — client selector, billing annex list, generate form.
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -66,7 +66,7 @@ function GenerateForm({ clientId, currency }: { clientId: string; currency: stri
       }),
     onSuccess: (inv) => {
       void qc.invalidateQueries({ queryKey: ['invoices', 'client', clientId] });
-      toast({ tone: 'ok', title: 'Factura generada · Invoice generated', body: inv.number });
+      toast({ tone: 'ok', title: 'Anexo generado · Annex generated', body: inv.number });
       navigate(`/invoices/${inv.id}`);
     },
     onError: (err) => {
@@ -96,7 +96,7 @@ function GenerateForm({ clientId, currency }: { clientId: string; currency: stri
         className="tag-head"
         style={{ background: 'var(--eg-iron)', color: 'var(--eg-yellow)', padding: '8px 14px' }}
       >
-        <span>// GENERAR FACTURA · GENERATE INVOICE</span>
+        <span>// GENERAR ANEXO · GENERATE ANNEX</span>
         <span style={{ color: 'var(--eg-fg-4)' }}>{currency}</span>
       </div>
       <div
@@ -165,7 +165,7 @@ function GenerateForm({ clientId, currency }: { clientId: string; currency: stri
           onClick={() => generateMut.mutate()}
           disabled={generateMut.isPending}
         >
-          {generateMut.isPending ? '...' : '+ Generar Factura · Generate Invoice'}
+          {generateMut.isPending ? '...' : '+ Generar Anexo · Generate Annex'}
         </button>
       </div>
     </section>
@@ -184,7 +184,7 @@ function InvoiceList({ clientId }: { clientId: string }) {
   if (listQ.isLoading) {
     return (
       <div className="gs-state" style={{ minHeight: 120 }}>
-        <span className="gs-loading">cargando facturas · loading invoices</span>
+        <span className="gs-loading">cargando anexos · loading annexes</span>
       </div>
     );
   }
@@ -193,7 +193,7 @@ function InvoiceList({ clientId }: { clientId: string }) {
     return (
       <div className="gs-state" style={{ minHeight: 80 }}>
         <span className="mono" style={{ color: 'var(--eg-red)', fontSize: 11 }}>
-          // error al cargar facturas · failed to load invoices
+          // error al cargar anexos · failed to load annexes
         </span>
       </div>
     );
@@ -207,7 +207,7 @@ function InvoiceList({ clientId }: { clientId: string }) {
         className="tag-head"
         style={{ background: 'var(--eg-yellow)', padding: '8px 14px' }}
       >
-        <span>// FACTURAS · INVOICES · {data.length}</span>
+        <span>// ANEXOS DE FACTURACIÓN · BILLING ANNEXES · {data.length}</span>
         <span>IMPORTE CONGELADO EN EMISIÓN · RATE FROZEN AT GENERATION</span>
       </div>
 
@@ -215,7 +215,7 @@ function InvoiceList({ clientId }: { clientId: string }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '150px 165px minmax(180px, 1fr) 150px 130px',
+          gridTemplateColumns: '150px 165px minmax(160px, 1fr) 150px 150px 110px',
           gap: 0,
           background: 'var(--eg-paper-3)',
           borderBottom: '1.5px solid var(--eg-iron)',
@@ -227,10 +227,11 @@ function InvoiceList({ clientId }: { clientId: string }) {
           color: 'var(--eg-fg-3)',
         }}
       >
-        <span>// núm · number</span>
+        <span>// ref. anexo · annex ref</span>
         <span>// estado · status</span>
         <span>// período · period</span>
         <span>// importe · amount</span>
+        <span>// ticketbai</span>
         <span>// creada · created</span>
       </div>
 
@@ -246,7 +247,7 @@ function InvoiceList({ clientId }: { clientId: string }) {
             letterSpacing: '0.12em',
           }}
         >
-          // sin facturas · no invoices yet
+          // sin anexos · no annexes yet
         </div>
       )}
 
@@ -256,7 +257,7 @@ function InvoiceList({ clientId }: { clientId: string }) {
           to={`/invoices/${inv.id}`}
           style={{
             display: 'grid',
-            gridTemplateColumns: '150px 165px minmax(180px, 1fr) 150px 130px',
+            gridTemplateColumns: '150px 165px minmax(160px, 1fr) 150px 150px 110px',
             gap: 0,
             alignItems: 'center',
             padding: '12px 14px',
@@ -315,6 +316,16 @@ function InvoiceList({ clientId }: { clientId: string }) {
             }}
           >
             {formatMoney(inv.subtotalCents, inv.currency)}
+          </span>
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              color: inv.externalInvoiceRef ? 'var(--eg-iron)' : 'var(--eg-fg-4)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {inv.externalInvoiceRef ?? '—'}
           </span>
           <span
             style={{
@@ -397,7 +408,7 @@ export function BillingPage() {
                 textTransform: 'uppercase',
               }}
             >
-              — BILLING —
+              — ANEXOS DE FACTURACIÓN · BILLING ANNEXES —
             </div>
           </div>
           <div

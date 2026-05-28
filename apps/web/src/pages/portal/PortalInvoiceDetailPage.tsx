@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Portal invoice detail — read-only, print only.
+// Portal billing annex detail — read-only, print only.
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { portal, ApiError } from '../../api/client';
@@ -36,7 +36,7 @@ export function PortalInvoiceDetailPage() {
         marginBottom: 24,
       }}
     >
-      ← Facturas · Invoices
+      ← Anexos · Annexes
     </Link>
   );
 
@@ -45,7 +45,7 @@ export function PortalInvoiceDetailPage() {
       <div className="cp-detail">
         {backLink}
         <div className="gs-state" style={{ minHeight: 200 }}>
-          <span className="gs-loading">cargando factura · loading invoice</span>
+          <span className="gs-loading">cargando anexo · loading annex</span>
         </div>
       </div>
     );
@@ -79,14 +79,14 @@ export function PortalInvoiceDetailPage() {
                 textTransform: 'uppercase',
               }}
             >
-              {is404 ? 'No encontrada · Not found' : 'Error · Error'}
+              {is404 ? 'No encontrado · Not found' : 'Error · Error'}
             </div>
             <p style={{ margin: 0 }}>
               {is404
-                ? 'Factura no encontrada · Invoice not found'
+                ? 'Anexo no encontrado · Annex not found'
                 : invoiceQ.error instanceof Error
                   ? invoiceQ.error.message
-                  : 'No se pudo cargar la factura · Could not load invoice'}
+                  : 'No se pudo cargar el anexo · Could not load annex'}
             </p>
           </div>
         </div>

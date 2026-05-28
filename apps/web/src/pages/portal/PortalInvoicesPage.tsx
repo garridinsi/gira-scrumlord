@@ -48,7 +48,7 @@ export function PortalInvoicesPage() {
   if (invoicesQ.isLoading) {
     return (
       <div className="gs-state">
-        <span className="gs-loading">cargando facturas · loading invoices</span>
+        <span className="gs-loading">cargando anexos · loading annexes</span>
       </div>
     );
   }
@@ -82,7 +82,7 @@ export function PortalInvoicesPage() {
           <p style={{ margin: 0 }}>
             {invoicesQ.error instanceof Error
               ? invoicesQ.error.message
-              : 'No se pudieron cargar las facturas · Could not load invoices'}
+              : 'No se pudieron cargar los anexos · Could not load annexes'}
           </p>
         </div>
       </div>
@@ -119,7 +119,7 @@ export function PortalInvoicesPage() {
             lineHeight: 1,
           }}
         >
-          Facturas
+          Anexos
         </h1>
         <p
           style={{
@@ -132,7 +132,7 @@ export function PortalInvoicesPage() {
             margin: '4px 0 0',
           }}
         >
-          Tus facturas emitidas · Your issued invoices
+          Anexos de facturación · Billing annexes (documentos informativos · informational documents)
         </p>
       </div>
 
@@ -149,7 +149,7 @@ export function PortalInvoicesPage() {
             textAlign: 'center',
           }}
         >
-          No hay facturas todavía · No invoices yet
+          No hay anexos todavía · No annexes yet
         </div>
       )}
 
@@ -172,7 +172,7 @@ export function PortalInvoicesPage() {
               color: 'var(--eg-fg-3)',
             }}
           >
-            <span>// núm · number</span>
+            <span>// ref. anexo · annex ref</span>
             <span>// estado · status</span>
             <span>// período · period</span>
             <span>// importe · amount</span>

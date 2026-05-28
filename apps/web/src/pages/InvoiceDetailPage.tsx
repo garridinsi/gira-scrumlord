@@ -1,11 +1,101 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Staff invoice detail — receipt + action bar.
+// Staff billing annex detail — receipt + action bar.
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoices, ApiError } from '../api/client';
 import { useMe } from '../hooks/useAuth';
 import { useToast } from '../ui/Toast';
 import { InvoiceReceipt } from '../ui/InvoiceReceipt';
+
+// ── External TicketBAI ref editor ────────────────────────────────────────────
+
+function ExternalRefEditor({ invoiceId, current }: { invoiceId: string; current: string | null }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [value, setValue] = useState(current ?? '');
+
+  // Keep in sync if the query refreshes
+  useEffect(() => {
+    setValue(current ?? '');
+  }, [current]);
+
+  const refMut = useMutation({
+    mutationFn: () => invoices.setExternalRef(invoiceId, value.trim() || null),
+    onSuccess: (inv) => {
+      void qc.invalidateQueries({ queryKey: ['invoices'] });
+      toast({
+        tone: 'ok',
+        title: 'Ref. guardada · Ref saved',
+        body: inv.externalInvoiceRef ?? '(borrado · cleared)',
+      });
+    },
+    onError: (err) => {
+      toast({
+        tone: 'danger',
+        title: 'Error al guardar ref. · Save ref failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
+    },
+  });
+
+  const inputStyle: React.CSSProperties = {
+    fontFamily: 'var(--font-mono)',
+    fontSize: 12,
+    padding: '5px 10px',
+    border: '1.5px solid var(--eg-iron)',
+    background: 'var(--eg-paper)',
+    color: 'var(--eg-iron)',
+    outline: 'none',
+    minWidth: 200,
+    letterSpacing: '0.06em',
+  };
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexWrap: 'wrap',
+      }}
+    >
+      <label
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 10,
+          textTransform: 'uppercase',
+          letterSpacing: '0.14em',
+          color: 'var(--eg-fg-3)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        // factura ticketbai · ticketbai invoice
+      </label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.currentTarget.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') refMut.mutate();
+        }}
+        placeholder="TBS-YYYY-NNNN"
+        style={inputStyle}
+        aria-label="Número de factura TicketBAI · TicketBAI invoice number"
+      />
+      <button
+        className="b-btn"
+        onClick={() => refMut.mutate()}
+        disabled={refMut.isPending}
+        style={{ fontSize: 12 }}
+      >
+        {refMut.isPending ? '...' : 'Guardar · Save'}
+      </button>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,7 +121,7 @@ export function InvoiceDetailPage() {
     mutationFn: () => invoices.issue(id!),
     onSuccess: (inv) => {
       invalidate();
-      toast({ tone: 'ok', title: 'Factura emitida · Invoice issued', body: inv.number });
+      toast({ tone: 'ok', title: 'Anexo emitido · Annex issued', body: inv.number });
     },
     onError: (err) => {
       toast({
@@ -46,12 +136,12 @@ export function InvoiceDetailPage() {
     mutationFn: () => invoices.pay(id!),
     onSuccess: (inv) => {
       invalidate();
-      toast({ tone: 'ok', title: 'Factura pagada · Invoice paid', body: inv.number });
+      toast({ tone: 'ok', title: 'Anexo pagado · Annex paid', body: inv.number });
     },
     onError: (err) => {
       toast({
         tone: 'danger',
-        title: 'Error al marcar pagada · Pay failed',
+        title: 'Error al marcar pagado · Pay failed',
         body: err instanceof ApiError ? err.message : 'Error',
       });
     },
@@ -61,7 +151,7 @@ export function InvoiceDetailPage() {
     mutationFn: () => invoices.void(id!),
     onSuccess: (inv) => {
       invalidate();
-      toast({ tone: 'warn', title: 'Factura anulada · Invoice voided', body: inv.number });
+      toast({ tone: 'warn', title: 'Anexo anulado · Annex voided', body: inv.number });
     },
     onError: (err) => {
       toast({
@@ -76,7 +166,7 @@ export function InvoiceDetailPage() {
     mutationFn: () => invoices.delete(id!),
     onSuccess: () => {
       invalidate();
-      toast({ tone: 'ok', title: 'Factura eliminada · Invoice deleted' });
+      toast({ tone: 'ok', title: 'Anexo eliminado · Annex deleted' });
       navigate('/billing', { replace: true });
     },
     onError: (err) => {
@@ -96,7 +186,7 @@ export function InvoiceDetailPage() {
     return (
       <div className="body">
         <div className="gs-state">
-          <span className="gs-loading">cargando factura · loading invoice</span>
+          <span className="gs-loading">cargando anexo · loading annex</span>
         </div>
       </div>
     );
@@ -148,14 +238,14 @@ export function InvoiceDetailPage() {
                   textTransform: 'uppercase',
                 }}
               >
-                {is404 ? 'No encontrada · Not found' : 'Error · Error'}
+                {is404 ? 'No encontrado · Not found' : 'Error · Error'}
               </div>
               <p style={{ margin: 0 }}>
                 {is404
-                  ? 'Factura no encontrada · Invoice not found'
+                  ? 'Anexo no encontrado · Annex not found'
                   : invoiceQ.error instanceof Error
                     ? invoiceQ.error.message
-                    : 'No se pudo cargar la factura · Could not load invoice'}
+                    : 'No se pudo cargar el anexo · Could not load annex'}
               </p>
             </div>
           </div>
@@ -197,7 +287,7 @@ export function InvoiceDetailPage() {
 
         {/* Action bar — hidden in print */}
         {!isViewer && (
-          <div className="invoice-action-bar" style={{ marginBottom: 20 }}>
+          <div className="invoice-action-bar" style={{ marginBottom: 12 }}>
             <div
               style={{
                 display: 'flex',
@@ -239,7 +329,7 @@ export function InvoiceDetailPage() {
                   disabled={anyPending}
                   style={{ fontSize: 12, background: 'var(--eg-green)', borderColor: 'var(--eg-green)' }}
                 >
-                  {payMut.isPending ? '...' : 'Marcar pagada · Mark paid'}
+                  {payMut.isPending ? '...' : 'Marcar pagado · Mark paid'}
                 </button>
               )}
 
@@ -247,7 +337,7 @@ export function InvoiceDetailPage() {
                 <button
                   className="b-btn b-btn--ghost"
                   onClick={() => {
-                    if (confirm('¿Anular esta factura? · Void this invoice?')) voidMut.mutate();
+                    if (confirm('¿Anular este anexo? · Void this annex?')) voidMut.mutate();
                   }}
                   disabled={anyPending}
                   style={{ fontSize: 12 }}
@@ -279,6 +369,25 @@ export function InvoiceDetailPage() {
               >
                 Imprimir · Print
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* External TicketBAI ref editor — staff only, hidden in print */}
+        {!isViewer && (
+          <div
+            className="invoice-action-bar"
+            style={{ marginBottom: 20 }}
+          >
+            <div
+              style={{
+                padding: '10px 16px',
+                background: 'var(--eg-paper-2)',
+                border: '1.5px solid var(--eg-rule)',
+                borderTop: 'none',
+              }}
+            >
+              <ExternalRefEditor invoiceId={inv.id} current={inv.externalInvoiceRef} />
             </div>
           </div>
         )}

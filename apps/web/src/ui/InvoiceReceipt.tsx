@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Printable invoice receipt — EG "Mantenedor" design. Presentation-only.
+// Printable billing annex receipt — EG "Mantenedor" design. Presentation-only.
+// NOT a fiscal invoice. Fiscal invoices are issued via TicketBAI / Batuz.
 import type { InvoiceView } from '@gira/shared';
 import { Glyph, Plate } from './atoms';
 import { formatMoney } from '../lib/money';
@@ -73,6 +74,68 @@ function StatusBadge({ status }: { status: InvoiceView['status'] }) {
   );
 }
 
+// ── Non-fiscal disclaimer ────────────────────────────────────────────────────
+
+function AnnexDisclaimer() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 12,
+        margin: '0 0 20px',
+        padding: '10px 14px',
+        background: 'var(--eg-paper-2)',
+        border: '2px solid var(--eg-iron)',
+        borderLeft: '5px solid var(--eg-iron)',
+      }}
+    >
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontWeight: 900,
+          fontSize: 18,
+          color: 'var(--eg-iron)',
+          lineHeight: 1,
+          flexShrink: 0,
+          marginTop: 1,
+        }}
+        aria-hidden
+      >
+        //
+      </span>
+      <div>
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 700,
+            fontSize: 11,
+            textTransform: 'uppercase',
+            letterSpacing: '0.14em',
+            color: 'var(--eg-iron)',
+            marginBottom: 3,
+          }}
+        >
+          Documento informativo · Informational document
+        </div>
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            color: 'var(--eg-fg-2)',
+            lineHeight: 1.5,
+          }}
+        >
+          No es una factura fiscal. La factura se emite mediante TicketBAI / Batuz.
+          <span style={{ color: 'var(--eg-fg-4)', marginLeft: 6 }}>
+            · Not a fiscal invoice. The invoice is issued via TicketBAI / Batuz.
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main receipt component ───────────────────────────────────────────────────
 
 export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
@@ -104,7 +167,7 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
             style={{
               fontFamily: 'var(--font-display)',
               fontWeight: 900,
-              fontSize: 'clamp(28px, 5vw, 52px)',
+              fontSize: 'clamp(22px, 4vw, 42px)',
               textTransform: 'uppercase',
               letterSpacing: '-0.02em',
               color: 'var(--eg-iron)',
@@ -112,7 +175,7 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
               lineHeight: 0.9,
             }}
           >
-            FACTURA
+            ANEXO DE FACTURACIÓN
           </h1>
           <div
             style={{
@@ -125,7 +188,7 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
               marginTop: 2,
             }}
           >
-            INVOICE
+            BILLING ANNEX
           </div>
         </div>
 
@@ -140,7 +203,7 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
               marginBottom: 4,
             }}
           >
-            // núm · number
+            // ref. anexo · annex ref
           </div>
           <Plate>
             <span
@@ -159,6 +222,9 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
           </div>
         </div>
       </div>
+
+      {/* ── Non-fiscal disclaimer ────────────────────────────── */}
+      <AnnexDisclaimer />
 
       {/* ── Meta ────────────────────────────────────────────── */}
       <div className="invoice-receipt__meta">
@@ -235,6 +301,32 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
                     pagada ·{' '}
                   </span>
                   {formatDate(invoice.paidAt)}
+                </span>
+              )}
+              {invoice.externalInvoiceRef && (
+                <span
+                  style={{
+                    color: 'var(--eg-iron)',
+                    marginTop: 4,
+                    paddingTop: 4,
+                    borderTop: '1px dashed var(--eg-rule)',
+                  }}
+                >
+                  <span
+                    style={{
+                      color: 'var(--eg-fg-4)',
+                      fontSize: 10,
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      display: 'block',
+                      marginBottom: 1,
+                    }}
+                  >
+                    factura ticketbai · ticketbai invoice
+                  </span>
+                  <span style={{ fontWeight: 700, letterSpacing: '0.06em' }}>
+                    {invoice.externalInvoiceRef}
+                  </span>
                 </span>
               )}
             </div>
@@ -386,7 +478,7 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
               paddingRight: 20,
             }}
           >
-            SUBTOTAL · TOTAL
+            TOTAL ANEXO · ANNEX TOTAL
           </span>
           <Plate tone="yellow" style={{ fontSize: 16, padding: '8px 18px' }}>
             <span
