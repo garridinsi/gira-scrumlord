@@ -198,6 +198,8 @@ export async function computeProjectMonthly(
   return {
     projectKey,
     currency: clientRate?.currency ?? defaultRate?.currency ?? project.client?.currency ?? 'EUR',
+    budgetMinutes: project.monthlyBudgetMinutes,
+    budgetCents: project.monthlyBudgetCents,
     months,
   };
 }

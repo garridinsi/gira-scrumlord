@@ -12,6 +12,8 @@ export const createProjectSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().max(5000).optional(),
   cadence: projectCadence.default('sprints'),
+  monthlyBudgetMinutes: z.number().int().min(0).nullish(),
+  monthlyBudgetCents: z.number().int().min(0).nullish(),
   clientId: z.string().cuid().nullish(),
 });
 export type CreateProject = z.infer<typeof createProjectSchema>;
@@ -20,6 +22,8 @@ export const updateProjectSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().max(5000).optional(),
   cadence: projectCadence.optional(),
+  monthlyBudgetMinutes: z.number().int().min(0).nullish(),
+  monthlyBudgetCents: z.number().int().min(0).nullish(),
   clientId: z.string().cuid().nullish(),
 });
 export type UpdateProject = z.infer<typeof updateProjectSchema>;

@@ -127,4 +127,21 @@ describe('money: rates + accrued cost', () => {
     const patched = await app.inject({ method: 'PATCH', url: '/projects/MNT', headers: { cookie }, payload: { cadence: 'sprints' } });
     expect(patched.json().cadence).toBe('sprints');
   });
+
+  it('carries the monthly retainer budget through to the monthly rollup', async () => {
+    const { cookie } = await actingAs({ role: 'admin' });
+    await app.inject({
+      method: 'POST',
+      url: '/projects',
+      headers: { cookie },
+      payload: { key: 'RET', name: 'Retainer', cadence: 'monthly', monthlyBudgetMinutes: 2400, monthlyBudgetCents: 240000 },
+    });
+    const res = await app.inject({ method: 'GET', url: '/projects/RET/monthly', headers: { cookie } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ budgetMinutes: 2400, budgetCents: 240000 });
+
+    // Clearing the budget sticks.
+    await app.inject({ method: 'PATCH', url: '/projects/RET', headers: { cookie }, payload: { monthlyBudgetMinutes: null } });
+    expect((await app.inject({ method: 'GET', url: '/projects/RET/monthly', headers: { cookie } })).json().budgetMinutes).toBeNull();
+  });
 });

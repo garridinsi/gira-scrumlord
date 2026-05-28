@@ -21,6 +21,8 @@ export async function createProject(input: CreateProject, actorId: string): Prom
         name: input.name,
         description: input.description ?? '',
         cadence: input.cadence,
+        monthlyBudgetMinutes: input.monthlyBudgetMinutes ?? null,
+        monthlyBudgetCents: input.monthlyBudgetCents ?? null,
         clientId: input.clientId ?? null,
       },
     });

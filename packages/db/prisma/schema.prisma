@@ -202,6 +202,9 @@ model Project {
   name         String
   description  String        @default("")
   cadence      ProjectCadence @default(sprints)
+  // Optional monthly retainer caps (maintenance projects): hours and/or money.
+  monthlyBudgetMinutes Int?
+  monthlyBudgetCents   Int?
   clientId     String?
   client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
   issueCounter Int           @default(0) // atomic source of PROJ-N keys

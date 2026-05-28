@@ -177,6 +177,9 @@ export interface MonthlyRollupView {
 export interface ProjectMonthlyView {
   projectKey: string;
   currency: string;
+  /** Optional monthly retainer caps; null when not configured. */
+  budgetMinutes: number | null;
+  budgetCents: number | null;
   months: MonthlyRollupView[]; // most recent first
 }
 

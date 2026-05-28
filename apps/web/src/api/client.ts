@@ -165,6 +165,8 @@ export interface ProjectRecord {
   name: string;
   description?: string;
   cadence?: 'sprints' | 'monthly';
+  monthlyBudgetMinutes?: number | null;
+  monthlyBudgetCents?: number | null;
   clientId?: string | null;
 }
 
