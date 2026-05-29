@@ -83,14 +83,48 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
-    const message =
-      typeof body === 'object' && body !== null && 'message' in body
-        ? String((body as Record<string, unknown>)['message'])
-        : `HTTP ${res.status}`;
-    throw new ApiError(res.status, body, message);
+    throw new ApiError(res.status, body, errorMessage(body, res.status));
   }
 
   return body as T;
+}
+
+/**
+ * Derive a human message from the API's error envelope. The API sends
+ * `{ error }` (the human text for app errors like "only a draft annex can be
+ * issued", or a code like "validation_error"/"already_exists"), optionally with
+ * Zod `issues` or a `message`. Read those in order so users see the real cause
+ * instead of a bare "HTTP 400".
+ */
+export function errorMessage(body: unknown, status: number): string {
+  if (typeof body === 'object' && body !== null) {
+    const b = body as Record<string, unknown>;
+    // Zod validation: surface the first issue ("path: message").
+    if (b.error === 'validation_error' && Array.isArray(b.issues) && b.issues.length > 0) {
+      const first = b.issues[0] as { path?: unknown[]; message?: string };
+      const where = Array.isArray(first.path) && first.path.length ? `${first.path.join('.')}: ` : '';
+      return `${where}${first.message ?? 'invalid input'}`;
+    }
+    if (typeof b.message === 'string') return b.message;
+    if (typeof b.error === 'string') return humanizeCode(b.error);
+  }
+  return `HTTP ${status}`;
+}
+
+/** Turn the API's machine codes into readable text; pass through human messages. */
+function humanizeCode(code: string): string {
+  switch (code) {
+    case 'already_exists':
+      return 'That already exists · Ya existe';
+    case 'not_found':
+      return 'Not found · No encontrado';
+    case 'in_use':
+      return 'Still referenced by other records · En uso por otros registros';
+    case 'internal_error':
+      return 'Something went wrong · Algo salió mal';
+    default:
+      return code; // HttpError messages arrive here verbatim (already human)
+  }
 }
 
 function json(body: unknown): RequestInit {
