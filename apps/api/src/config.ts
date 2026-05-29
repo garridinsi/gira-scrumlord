@@ -42,13 +42,13 @@ const envSchema = z.object({
 
 const parsed = envSchema.parse(process.env);
 
-// The insecure placeholder shipped in .env.example / docker-compose. It satisfies
-// the 16-char minimum, so without this guard a production deploy that forgets to
-// set SESSION_SECRET would sign session cookies with a publicly-known key.
-const INSECURE_DEFAULT_SECRET = 'dev-only-insecure-change-me-please-00000000';
-if (parsed.NODE_ENV === 'production' && parsed.SESSION_SECRET === INSECURE_DEFAULT_SECRET) {
+// The insecure placeholders shipped in .env.example / docker-compose all start
+// with this marker and satisfy the 16-char minimum, so without this guard a
+// production deploy that forgets to set SESSION_SECRET would sign session cookies
+// with a publicly-known key. Match the marker, not an exact string.
+if (parsed.NODE_ENV === 'production' && parsed.SESSION_SECRET.startsWith('dev-only-insecure-change-me')) {
   throw new Error(
-    'SESSION_SECRET is still the insecure default — set a strong unique secret before deploying to production.',
+    'SESSION_SECRET is still an insecure default — set a strong unique secret before deploying to production.',
   );
 }
 

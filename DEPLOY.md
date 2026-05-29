@@ -36,13 +36,43 @@ magic link appears in Mailpit.
 
 ## Production checklist
 
-1. **Secrets:** set a strong `SESSION_SECRET` (`node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`).
+1. **Secrets:** set a strong, unique `SESSION_SECRET`
+   (`node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`).
+   The API **refuses to boot** in `NODE_ENV=production` while this is still a dev
+   placeholder — that's intentional.
 2. **TLS:** put a reverse proxy / TLS terminator in front of `web`, then set
-   `COOKIE_SECURE=true` and `APP_URL=https://your-host`.
-3. **Email:** point `SMTP_HOST`/`SMTP_PORT`/`MAIL_FROM` at a real mail server
+   `APP_URL=https://your-host`. `COOKIE_SECURE` **defaults to `true`** under
+   `NODE_ENV=production` (override only if you really terminate TLS elsewhere).
+3. **Timezone:** set `BILLING_TIMEZONE` (IANA, e.g. `Europe/Madrid`) so monthly
+   maintenance rollups bucket worklogs by your local calendar month.
+4. **Webhooks:** keep `ALLOW_PRIVATE_WEBHOOKS=false` in production — the notifier
+   refuses outbound calls to private/loopback hosts and re-checks the *resolved*
+   IP (DNS-rebinding guard).
+5. **Email:** point `SMTP_HOST`/`SMTP_PORT`/`MAIL_FROM` at a real mail server
    (drop the `mailpit` service).
-4. **Database:** use managed Postgres or back up the `gira_pgdata` volume.
-5. **Backups & audit:** the `sauron` audit log is append-only; keep it.
+6. **Database:** use managed Postgres or back up the `gira_pgdata` volume. Example
+   logical backup/restore against the compose Postgres:
+   ```bash
+   docker compose -f docker-compose.full.yml exec -T postgres \
+     pg_dump -U gira gira | gzip > gira-$(date +%F).sql.gz          # backup
+   gunzip -c gira-2026-05-30.sql.gz | docker compose -f docker-compose.full.yml \
+     exec -T postgres psql -U gira gira                              # restore
+   ```
+7. **Audit:** the `sauron` log is append-only — retain it (it's your compliance trail).
+8. **Health check:** point your orchestrator at `GET /api/health` →
+   `{ status, db, name, version }` (200 when the DB is reachable).
+
+### Security posture (built in)
+
+- **Multi-tenant isolation:** client users are always read-only viewers, scoped to
+  their own client; they can never reach a staff write/config surface.
+- **Rate limiting:** `/auth/magic-link`, `/auth/callback`, and `/intake/:sourceId`
+  are throttled per IP.
+- **CSRF:** cookie-authenticated mutations require a same-origin `Origin`.
+- **Headers:** the API sets Helmet headers; nginx sets a strict CSP +
+  `nosniff`/`DENY`/`no-referrer` on the SPA document.
+- **Magic-link tokens & sessions:** 256-bit, stored only as SHA-256 hashes,
+  single-use, constant-time compared, revocable, with expiry.
 
 ## Local development (no containers for the app)
 

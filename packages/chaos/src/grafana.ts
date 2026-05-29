@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Parse a Grafana alerting webhook payload into normalized intakes. Pure.
+// Parse a Grafana alerting webhook payload into normalized intakes.
+// Returns externalRef (fingerprint) for deduplication on (source, externalRef).
 
 import type { Priority } from '@gira/shared';
 import type { NormalizedIntake } from './types.js';

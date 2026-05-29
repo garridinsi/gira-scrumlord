@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Parse a WordPress form submission into a normalized intake. Pure.
+// Parse a WordPress form submission into a normalized intake.
+// Returns externalRef (formId or id) for deduplication on (source, externalRef).
 // Tolerant of common field names (CF7 / WPForms / generic).
 
 import type { NormalizedIntake } from './types.js';
