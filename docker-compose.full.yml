@@ -15,11 +15,17 @@
 # e.g.  APP_URL=http://localhost:8080 docker compose -f docker-compose.full.yml up
 
 x-env: &env
-  NODE_ENV: production
+  # This file is a LOCAL DEMO. It defaults to development so it boots out of the
+  # box with the placeholder secret below. For a real deploy set NODE_ENV=production
+  # AND a strong SESSION_SECRET (the API refuses to boot in production with the
+  # placeholder) AND COOKIE_SECURE=true behind TLS — see DEPLOY.md.
+  NODE_ENV: ${NODE_ENV:-development}
   DATABASE_URL: postgresql://gira:gira@postgres:5432/gira?schema=public
   SESSION_SECRET: ${SESSION_SECRET:-dev-only-insecure-change-me-please-00000000}
   COOKIE_SECURE: ${COOKIE_SECURE:-false}
   APP_URL: ${APP_URL:-http://localhost:8080}
+  BILLING_TIMEZONE: ${BILLING_TIMEZONE:-Europe/Madrid}
+  ALLOW_PRIVATE_WEBHOOKS: ${ALLOW_PRIVATE_WEBHOOKS:-false}
   SMTP_HOST: mailpit
   SMTP_PORT: "1025"
   MAIL_FROM: "gira-scrumlord <no-reply@gira.local>"
