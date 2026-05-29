@@ -154,6 +154,49 @@ describe('invoicing (M5)', () => {
     expect(inv.subtotalCents).toBe(50_000);
   });
 
+  it('refuses to generate a fixed-price issue with no price set (no silent €0)', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Fixed no price' });
+    await prisma.issue.update({ where: { key: 'ACME-1' }, data: { billingMode: 'fixed', fixedPriceCents: null } });
+    await logWork(staff.cookie, 'ACME-1', 60);
+    const gen = await generate(staff.cookie, client.id);
+    expect(gen.statusCode).toBe(400);
+    expect(gen.json().error ?? gen.json().message).toMatch(/fixed price/i);
+  });
+
+  it('deleting a draft releases its worklogs so they can be re-invoiced', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
+    await logWork(staff.cookie, 'ACME-1', 90);
+    await setRate(staff.cookie, 6000);
+    const id = (await generate(staff.cookie, client.id)).json().id as string;
+
+    const del = await app.inject({ method: 'DELETE', url: `/invoices/${id}`, headers: { cookie: staff.cookie } });
+    expect(del.statusCode).toBe(204);
+    // Worklog freed → a fresh annex can be generated again.
+    const regen = await generate(staff.cookie, client.id);
+    expect(regen.statusCode).toBe(201);
+    expect(regen.json().subtotalCents).toBe(9000); // 90min @ 6000/h
+  });
+
+  it('charges a fixed price exactly once after a void + regenerate', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Fixed scope' });
+    await prisma.issue.update({ where: { key: 'ACME-1' }, data: { billingMode: 'fixed', fixedPriceCents: 50_000 } });
+    await logWork(staff.cookie, 'ACME-1', 120);
+    await setRate(staff.cookie, 6000);
+
+    const first = (await generate(staff.cookie, client.id)).json();
+    expect(first.subtotalCents).toBe(50_000);
+    await app.inject({ method: 'POST', url: `/invoices/${first.id}/void`, headers: { cookie: staff.cookie } });
+
+    // Regenerate: the cancelled annex freed the hours, so the price is billed once
+    // on the new annex — not doubled, not lost.
+    const second = (await generate(staff.cookie, client.id)).json();
+    expect(second.lines).toHaveLength(1);
+    expect(second.subtotalCents).toBe(50_000);
+  });
+
   it('void releases the worklogs so they can be billed again', async () => {
     const { client, staff } = await setup();
     await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
@@ -197,6 +240,13 @@ describe('invoicing (M5)', () => {
     const portal = await app.inject({ method: 'GET', url: '/portal/invoices', headers: { cookie: clientUser.cookie } });
     expect(portal.json()).toHaveLength(1);
     expect(portal.json()[0].id).toBe(id);
+
+    // …but once VOIDED it disappears again — a cancelled annex must not show to the client.
+    await app.inject({ method: 'POST', url: `/invoices/${id}/void`, headers: { cookie: staff.cookie } });
+    expect((await app.inject({ method: 'GET', url: '/portal/invoices', headers: { cookie: clientUser.cookie } })).json()).toEqual([]);
+    expect(
+      (await app.inject({ method: 'GET', url: `/portal/invoices/${id}`, headers: { cookie: clientUser.cookie } })).statusCode,
+    ).toBe(404);
   });
 
   it('a viewer can read invoices but not generate them', async () => {

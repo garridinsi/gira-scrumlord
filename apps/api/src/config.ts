@@ -34,6 +34,10 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
   MAIL_FROM: z.string().default('gira-scrumlord <no-reply@gira.local>'),
+  // IANA timezone used to bucket worklogs into calendar months for the monthly
+  // maintenance rollup + billing. Defaults to the maintainer's locale; self-hosters
+  // in other regions should set this so late-night work lands in the right month.
+  BILLING_TIMEZONE: z.string().default('Europe/Madrid'),
 });
 
 const parsed = envSchema.parse(process.env);

@@ -151,13 +151,20 @@ export async function generateInvoice(
 
     const lineData: Prisma.InvoiceLineCreateWithoutInvoiceInput[] = [];
     const unrated: string[] = [];
+    const unpriced: string[] = [];
     let subtotal = 0;
     for (const issue of issues.sort((a, b) => a.key.localeCompare(b.key))) {
       const minutes = byIssue.get(issue.id)?.minutes ?? 0;
 
       if (issue.billingMode === 'fixed') {
         if (alreadyBilled.has(issue.id)) continue; // price already charged; just consume hours
-        const amount = issue.fixedPriceCents ?? 0;
+        if (issue.fixedPriceCents == null) {
+          // A fixed-price issue with no price would silently bill €0 — refuse, same
+          // as the no-hourly-rate guard below.
+          unpriced.push(issue.key);
+          continue;
+        }
+        const amount = issue.fixedPriceCents;
         subtotal += amount;
         lineData.push({
           issueId: issue.id,
@@ -197,6 +204,11 @@ export async function generateInvoice(
     if (unrated.length > 0) {
       throw badRequest(
         `no hourly rate configured for ${unrated.join(', ')} — set a rate before invoicing`,
+      );
+    }
+    if (unpriced.length > 0) {
+      throw badRequest(
+        `no fixed price set for ${unpriced.join(', ')} — set a fixed price before invoicing`,
       );
     }
 

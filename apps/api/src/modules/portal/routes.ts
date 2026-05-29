@@ -49,19 +49,22 @@ export async function portalRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(201).send(toIssueView(issue));
   });
 
-  // A client sees only their own *issued/paid* invoices — drafts stay staff-side.
+  // A client sees only their own *issued/paid* annexes — drafts AND voided ones
+  // stay staff-side (a cancelled annex must never appear to the client).
+  const clientVisible = (status: string) => status === 'issued' || status === 'paid';
+
   app.get('/portal/invoices', { preHandler: requireAuth }, async (req) => {
     const user = clientUser(req);
     const invoices = await listClientInvoices(user.clientId);
-    return invoices.filter((i) => i.status !== 'draft');
+    return invoices.filter((i) => clientVisible(i.status));
   });
 
   app.get('/portal/invoices/:id', { preHandler: requireAuth }, async (req) => {
     const user = clientUser(req);
     const { id } = req.params as { id: string };
     const invoice = await getInvoice(id);
-    // 404 (not 403) on someone else's or a draft — never confirm it exists.
-    if (invoice.clientId !== user.clientId || invoice.status === 'draft') {
+    // 404 (not 403) on someone else's, a draft, or a voided annex — never confirm it exists.
+    if (invoice.clientId !== user.clientId || !clientVisible(invoice.status)) {
       throw notFound('invoice not found');
     }
     return toInvoiceView(invoice);

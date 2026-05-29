@@ -120,6 +120,22 @@ describe('money: rates + accrued cost', () => {
     expect(months[1]).toMatchObject({ billableMinutes: 120, accruedCents: 12000 }); // 2h @ 60
   });
 
+  it('buckets months in the billing timezone, not UTC (late-night month-end)', async () => {
+    // BILLING_TIMEZONE defaults to Europe/Madrid. 23:30 on 2026-05-31 Madrid is
+    // 21:30Z same day — must land in May, not June (the old UTC-slice bug).
+    const { user, cookie } = await actingAs({ role: 'member' });
+    const { projectKey } = await seedProject({ reporterId: user.id });
+    await setRate(cookie, { scope: 'default', hourlyCents: 6000 });
+    const created = await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey, title: 'LateNight' } });
+    const issueId = created.json().id as string;
+    await prisma.worklog.create({
+      data: { issueId, userId: user.id, minutes: 60, billable: true, loggedAt: new Date('2026-05-31T23:30:00+02:00') },
+    });
+    const res = await app.inject({ method: 'GET', url: `/projects/${projectKey}/monthly`, headers: { cookie } });
+    const months = res.json().months as Array<{ month: string }>;
+    expect(months.map((m) => m.month)).toEqual(['2026-05']);
+  });
+
   it('persists project cadence (sprints | monthly)', async () => {
     const { cookie } = await actingAs({ role: 'admin' });
     const made = await app.inject({ method: 'POST', url: '/projects', headers: { cookie }, payload: { key: 'MNT', name: 'Maintenance', cadence: 'monthly' } });
