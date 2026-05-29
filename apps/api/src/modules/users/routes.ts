@@ -81,6 +81,12 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     const before = await prisma.user.findUnique({ where: { id } });
     if (!before) throw notFound('user not found');
 
+    // Security invariant: client users stay viewers — never promote one to a
+    // writer role on the staff surface.
+    if (before.kind === 'client' && data.role != null && data.role !== 'viewer') {
+      throw badRequest('client users must be viewers');
+    }
+
     const demotingFromAdmin = data.role != null && data.role !== 'admin' && before.role === 'admin';
     const deactivating = data.isActive === false;
 

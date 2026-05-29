@@ -39,3 +39,30 @@ export function assertSafeWebhookUrl(raw: string, allowPrivate = false): void {
     throw new Error(`refusing to call private/loopback host: ${url.hostname}`);
   }
 }
+
+/**
+ * Stronger guard used at DELIVERY time: the literal-hostname check above can be
+ * bypassed by a domain whose DNS resolves to an internal IP (DNS rebinding), so
+ * here we actually resolve the hostname and reject if ANY returned address is
+ * private/loopback/link-local. Closes the rebind gap for outbound webhooks.
+ */
+export async function assertResolvedHostSafe(raw: string, allowPrivate = false): Promise<void> {
+  assertSafeWebhookUrl(raw, allowPrivate);
+  if (allowPrivate) return;
+  const { hostname } = new URL(raw);
+  // IP literals were already validated by assertSafeWebhookUrl → isPrivateHost.
+  const isIpLiteral = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) || hostname.includes(':');
+  if (isIpLiteral) return;
+  const { lookup } = await import('node:dns/promises');
+  let addrs: Array<{ address: string }>;
+  try {
+    addrs = await lookup(hostname, { all: true });
+  } catch {
+    throw new Error(`cannot resolve webhook host: ${hostname}`);
+  }
+  for (const a of addrs) {
+    if (isPrivateHost(a.address)) {
+      throw new Error(`webhook host ${hostname} resolves to a private address (${a.address})`);
+    }
+  }
+}

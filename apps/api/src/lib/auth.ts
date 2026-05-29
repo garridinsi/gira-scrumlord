@@ -26,9 +26,13 @@ export function currentUser(req: FastifyRequest): AuthUser {
   return req.user;
 }
 
+/**
+ * Gate by staff role. These are staff-surface roles, so a client user (always a
+ * viewer, never staff) can never satisfy them even if a stale role slipped through.
+ */
 export function requireRole(...roles: AuthUser['role'][]) {
   return async (req: FastifyRequest, _reply: FastifyReply): Promise<void> => {
     const u = currentUser(req);
-    if (!roles.includes(u.role)) throw forbidden('insufficient role');
+    if (u.kind !== 'staff' || !roles.includes(u.role)) throw forbidden('insufficient role');
   };
 }

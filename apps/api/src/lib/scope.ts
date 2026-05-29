@@ -1,14 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Authorization scoping. The rule that protects client confidentiality:
-// a client user can only ever touch projects belonging to their own client.
-// Staff (admin/member/viewer) see everything; viewers are read-only.
+// a client user can only ever touch projects belonging to their own client,
+// and is ALWAYS read-only on the staff surface. Staff (admin/member/viewer)
+// see everything; member/admin can write, viewers are read-only.
 
 import type { Prisma } from '@gira/db';
 import type { AuthUser } from './auth.js';
 import { forbidden } from './http-error.js';
 
+/**
+ * Write capability gate for the staff app. Requiring `kind === 'staff'` here is a
+ * hard, single-point invariant: a client user can NEVER pass this check even if
+ * their stored role were somehow elevated, so every assertCanWrite-guarded route
+ * (project/issue/sprint/rate/channel/invoice config) is closed to clients. Client
+ * write paths (filing a portal request, commenting) use their own scoped guards,
+ * never this one.
+ */
 export function canWrite(u: AuthUser): boolean {
-  return u.role === 'admin' || u.role === 'member';
+  return u.kind === 'staff' && (u.role === 'admin' || u.role === 'member');
 }
 
 export function assertCanWrite(u: AuthUser): void {
@@ -16,7 +25,12 @@ export function assertCanWrite(u: AuthUser): void {
 }
 
 export function assertAdmin(u: AuthUser): void {
-  if (u.role !== 'admin') throw forbidden('admin only');
+  if (u.kind !== 'staff' || u.role !== 'admin') throw forbidden('admin only');
+}
+
+/** Staff-only surface (billing, config, team) — clients have the portal instead. */
+export function assertStaff(u: AuthUser): void {
+  if (u.kind !== 'staff') throw forbidden('staff only');
 }
 
 /** WHERE clause limiting a project list to what the user may see. */

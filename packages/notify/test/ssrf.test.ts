@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
-import { assertSafeWebhookUrl, isPrivateHost } from '../src/ssrf.js';
+import { assertResolvedHostSafe, assertSafeWebhookUrl, isPrivateHost } from '../src/ssrf.js';
 
 describe('ssrf guard', () => {
   it('flags loopback, private, and link-local hosts', () => {
@@ -25,5 +25,22 @@ describe('ssrf guard', () => {
   it('permits public https and private-when-allowed', () => {
     expect(() => assertSafeWebhookUrl('https://hooks.example.com/x')).not.toThrow();
     expect(() => assertSafeWebhookUrl('http://127.0.0.1/x', true)).not.toThrow();
+  });
+
+  describe('assertResolvedHostSafe (DNS-rebinding guard)', () => {
+    it('rejects IP-literal private targets and bad schemes without DNS', async () => {
+      await expect(assertResolvedHostSafe('http://169.254.169.254/latest')).rejects.toThrow();
+      await expect(assertResolvedHostSafe('http://127.0.0.1/hook')).rejects.toThrow();
+      await expect(assertResolvedHostSafe('ftp://example.com')).rejects.toThrow();
+    });
+
+    it('rejects a hostname that resolves to a private address', async () => {
+      // localhost resolves to 127.0.0.1/::1 — a stand-in for any rebinding domain.
+      await expect(assertResolvedHostSafe('http://localhost:9000/hook')).rejects.toThrow();
+    });
+
+    it('short-circuits to allowed when allowPrivate is set', async () => {
+      await expect(assertResolvedHostSafe('http://127.0.0.1/x', true)).resolves.toBeUndefined();
+    });
   });
 });

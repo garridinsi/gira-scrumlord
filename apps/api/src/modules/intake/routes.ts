@@ -11,6 +11,7 @@ import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth, requireRole } from '../../lib/auth.js';
 import { forbidden, notFound, unauthorized } from '../../lib/http-error.js';
+import { intakeRateLimit } from '../../lib/rate-limits.js';
 import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
 import { toIntakeSourceView } from '../../lib/views.js';
 import { getProjectByKeyOr404 } from '../projects/service.js';
@@ -109,7 +110,7 @@ export async function intakeRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── inbound webhook (no session; token-authenticated) ─────────────────────
-  app.post('/intake/:sourceId', async (req, reply) => {
+  app.post('/intake/:sourceId', { config: { rateLimit: intakeRateLimit } }, async (req, reply) => {
     const { sourceId } = req.params as { sourceId: string };
     const header = req.headers['x-gira-token'];
     const provided =

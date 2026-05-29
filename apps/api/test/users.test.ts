@@ -2,7 +2,7 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
-import { actingAs, makeUser } from './helpers/auth.js';
+import { actingAs, cookieFor, makeUser } from './helpers/auth.js';
 import { prisma, resetDb } from './helpers/db.js';
 
 describe('users', () => {
@@ -117,5 +117,50 @@ describe('users', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().sent).toBe(true);
     expect(await prisma.magicLinkToken.findFirst({ where: { email: 'invitee@example.test' } })).not.toBeNull();
+  });
+
+  // ── security: client users are always read-only viewers ─────────────────────
+  it('normalizes a client user to viewer even when member is requested', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const client = await prisma.client.create({ data: { name: 'Acme', slug: 'acme-norm' } });
+    const created = await post(admin.cookie, '/users', {
+      email: 'mallory@acme.test',
+      name: 'Mallory',
+      kind: 'client',
+      role: 'member', // attempt to make a client a writer
+      clientId: client.id,
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json().role).toBe('viewer'); // forced down
+
+    // and a later promotion attempt is rejected
+    const promote = await patch(admin.cookie, `/users/${created.json().id}`, { role: 'member' });
+    expect(promote.statusCode).toBe(400);
+  });
+
+  it('denies a client user the staff write/config surface (cross-tenant guard)', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const client = await prisma.client.create({ data: { name: 'Acme', slug: 'acme-deny' } });
+    const created = await post(admin.cookie, '/users', {
+      email: 'wile@acme.test',
+      name: 'Wile',
+      kind: 'client',
+      clientId: client.id,
+    });
+    const clientCookie = await cookieFor(created.json().id);
+
+    // staff-only config surfaces must be 403 for a client, even though it's authed
+    for (const url of ['/rates', '/channels', '/intake-sources']) {
+      const r = await app.inject({ method: 'GET', url, headers: { cookie: clientCookie } });
+      expect(r.statusCode).toBe(403);
+    }
+    // and a write to project config is refused
+    const w = await app.inject({
+      method: 'POST',
+      url: '/projects',
+      headers: { cookie: clientCookie },
+      payload: { key: 'NOPE', name: 'nope' },
+    });
+    expect(w.statusCode).toBe(403);
   });
 });

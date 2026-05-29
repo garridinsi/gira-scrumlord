@@ -21,7 +21,11 @@ export const createUserSchema = z
   .refine((v) => v.kind !== 'staff' || !v.clientId, {
     message: 'staff users are not scoped to a client',
     path: ['clientId'],
-  });
+  })
+  // Security invariant: client users are always read-only viewers. They get the
+  // portal, never write access to the staff surface. Normalize rather than reject
+  // so a UI that defaults role to 'member' can't accidentally create a client writer.
+  .transform((v) => (v.kind === 'client' ? { ...v, role: 'viewer' as const } : v));
 export type CreateUser = z.infer<typeof createUserSchema>;
 
 /** Edit an existing user. Email is immutable (it's the login identity). */

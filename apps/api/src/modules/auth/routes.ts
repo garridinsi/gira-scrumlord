@@ -2,6 +2,7 @@
 import { magicLinkCallbackSchema, magicLinkRequestSchema } from '@gira/shared';
 import type { FastifyInstance } from 'fastify';
 import { requireAuth } from '../../lib/auth.js';
+import { authRateLimit } from '../../lib/rate-limits.js';
 import { toUserView } from '../../lib/views.js';
 import { sendMagicLink } from './mailer.js';
 import { consumeMagicLink, createMagicLink } from './service.js';
@@ -13,7 +14,7 @@ import {
 } from './session.js';
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
-  app.post('/auth/magic-link', async (req, reply) => {
+  app.post('/auth/magic-link', { config: { rateLimit: authRateLimit } }, async (req, reply) => {
     const { email } = magicLinkRequestSchema.parse(req.body);
     const result = await createMagicLink(email);
     if (result.sent && result.link) {
@@ -23,7 +24,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(202).send({ status: 'ok' });
   });
 
-  app.post('/auth/callback', async (req, reply) => {
+  app.post('/auth/callback', { config: { rateLimit: authRateLimit } }, async (req, reply) => {
     const { token } = magicLinkCallbackSchema.parse(req.body);
     const user = await consumeMagicLink(token);
     const { cookieValue } = await createSession(user.id, {

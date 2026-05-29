@@ -5,6 +5,7 @@
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import type { FastifyInstance } from 'fastify';
 import { config } from '../config.js';
 import { forbidden } from '../lib/http-error.js';
@@ -16,6 +17,11 @@ export async function registerSecurity(app: FastifyInstance): Promise<void> {
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cors, { origin: config.APP_URL, credentials: true });
   await app.register(cookie, { secret: config.SESSION_SECRET });
+
+  // Rate limiting. Registered with global:false so it only applies to routes that
+  // opt in via `config.rateLimit` (the abuse-prone ones: magic-link send, sign-in
+  // token submission, and the unauthenticated intake webhook). Keyed by client IP.
+  await app.register(rateLimit, { global: false });
 
   // CSRF defense for cookie-authenticated mutations: a browser always sends an
   // Origin header on state-changing requests, so if one is present and isn't our

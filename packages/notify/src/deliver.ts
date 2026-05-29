@@ -4,7 +4,7 @@
 
 import nodemailer from 'nodemailer';
 import { notifyConfig } from './config.js';
-import { assertSafeWebhookUrl } from './ssrf.js';
+import { assertResolvedHostSafe } from './ssrf.js';
 
 const transport = notifyConfig.isTest
   ? nodemailer.createTransport({ jsonTransport: true })
@@ -56,7 +56,7 @@ export async function deliver(
     }
 
     if (channel.kind === 'webhook') {
-      assertSafeWebhookUrl(channel.target, opts.allowPrivate ?? notifyConfig.allowPrivateWebhooks);
+      await assertResolvedHostSafe(channel.target, opts.allowPrivate ?? notifyConfig.allowPrivateWebhooks);
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
       try {
