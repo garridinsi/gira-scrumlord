@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { MonthlyRollupView } from '@gira/shared';
+import type { MonthlyRollupView, ProjectMonthlyView } from '@gira/shared';
 import { invoices, projects, ApiError } from '../api/client';
 import { Plate } from '../ui/atoms';
 import { Subbar } from '../ui/Subbar';
@@ -10,6 +10,19 @@ import { useMe } from '../hooks/useAuth';
 import { useProjectTabs } from '../hooks/useProjectTabs';
 import { formatMinutes } from '../lib/format';
 import { formatMoney } from '../lib/money';
+import { centsToDecimal, downloadCsv } from '../lib/csv';
+
+function exportMonthlyCsv(key: string, data: ProjectMonthlyView): void {
+  downloadCsv(`${key}-mensual`, [
+    ['Mes · Month', 'Minutos · Minutes', 'Horas · Hours', `Coste · Cost (${data.currency})`],
+    ...data.months.map((m) => [
+      m.month,
+      m.billableMinutes,
+      (m.billableMinutes / 60).toFixed(2),
+      centsToDecimal(m.accruedCents),
+    ]),
+  ]);
+}
 
 // ── Month label: 'YYYY-MM' → 'MAYO 2026' ─────────────────────────────────────
 const MONTH_NAMES_ES = [
@@ -368,6 +381,13 @@ export function MonthlyPage() {
               {budgetCents != null ? formatMoney(budgetCents, data.currency) : '—'}
             </span>
           )}
+          <button
+            className="b-btn"
+            onClick={() => exportMonthlyCsv(key!, data)}
+            style={{ fontSize: 11, marginLeft: hasBudget ? 12 : 'auto' }}
+          >
+            CSV
+          </button>
         </div>
 
         {/* Column headings */}

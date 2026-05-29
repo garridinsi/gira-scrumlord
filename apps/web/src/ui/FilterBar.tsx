@@ -13,6 +13,23 @@ import { useQuery } from '@tanstack/react-query';
 import type { IssueView, LabelView, UserView } from '@gira/shared';
 import { issues as issuesApi, projects, users as usersApi } from '../api/client';
 import { LabelChip } from './atoms';
+import { downloadCsv } from '../lib/csv';
+
+function exportIssuesCsv(projectKey: string, list: IssueView[]): void {
+  downloadCsv(`${projectKey}-incidencias`, [
+    ['Key', 'Título · Title', 'Tipo · Type', 'Prioridad · Priority', 'Estado · Status', 'Asignado · Assignee', 'Puntos · Points', 'Vence · Due'],
+    ...list.map((i) => [
+      i.key,
+      i.title,
+      i.type,
+      i.priority,
+      i.statusName ?? '',
+      i.assignee?.name ?? '',
+      i.storyPoints ?? '',
+      i.dueAt ? i.dueAt.slice(0, 10) : '',
+    ]),
+  ]);
+}
 
 // ── Saved-view types ──────────────────────────────────────────────────────────
 
@@ -324,6 +341,18 @@ export function FilterBar({ projectKey, myId, onResults }: FilterBarProps) {
             onClick={() => setShowSaveInput(true)}
           >
             + Guardar vista · Save view
+          </button>
+        )}
+
+        {/* Export current results */}
+        {filterActive && (filteredQ.data?.length ?? 0) > 0 && (
+          <button
+            type="button"
+            className="b-btn b-btn--ghost"
+            style={{ fontSize: 10, padding: '2px 8px', height: 28 }}
+            onClick={() => exportIssuesCsv(projectKey, filteredQ.data ?? [])}
+          >
+            CSV
           </button>
         )}
         {showSaveInput && (

@@ -7,6 +7,29 @@ import { invoices, ApiError } from '../api/client';
 import { useMe } from '../hooks/useAuth';
 import { useToast } from '../ui/Toast';
 import { InvoiceReceipt } from '../ui/InvoiceReceipt';
+import { centsToDecimal, downloadCsv } from '../lib/csv';
+import type { InvoiceView } from '@gira/shared';
+
+function exportAnnexCsv(inv: InvoiceView): void {
+  downloadCsv(inv.number, [
+    ['Anexo · Annex', inv.number],
+    ['Cliente · Client', inv.clientName],
+    ['Moneda · Currency', inv.currency],
+    ['Factura TicketBAI · TicketBAI invoice', inv.externalInvoiceRef ?? ''],
+    [],
+    ['Issue', 'Descripción · Description', 'Minutos · Minutes', 'Horas · Hours', 'Tarifa/h · Rate/h', 'Importe · Amount'],
+    ...inv.lines.map((l) => [
+      l.issueKey,
+      l.description,
+      l.minutes,
+      (l.minutes / 60).toFixed(2),
+      l.hourlyCents != null ? centsToDecimal(l.hourlyCents) : '',
+      centsToDecimal(l.amountCents),
+    ]),
+    [],
+    ['', '', '', '', 'TOTAL', centsToDecimal(inv.subtotalCents)],
+  ]);
+}
 
 // ── External TicketBAI ref editor ────────────────────────────────────────────
 
@@ -362,6 +385,9 @@ export function InvoiceDetailPage() {
 
               <span style={{ flex: 1 }} />
 
+              <button className="b-btn" onClick={() => exportAnnexCsv(inv)} style={{ fontSize: 12 }}>
+                CSV
+              </button>
               <button
                 className="b-btn"
                 onClick={() => window.print()}
