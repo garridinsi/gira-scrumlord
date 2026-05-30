@@ -7,7 +7,8 @@
    Stenciled type. Asset-tag layouts. Bilingual by default.
    ============================================================ */
 
-@import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;500;700;800;900&family=Big+Shoulders+Stencil+Display:wght@500;700;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+/* Fonts are self-hosted via @fontsource (bundled by Vite), imported in
+   src/main.tsx — no Google Fonts CDN, so the CSP stays strict 'self'. */
 
 :root {
   /* ─── 1 · COLOR · the four-stamp system ─────────────────── */

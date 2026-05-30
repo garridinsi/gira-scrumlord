@@ -106,6 +106,18 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
+      '@fontsource/big-shoulders-display':
+        specifier: ^5.2.5
+        version: 5.2.5
+      '@fontsource/big-shoulders-stencil-display':
+        specifier: ^5.2.5
+        version: 5.2.5
+      '@fontsource/dm-sans':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/jetbrains-mono':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@gira/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -845,6 +857,18 @@ packages:
 
   '@fastify/rate-limit@10.3.0':
     resolution: {integrity: sha512-eIGkG9XKQs0nyynatApA3EVrojHOuq4l6fhB4eeCk4PIOeadvOJz9/4w3vGI44Go17uaXOWEcPkaD8kuKm7g6Q==}
+
+  '@fontsource/big-shoulders-display@5.2.5':
+    resolution: {integrity: sha512-qqqqNaT2DRcrpytJ82ZjFeDsQFdrncGna3OqLS+F9XwOS65rxOnXFBgnubh3hQVj8RzUS/LQNVtUXvdsZLKtkA==}
+
+  '@fontsource/big-shoulders-stencil-display@5.2.5':
+    resolution: {integrity: sha512-RMabqQS7WUi4mameqZLpZc5q1FLOIOxgamvD0/173ZMlRUx2vIIa0OPXw1SipZ9V6gevot/Qa2KjcQMu0eHRfQ==}
+
+  '@fontsource/dm-sans@5.2.8':
+    resolution: {integrity: sha512-tlovG42m9ESG28WiHpLq3F5umAlm64rv0RkqTbYowRn70e9OlRr5a3yTJhrhrY+k5lftR/OFJjPzOLQzk8EfCA==}
+
+  '@fontsource/jetbrains-mono@5.2.8':
+    resolution: {integrity: sha512-6w8/SG4kqvIMu7xd7wt6x3idn1Qux3p9N62s6G3rfldOUYHpWcc2FKrqf+Vo44jRvqWj2oAtTHrZXEP23oSKwQ==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2831,6 +2855,14 @@ snapshots:
       '@lukeed/ms': 2.0.2
       fastify-plugin: 5.1.0
       toad-cache: 3.7.1
+
+  '@fontsource/big-shoulders-display@5.2.5': {}
+
+  '@fontsource/big-shoulders-stencil-display@5.2.5': {}
+
+  '@fontsource/dm-sans@5.2.8': {}
+
+  '@fontsource/jetbrains-mono@5.2.8': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
