@@ -39,6 +39,18 @@ export async function createSession(
   return { cookieValue: `${session.id}.${raw}`, expiresAt };
 }
 
+/** Extract the session id from the cookie value (`${sessionId}.${secret}`). */
+export function sessionIdFromCookie(cookie?: string): string | null {
+  if (!cookie) return null;
+  const dot = cookie.indexOf('.');
+  if (dot < 1) return null;
+  return cookie.slice(0, dot);
+}
+
+// Only refresh `lastSeenAt` at most once per this window, so an authenticated user
+// hammering the API doesn't generate a write on every request.
+const LAST_SEEN_THROTTLE_MS = 5 * 60_000;
+
 export async function resolveUserFromCookie(cookie?: string): Promise<UserView | null> {
   if (!cookie) return null;
   const dot = cookie.indexOf('.');
@@ -51,13 +63,26 @@ export async function resolveUserFromCookie(cookie?: string): Promise<UserView |
   if (!safeEqualHash(hashToken(secret), session.tokenHash)) return null;
   if (!session.user.isActive) return null;
 
+  // Throttled "last active" touch for the account → active-sessions screen.
+  const now = Date.now();
+  if (!session.lastSeenAt || now - session.lastSeenAt.getTime() > LAST_SEEN_THROTTLE_MS) {
+    await prisma.session.update({ where: { id }, data: { lastSeenAt: new Date(now) } }).catch(() => {});
+  }
+
   return toUserView(session.user);
 }
 
 export async function revokeSessionFromCookie(cookie?: string): Promise<void> {
-  if (!cookie) return;
-  const dot = cookie.indexOf('.');
-  if (dot < 1) return;
-  const id = cookie.slice(0, dot);
+  const id = sessionIdFromCookie(cookie);
+  if (!id) return;
   await prisma.session.updateMany({ where: { id, revokedAt: null }, data: { revokedAt: new Date() } });
+}
+
+/** Revoke every live session for a user except (optionally) the one given. */
+export async function revokeUserSessions(userId: string, exceptId?: string): Promise<number> {
+  const res = await prisma.session.updateMany({
+    where: { userId, revokedAt: null, ...(exceptId ? { id: { not: exceptId } } : {}) },
+    data: { revokedAt: new Date() },
+  });
+  return res.count;
 }

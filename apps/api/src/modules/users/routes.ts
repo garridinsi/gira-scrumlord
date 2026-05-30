@@ -119,7 +119,26 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      const u = await tx.user.update({ where: { id }, data });
+      const u = await tx.user.update({
+        where: { id },
+        data: {
+          ...data,
+          // Stamp/clear deactivatedAt alongside the flag so the row carries when it
+          // happened, not just that it did.
+          ...(data.isActive === false ? { deactivatedAt: new Date() } : {}),
+          ...(data.isActive === true ? { deactivatedAt: null } : {}),
+        },
+      });
+      // Deactivation must kill live sessions in the same transaction: otherwise a
+      // stale cookie lingers until expiry, and a later reactivation would silently
+      // resurrect those old sessions (they were only gated on isActive at resolve
+      // time). Revoking here means reactivation always requires a fresh sign-in.
+      if (data.isActive === false) {
+        await tx.session.updateMany({
+          where: { userId: id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
       await recordAudit(tx, {
         actorId: actor.id,
         action: 'user.update',
