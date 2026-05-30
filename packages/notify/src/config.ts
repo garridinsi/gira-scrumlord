@@ -20,7 +20,11 @@ export const notifyConfig = {
     // the IP-allowlisted Workspace relay need none. When we DO send credentials,
     // force TLS (STARTTLS on 587 / implicit on 465) so they never go in cleartext.
     ...(useAuth
-      ? { auth: { user: smtpUser, pass: smtpPass }, requireTLS: !smtpSecure, tls: { minVersion: 'TLSv1.2' } }
+      ? {
+          auth: { user: smtpUser as string, pass: smtpPass as string },
+          requireTLS: !smtpSecure,
+          tls: { minVersion: 'TLSv1.2' as const },
+        }
       : {}),
   },
   mailFrom: process.env.MAIL_FROM ?? 'gira-scrumlord <no-reply@gira.local>',
