@@ -163,9 +163,9 @@ export function LoginPage() {
               className="mono"
               style={{ fontSize: 10, letterSpacing: '0.14em', color: 'var(--eg-yellow)', textTransform: 'uppercase', textAlign: 'right' }}
             >
-              ✦ mantenedor.eus
-              <br />
               ◉ acceso restringido
+              <br />
+              ◉ restricted access
             </div>
           </div>
         </div>
@@ -230,8 +230,8 @@ export function LoginPage() {
         </div>
 
         <p style={{ fontSize: 15, color: 'var(--eg-fg-2)', marginBottom: 28, maxWidth: 400, lineHeight: 1.5 }}>
-          Te enviamos un enlace de un solo uso. Pincha en menos de 15 minutos y entras. Los tokens se guardan como hash SHA-256. Las sesiones son HttpOnly.{' '}
-          <span style={{ color: 'var(--eg-fg-3)' }}>OIDC se enchufa después — mismo flujo, otro proveedor de identidad.</span>
+          Te enviamos un enlace de acceso de un solo uso a tu correo.{' '}
+          <span style={{ color: 'var(--eg-fg-3)' }}>We&rsquo;ll email you a one-time sign-in link.</span>
         </p>
 
         {!sent ? (
@@ -273,28 +273,6 @@ export function LoginPage() {
             >
               {sendLink.isPending ? 'Enviando…' : 'Envíame el enlace · Mail me the link →'}
             </button>
-
-            <div
-              style={{
-                marginTop: 22,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                borderTop: '1px dashed var(--eg-iron)',
-                paddingTop: 16,
-              }}
-            >
-              <span className="caps">// o con sso · or sso</span>
-              <button
-                type="button"
-                className="b-btn"
-                disabled
-                title="OIDC — próximamente · coming soon"
-                style={{ opacity: 0.5, cursor: 'not-allowed' }}
-              >
-                Continuar con OIDC ↗
-              </button>
-            </div>
           </form>
         ) : (
           <div style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-yellow)', padding: 18, boxShadow: '4px 4px 0 var(--eg-iron)' }}>
@@ -307,8 +285,12 @@ export function LoginPage() {
             </div>
             <div className="mono" style={{ fontSize: 11, color: 'var(--eg-iron)', marginTop: 12, letterSpacing: '0.08em' }}>
               // expira en 15 minutos · un solo uso
-              <br />
-              // en desarrollo, el enlace aparece en Mailpit · :8025
+              {import.meta.env.DEV && (
+                <>
+                  <br />
+                  // en desarrollo, el enlace aparece en Mailpit · :8025
+                </>
+              )}
             </div>
             <button
               onClick={() => sendLink.reset()}
