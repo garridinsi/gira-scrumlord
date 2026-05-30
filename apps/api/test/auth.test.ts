@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import type { FastifyInstance } from 'fastify';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
+import * as mailer from '../src/modules/auth/mailer.js';
 import { createMagicLink } from '../src/modules/auth/service.js';
 import { SESSION_COOKIE } from '../src/modules/auth/session.js';
 import { makeUser } from './helpers/auth.js';
@@ -34,6 +35,23 @@ describe('auth', () => {
     expect(res.statusCode).toBe(202);
     const user = await prisma.user.findUnique({ where: { email: 'boss@example.test' } });
     expect(user?.role).toBe('admin');
+  });
+
+  it('still returns 202 when the email send fails (resilient + no enumeration)', async () => {
+    await makeUser({ email: 'boss@example.test', role: 'admin' }); // exists → a link is minted
+    const spy = vi
+      .spyOn(mailer, 'sendMagicLink')
+      .mockRejectedValueOnce(new Error('SMTP 421 Try again later'));
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/magic-link',
+      payload: { email: 'boss@example.test' },
+    });
+    expect(res.statusCode).toBe(202); // never a 500, even though the mailer threw
+    expect(spy).toHaveBeenCalledTimes(1);
+    // the token is still persisted for retry
+    expect(await prisma.magicLinkToken.count({ where: { email: 'boss@example.test' } })).toBe(1);
+    spy.mockRestore();
   });
 
   it('does not mint a link or leak existence for unknown emails once users exist', async () => {

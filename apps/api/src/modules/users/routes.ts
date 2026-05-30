@@ -141,7 +141,16 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     if (!user.isActive) throw badRequest('cannot invite a deactivated user');
 
     const result = await createMagicLink(user.email);
-    if (result.sent && result.link) await sendMagicLink(user.email, result.link);
-    return { sent: result.sent };
+    let emailed = false;
+    if (result.sent && result.link) {
+      try {
+        await sendMagicLink(user.email, result.link);
+        emailed = true;
+      } catch (err) {
+        // Token is persisted; report the delivery failure to the admin (not a 500).
+        req.log.error({ err }, 'invite email send failed');
+      }
+    }
+    return { sent: result.sent, emailed };
   });
 }

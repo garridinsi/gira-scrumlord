@@ -18,7 +18,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const { email } = magicLinkRequestSchema.parse(req.body);
     const result = await createMagicLink(email);
     if (result.sent && result.link) {
-      await sendMagicLink(email, result.link);
+      // Never let a mail-delivery error (e.g. a transient SMTP 421) turn into a 500:
+      // that would both break the no-enumeration guarantee (a failed send would look
+      // different from a successful one) and surface infra errors to users. Log it
+      // for ops and still return 202; the token is already persisted for retry.
+      try {
+        await sendMagicLink(email, result.link);
+      } catch (err) {
+        req.log.error({ err }, 'magic-link email send failed');
+      }
     }
     // Always 202 — never reveal whether the email maps to an account.
     return reply.code(202).send({ status: 'ok' });
