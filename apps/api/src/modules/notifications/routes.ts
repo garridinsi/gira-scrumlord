@@ -84,10 +84,24 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/channels/:id/test', { preHandler: requireAuth }, async (req) => {
-    assertCanWrite(currentUser(req));
+    const user = currentUser(req);
+    assertCanWrite(user);
     const { id } = req.params as { id: string };
     const channel = await prisma.notificationChannel.findUnique({ where: { id } });
     if (!channel) throw notFound('channel not found');
+    // Mirror the create path's scope check: for a project-scoped channel, the
+    // tester must be able to access that project. (No-op for staff today, but it
+    // keeps test from being a looser oracle than create, and stays correct if the
+    // project-access model ever tightens.) The webhook target itself is still
+    // re-validated against SSRF inside deliver().
+    if (channel.scope === 'project' && channel.projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: channel.projectId },
+        select: { clientId: true },
+      });
+      if (!project) throw notFound('project not found');
+      assertCanAccessProject(user, project);
+    }
     const result = await deliver(channel, {
       type: 'test',
       message: 'gira-scrumlord test notification 🌀',

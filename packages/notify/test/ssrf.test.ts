@@ -15,6 +15,29 @@ describe('ssrf guard', () => {
     }
   });
 
+  it('flags IPv4-mapped/-compatible IPv6 that embed a private/metadata address', () => {
+    // Both the dotted form and the hex form Node's URL normalizes it to.
+    for (const h of [
+      '::ffff:127.0.0.1',
+      '[::ffff:127.0.0.1]',
+      '::ffff:7f00:1', // == 127.0.0.1
+      '::ffff:169.254.169.254', // cloud metadata
+      '[::ffff:a9fe:a9fe]', // == 169.254.169.254
+      '::ffff:10.0.0.1',
+      '::ffff:0a00:0001', // == 10.0.0.1
+      '::', // unspecified
+      'fe80::1', // link-local
+    ]) {
+      expect(isPrivateHost(h)).toBe(true);
+    }
+  });
+
+  it('rejects mapped-IPv6 metadata literals through the URL guards (write + delivery time)', async () => {
+    expect(() => assertSafeWebhookUrl('http://[::ffff:169.254.169.254]/latest/meta-data/')).toThrow();
+    expect(() => assertSafeWebhookUrl('http://[::ffff:127.0.0.1]/hook')).toThrow();
+    await expect(assertResolvedHostSafe('http://[::ffff:169.254.169.254]/latest')).rejects.toThrow();
+  });
+
   it('rejects private targets by default and non-http schemes', () => {
     expect(() => assertSafeWebhookUrl('http://127.0.0.1/x')).toThrow();
     expect(() => assertSafeWebhookUrl('http://localhost:9000/hook')).toThrow();
