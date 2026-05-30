@@ -7,11 +7,50 @@ import { type Prisma, type Rate, prisma } from '@gira/db';
 import { type ResolvedRate, accruedCents, resolveRate } from '@gira/domain';
 import type { GenerateInvoice, InvoiceListItemView, InvoiceView } from '@gira/shared';
 import { recordAudit } from '@gira/sauron';
+import { config } from '../../config.js';
 import { badRequest, notFound } from '../../lib/http-error.js';
 import { runSerializable } from '../../lib/tx.js';
 
 const toResolved = (r: Rate | null | undefined): ResolvedRate | null =>
   r ? { hourlyCents: r.hourlyCents, currency: r.currency } : null;
+
+// Offset (ms) between the given timezone's wall clock and UTC at a specific instant.
+function tzOffsetMs(instant: Date, timeZone: string): number {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const p: Record<string, string> = {};
+  for (const part of dtf.formatToParts(instant)) p[part.type] = part.value;
+  const asUTC = Date.UTC(+p.year!, +p.month! - 1, +p.day!, +p.hour!, +p.minute!, +p.second!);
+  return asUTC - instant.getTime();
+}
+
+/**
+ * Convert a calendar day (taken from a UTC-midnight Date) into the UTC instant for
+ * the START or END of that same calendar day in BILLING_TIMEZONE. This is what makes
+ * an invoice's period agree with the monthly rollup, which buckets worklogs by
+ * calendar month in BILLING_TIMEZONE — without it, a worklog logged just after
+ * midnight local time near a month boundary lands in different buckets (the monthly
+ * view counts it, the UTC-naive invoice missed it, or vice-versa).
+ */
+function zonedDayBoundaryUtc(day: Date, end: boolean, timeZone: string): Date {
+  const y = day.getUTCFullYear();
+  const mo = day.getUTCMonth();
+  const d = day.getUTCDate();
+  const guess = end
+    ? Date.UTC(y, mo, d, 23, 59, 59, 999)
+    : Date.UTC(y, mo, d, 0, 0, 0, 0);
+  // One offset correction is enough at month boundaries (Madrid's DST switch is at
+  // 02:00/03:00, never at the 00:00 boundary we care about).
+  return new Date(guess - tzOffsetMs(new Date(guess), timeZone));
+}
 
 // What we load to map an invoice to its view.
 const invoiceInclude = {
@@ -90,13 +129,11 @@ export async function generateInvoice(
   });
   if (!client) throw notFound('client not found');
 
+  // Period bounds are interpreted in BILLING_TIMEZONE (not UTC) so the worklogs an
+  // annex bills are exactly the ones the monthly rollup attributes to that month.
   const loggedAt: Prisma.DateTimeFilter = {};
-  if (input.periodStart) loggedAt.gte = input.periodStart;
-  if (input.periodEnd) {
-    const end = new Date(input.periodEnd);
-    end.setUTCHours(23, 59, 59, 999); // inclusive of the whole end day
-    loggedAt.lte = end;
-  }
+  if (input.periodStart) loggedAt.gte = zonedDayBoundaryUtc(input.periodStart, false, config.BILLING_TIMEZONE);
+  if (input.periodEnd) loggedAt.lte = zonedDayBoundaryUtc(input.periodEnd, true, config.BILLING_TIMEZONE);
 
   // Serializable + retry: the annex number is derived from the current max for the
   // year, and two concurrent generates reading the same max would otherwise produce
@@ -156,6 +193,7 @@ export async function generateInvoice(
     const lineData: Prisma.InvoiceLineCreateWithoutInvoiceInput[] = [];
     const unrated: string[] = [];
     const unpriced: string[] = [];
+    const mismatched: string[] = [];
     let subtotal = 0;
     for (const issue of issues.sort((a, b) => a.key.localeCompare(b.key))) {
       const minutes = byIssue.get(issue.id)?.minutes ?? 0;
@@ -193,6 +231,12 @@ export async function generateInvoice(
         unrated.push(issue.key);
         continue;
       }
+      if (resolved && resolved.currency !== client.currency) {
+        // Billing a foreign-currency rate's numeric value under the client's
+        // currency label would silently overstate/understate the bill. Refuse.
+        mismatched.push(`${issue.key} (${resolved.currency})`);
+        continue;
+      }
       const amount = accruedCents({ billingMode: 'hourly', billableMinutes: minutes, hourlyCents });
       subtotal += amount;
       lineData.push({
@@ -213,6 +257,11 @@ export async function generateInvoice(
     if (unpriced.length > 0) {
       throw badRequest(
         `no fixed price set for ${unpriced.join(', ')} — set a fixed price before invoicing`,
+      );
+    }
+    if (mismatched.length > 0) {
+      throw badRequest(
+        `rate currency mismatch for ${mismatched.join(', ')} — rates must be in ${client.currency}`,
       );
     }
 

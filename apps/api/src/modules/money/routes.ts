@@ -1,18 +1,54 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { prisma } from '@gira/db';
-import { upsertRateSchema } from '@gira/shared';
+import { type UpsertRate, upsertRateSchema } from '@gira/shared';
 import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
-import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
+import { badRequest, notFound } from '../../lib/http-error.js';
+import { assertCanAccessProject, assertCanWrite, assertStaff } from '../../lib/scope.js';
 import { loadIssueOr404 } from '../issues/service.js';
 import { getProjectByKeyOr404 } from '../projects/service.js';
 import { computeIssueCost, computeProjectMonthly, computeProjectSummary } from './service.js';
 
+/**
+ * The client currency a scoped rate must match, or null when there's no client
+ * context (the `default` fallback rate, or a project with no client yet). A rate in
+ * a different currency than its client would be billed as a foreign numeric value
+ * under the client's currency label — so we reject it at save time too.
+ */
+async function clientCurrencyForRate(input: UpsertRate): Promise<string | null> {
+  if (input.scope === 'client') {
+    const c = await prisma.client.findUnique({
+      where: { id: input.clientId! },
+      select: { currency: true },
+    });
+    if (!c) throw notFound('client not found');
+    return c.currency;
+  }
+  if (input.scope === 'project') {
+    const p = await prisma.project.findUnique({
+      where: { id: input.projectId! },
+      select: { client: { select: { currency: true } } },
+    });
+    if (!p) throw notFound('project not found');
+    return p.client?.currency ?? null;
+  }
+  if (input.scope === 'issue') {
+    const i = await prisma.issue.findUnique({
+      where: { id: input.issueId! },
+      select: { project: { select: { client: { select: { currency: true } } } } },
+    });
+    if (!i) throw notFound('issue not found');
+    return i.project.client?.currency ?? null;
+  }
+  return null; // default scope — the fallback rate, no client to match
+}
+
 export async function moneyRoutes(app: FastifyInstance): Promise<void> {
-  // Rate config is staff-only (clients never see how rates are set).
+  // Rate config is staff-only. Read is open to any staff (incl. read-only viewers,
+  // who already see derived cost); writes still require member/admin.
   app.get('/rates', { preHandler: requireAuth }, async (req) => {
-    assertCanWrite(currentUser(req));
+    assertStaff(currentUser(req));
     return prisma.rate.findMany({ orderBy: { scope: 'asc' } });
   });
 
@@ -20,6 +56,10 @@ export async function moneyRoutes(app: FastifyInstance): Promise<void> {
     const user = currentUser(req);
     assertCanWrite(user);
     const input = upsertRateSchema.parse(req.body);
+    const clientCurrency = await clientCurrencyForRate(input);
+    if (clientCurrency && input.currency !== clientCurrency) {
+      throw badRequest(`rate currency ${input.currency} must match the client currency ${clientCurrency}`);
+    }
     const fields = { hourlyCents: input.hourlyCents, currency: input.currency };
 
     let rate;

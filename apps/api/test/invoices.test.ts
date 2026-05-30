@@ -303,4 +303,72 @@ describe('invoicing (M5)', () => {
       (await app.inject({ method: 'GET', url: `/clients/${client.id}/invoices`, headers: { cookie: viewer.cookie } })).statusCode,
     ).toBe(200);
   });
+
+  it('bills the same worklogs the monthly view attributes to a month (TZ-aware period)', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Late-night maintenance' });
+    await setRate(staff.cookie, 6000); // €60/h
+
+    // 22:30 UTC on Apr 30 is 00:30 on May 1 in Europe/Madrid (CEST, UTC+2): the
+    // monthly rollup attributes it to May, and a UTC-naive May period would have
+    // EXCLUDED it. The TZ-aware period must include it so the two agree.
+    await app.inject({
+      method: 'POST',
+      url: '/issues/ACME-1/worklogs',
+      headers: { cookie: staff.cookie },
+      payload: { minutes: 120, billable: true, loggedAt: '2026-04-30T22:30:00.000Z' },
+    });
+
+    // What does the monthly lens attribute to 2026-05?
+    const monthly = await app.inject({
+      method: 'GET',
+      url: '/projects/ACME/monthly',
+      headers: { cookie: staff.cookie },
+    });
+    const may = monthly.json().months.find((m: { month: string }) => m.month === '2026-05');
+    expect(may).toMatchObject({ billableMinutes: 120, accruedCents: 12000 });
+
+    // The May annex must bill exactly that.
+    const gen = await generate(staff.cookie, client.id, { periodStart: '2026-05-01', periodEnd: '2026-05-31' });
+    expect(gen.statusCode).toBe(201);
+    expect(gen.json().subtotalCents).toBe(may.accruedCents);
+    expect(gen.json().lines[0]).toMatchObject({ issueKey: 'ACME-1', minutes: 120 });
+  });
+
+  it('refuses to bill a rate whose currency differs from the client currency', async () => {
+    const { client, staff } = await setup(); // client currency EUR
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
+    await logWork(staff.cookie, 'ACME-1', 60);
+    // A default (no-client) rate in USD resolves for this EUR client — generation
+    // must refuse rather than bill the USD number under an EUR label.
+    await app.inject({
+      method: 'POST',
+      url: '/rates',
+      headers: { cookie: staff.cookie },
+      payload: { scope: 'default', hourlyCents: 6000, currency: 'USD' },
+    });
+    const gen = await generate(staff.cookie, client.id);
+    expect(gen.statusCode).toBe(400);
+    expect(gen.json().error ?? gen.json().message).toMatch(/currency/i);
+  });
+
+  it('rejects saving a client/project rate in a different currency than the client', async () => {
+    const { client, staff } = await setup(); // EUR client
+    const mismatch = await app.inject({
+      method: 'POST',
+      url: '/rates',
+      headers: { cookie: staff.cookie },
+      payload: { scope: 'client', clientId: client.id, hourlyCents: 9000, currency: 'USD' },
+    });
+    expect(mismatch.statusCode).toBe(400);
+    expect(mismatch.json().error ?? mismatch.json().message).toMatch(/currency/i);
+    // The matching currency is accepted.
+    const ok = await app.inject({
+      method: 'POST',
+      url: '/rates',
+      headers: { cookie: staff.cookie },
+      payload: { scope: 'client', clientId: client.id, hourlyCents: 9000, currency: 'EUR' },
+    });
+    expect(ok.statusCode).toBe(201);
+  });
 });
