@@ -4,7 +4,7 @@ import { createClientSchema, updateClientSchema } from '@gira/shared';
 import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth, requireRole } from '../../lib/auth.js';
-import { notFound } from '../../lib/http-error.js';
+import { conflict, notFound } from '../../lib/http-error.js';
 
 const adminOnly = { preHandler: [requireAuth, requireRole('admin')] };
 
@@ -55,6 +55,15 @@ export async function clientRoutes(app: FastifyInstance): Promise<void> {
 
   app.delete('/clients/:id', adminOnly, async (req, reply) => {
     const { id } = req.params as { id: string };
+    // The User→Client FK is RESTRICT (deleting a client must not orphan its portal
+    // users into a null clientId, which would break tenant scoping). Pre-check so
+    // the admin gets a clear message instead of a raw FK violation.
+    const userCount = await prisma.user.count({ where: { clientId: id } });
+    if (userCount > 0) {
+      throw conflict(
+        `this client still has ${userCount} user(s) — deactivate or reassign them before deleting`,
+      );
+    }
     await prisma.$transaction(async (tx) => {
       const before = await tx.client.delete({ where: { id } });
       await recordAudit(tx, {

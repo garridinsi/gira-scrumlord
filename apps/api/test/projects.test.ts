@@ -139,6 +139,29 @@ describe('clients + projects + isolation', () => {
     expect(ok.json().cadence).toBe('monthly');
   });
 
+  it('refuses to delete a client that still has users (FK RESTRICT, clean 409)', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const client = await prisma.client.create({ data: { name: 'Has Users', slug: 'hasusers' } });
+    const portalUser = await actingAs({ kind: 'client', role: 'viewer', clientId: client.id });
+
+    const blocked = await app.inject({
+      method: 'DELETE',
+      url: `/clients/${client.id}`,
+      headers: { cookie: admin.cookie },
+    });
+    expect(blocked.statusCode).toBe(409); // clean message, not a raw FK 500
+
+    // Remove the user, then the client deletes cleanly.
+    await prisma.session.deleteMany({ where: { userId: portalUser.user.id } });
+    await prisma.user.delete({ where: { id: portalUser.user.id } });
+    const ok = await app.inject({
+      method: 'DELETE',
+      url: `/clients/${client.id}`,
+      headers: { cookie: admin.cookie },
+    });
+    expect(ok.statusCode).toBe(204);
+  });
+
   it('client (viewer) cannot create a project', async () => {
     const client = await prisma.client.create({ data: { name: 'C', slug: 'c' } });
     const { cookie } = await actingAs({ kind: 'client', role: 'viewer', clientId: client.id });
