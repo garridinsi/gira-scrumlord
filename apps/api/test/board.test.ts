@@ -94,6 +94,28 @@ describe('board + move', () => {
     expect(columnKeys(b, 'Backlog')).toEqual(['GIRA-1', 'GIRA-3', 'GIRA-2']);
   });
 
+  it('refuses to graft another project’s sprint via move', async () => {
+    const { cookie } = await setup(); // project GIRA with GIRA-1..3
+    // A second project with its own sprint.
+    await seedProject({ reporterId: (await actingAs()).user.id, key: 'OTHER' });
+    const sprintRes = await app.inject({
+      method: 'POST',
+      url: '/projects/OTHER/sprints',
+      headers: { cookie },
+      payload: { name: 'Foreign sprint' },
+    });
+    expect(sprintRes.statusCode).toBe(201);
+    const foreignSprintId = sprintRes.json().id;
+
+    const move = await app.inject({
+      method: 'POST',
+      url: '/issues/GIRA-1/move',
+      headers: { cookie },
+      payload: { sprintId: foreignSprintId },
+    });
+    expect(move.statusCode).toBe(400); // invalid sprintId — not this project's sprint
+  });
+
   it('moves across columns and sets closedAt when entering Done', async () => {
     const { cookie, projectKey, byName } = await setup();
     await app.inject({

@@ -148,6 +148,17 @@ export async function boardRoutes(app: FastifyInstance): Promise<void> {
     assertCanAccessProject(user, { clientId: issue.project.clientId });
     const input = moveIssueSchema.parse(req.body);
 
+    // A connected sprint must belong to this issue's project — mirror the PATCH
+    // /issues guard, otherwise a drag could graft another project's sprint onto the
+    // issue (cross-project data-integrity hole).
+    if (input.sprintId) {
+      const s = await prisma.sprint.findUnique({
+        where: { id: input.sprintId },
+        select: { projectId: true },
+      });
+      if (!s || s.projectId !== issue.projectId) throw badRequest('invalid sprintId');
+    }
+
     const targetStatusId = input.statusId ?? issue.statusId;
     let targetStatus = null;
     if (input.statusId && input.statusId !== issue.statusId) {

@@ -597,6 +597,9 @@ function BoardColumn({
         {columnIssues.map((issue) => (
           <div
             key={issue.key}
+            // The drop handler reads these to compute the insertion index from the
+            // pointer position; without it every drop fell through to the column end.
+            data-issue-key={issue.key}
             draggable
             onDragStart={(e) => onDragStart(e, issue.key)}
             onDragEnd={onDragEnd}
