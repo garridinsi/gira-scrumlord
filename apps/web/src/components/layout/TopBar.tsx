@@ -56,7 +56,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
         </div>
       </button>
 
-      <div style={{ position: 'relative' }}>
+      <div className="topbar__projectwrap" style={{ position: 'relative' }}>
         <button
           type="button"
           className="topbar__project"
@@ -64,7 +64,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
           style={{ border: 0, background: 'none', height: '100%' }}
         >
           <span className="pk">{key ?? '—'}</span>
-          <span>{current?.name ?? (key ? key : 'Selecciona proyecto · Pick a project')}</span>
+          <span className="topbar__projectname">{current?.name ?? (key ? key : 'Selecciona proyecto · Pick a project')}</span>
           <span className="chev">▾</span>
         </button>
         {menuOpen && (
@@ -160,14 +160,15 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
         </button>
         <button
           type="button"
-          className="topbar__btn"
+          className="topbar__btn topbar__avisos"
           onClick={() => navigate('/incidents')}
           style={{ border: 0, background: 'none' }}
+          aria-label="Avisos · Notify"
         >
-          <span>Avisos · Notify</span>
+          <span className="topbar__btntext">Avisos · Notify</span>
           {notifyCount > 0 && <span className="num">{notifyCount}</span>}
         </button>
-        <div style={{ position: 'relative' }}>
+        <div className="topbar__acctwrap" style={{ position: 'relative' }}>
           <button
             type="button"
             className="topbar__btn"
@@ -178,7 +179,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
             title="Mi cuenta · My account"
           >
             {me.data && <Avatar user={me.data} />}
-            <span>{me.data?.name?.split(' ')[0] ?? '—'}</span>
+            <span className="topbar__btntext">{me.data?.name?.split(' ')[0] ?? '—'}</span>
             <span className="chev">▾</span>
           </button>
           {acctOpen && (

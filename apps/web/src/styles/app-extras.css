@@ -1268,26 +1268,33 @@ button {
     font-size: 20px;
     cursor: pointer;
   }
-  /* Keep just the glyph in the brand; drop the long name + version sub. */
+  /* Keep just the glyph in the brand; drop the long name + version sub. The inline
+     display:flex on that div means we need !important to win. */
   .topbar__brand { min-width: 0; padding: 0 10px; gap: 0; }
-  .topbar__brand > div { display: none; }
+  .topbar__brand > div { display: none !important; }
   /* The search box and lore (daemon / :666) chips don't fit a phone bar. */
   .topbar__search { display: none; }
   .topbar__btn.lore { display: none; }
+  /* The project picker takes the flexible middle and truncates its name. */
+  .topbar__projectwrap { flex: 1 1 auto; min-width: 0; display: flex; }
   .topbar__project {
-    flex: 1;
+    width: 100%;
     min-width: 0;
     padding: 0 10px;
     font-size: 12px;
     gap: 8px;
     overflow: hidden;
   }
-  .topbar__project span:not(.pk):not(.chev) {
+  .topbar__projectname {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
   }
-  .topbar__btn { padding: 0 10px; }
+  /* Collapse button labels to icon/avatar/badge only; keep the tap targets. */
+  .topbar__btntext { display: none; }
+  .topbar__btn { padding: 0 12px; flex-shrink: 0; }
+  .topbar__acctwrap { flex-shrink: 0; }
 
   /* Rail becomes an off-canvas drawer toggled by the hamburger. */
   .main { grid-template-columns: 1fr; }
