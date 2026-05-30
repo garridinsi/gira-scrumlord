@@ -135,6 +135,8 @@ export function InvoiceDetailPage() {
   });
 
   const isViewer = me.data?.role === 'viewer';
+  // Void & delete are destructive billing actions — admin only (matches the API).
+  const isAdmin = me.data?.role === 'admin';
 
   function invalidate() {
     void qc.invalidateQueries({ queryKey: ['invoices'] });
@@ -356,7 +358,7 @@ export function InvoiceDetailPage() {
                 </button>
               )}
 
-              {inv.status !== 'paid' && inv.status !== 'void' && (
+              {isAdmin && inv.status !== 'paid' && inv.status !== 'void' && (
                 <button
                   className="b-btn b-btn--ghost"
                   onClick={() => {
@@ -369,7 +371,7 @@ export function InvoiceDetailPage() {
                 </button>
               )}
 
-              {inv.status === 'draft' && (
+              {isAdmin && inv.status === 'draft' && (
                 <button
                   className="b-btn b-btn--ghost"
                   onClick={() => {

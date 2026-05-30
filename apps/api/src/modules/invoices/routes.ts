@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Staff billing surface. Clients never reach these — they read their own issued
-// invoices through the portal. Generation/transitions require a writer role.
+// annexes through the portal. Generate/issue/pay/external-ref require a staff
+// writer; destructive actions (void, delete) are admin-only — least privilege for
+// undoing or removing a billing record.
 
 import { generateInvoiceSchema, setExternalRefSchema } from '@gira/shared';
 import type { FastifyInstance } from 'fastify';
-import { type AuthUser, currentUser, requireAuth } from '../../lib/auth.js';
-import { forbidden } from '../../lib/http-error.js';
-import { assertCanWrite } from '../../lib/scope.js';
+import { currentUser, requireAuth } from '../../lib/auth.js';
+import { assertAdmin, assertCanWrite, assertStaff } from '../../lib/scope.js';
 import {
   deleteInvoice,
   generateInvoice,
@@ -18,10 +19,6 @@ import {
   toInvoiceView,
   voidInvoice,
 } from './service.js';
-
-function assertStaff(u: AuthUser): void {
-  if (u.kind !== 'staff') throw forbidden('billing is staff-only');
-}
 
 export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
   app.get('/clients/:id/invoices', { preHandler: requireAuth }, async (req) => {
@@ -74,16 +71,14 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/invoices/:id/void', { preHandler: requireAuth }, async (req) => {
     const user = currentUser(req);
-    assertStaff(user);
-    assertCanWrite(user);
+    assertAdmin(user); // destructive — admin only
     const { id } = req.params as { id: string };
     return voidInvoice(id, user.id);
   });
 
   app.delete('/invoices/:id', { preHandler: requireAuth }, async (req, reply) => {
     const user = currentUser(req);
-    assertStaff(user);
-    assertCanWrite(user);
+    assertAdmin(user); // destructive — admin only
     const { id } = req.params as { id: string };
     await deleteInvoice(id, user.id);
     return reply.code(204).send();

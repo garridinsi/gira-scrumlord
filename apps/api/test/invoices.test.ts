@@ -22,7 +22,8 @@ describe('invoicing (M5)', () => {
     const client = await prisma.client.create({
       data: { name: 'Acme Corp', slug: 'acme', currency: 'EUR' },
     });
-    const staff = await actingAs({ role: 'member' });
+    // Admin so the full lifecycle (incl. the admin-only void/delete) is exercised.
+    const staff = await actingAs({ role: 'admin' });
     await seedProject({ reporterId: staff.user.id, key: 'ACME', clientId: client.id });
     return { client, staff };
   }
@@ -247,6 +248,24 @@ describe('invoicing (M5)', () => {
     expect(
       (await app.inject({ method: 'GET', url: `/portal/invoices/${id}`, headers: { cookie: clientUser.cookie } })).statusCode,
     ).toBe(404);
+  });
+
+  it('lets a member generate/issue/pay but reserves void & delete for admins', async () => {
+    const { client, staff } = await setup(); // staff = admin (seeds the project)
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
+    await logWork(staff.cookie, 'ACME-1', 60);
+    await setRate(staff.cookie, 6000);
+
+    const member = await actingAs({ role: 'member' });
+    // A member can run the normal lifecycle…
+    const draft = await generate(member.cookie, client.id);
+    expect(draft.statusCode).toBe(201);
+    const id = draft.json().id as string;
+    expect((await app.inject({ method: 'POST', url: `/invoices/${id}/issue`, headers: { cookie: member.cookie } })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'POST', url: `/invoices/${id}/pay`, headers: { cookie: member.cookie } })).statusCode).toBe(200);
+    // …but NOT the destructive ones.
+    expect((await app.inject({ method: 'POST', url: `/invoices/${id}/void`, headers: { cookie: member.cookie } })).statusCode).toBe(403);
+    expect((await app.inject({ method: 'DELETE', url: `/invoices/${id}`, headers: { cookie: member.cookie } })).statusCode).toBe(403);
   });
 
   it('a viewer can read invoices but not generate them', async () => {

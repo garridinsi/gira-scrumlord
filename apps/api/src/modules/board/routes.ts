@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { type Prisma, prisma } from '@gira/db';
+import { Prisma, prisma } from '@gira/db';
 import { rankBetween } from '@gira/domain';
 import { moveIssueSchema } from '@gira/shared';
 import { recordAudit } from '@gira/sauron';
@@ -11,23 +11,24 @@ import { toIssueView, toStatusView } from '../../lib/views.js';
 import { issueInclude, loadIssueOr404 } from '../issues/service.js';
 import { getProjectByKeyOr404 } from '../projects/service.js';
 
-async function rankOfKey(key?: string): Promise<string | null> {
-  if (!key) return null;
-  const issue = await prisma.issue.findUnique({ where: { key }, select: { rank: true } });
-  return issue?.rank ?? null;
-}
-
-async function lastRankInColumn(
-  projectId: string,
-  statusId: string,
-  excludeKey: string,
-): Promise<string | null> {
-  const last = await prisma.issue.findFirst({
-    where: { projectId, statusId, key: { not: excludeKey } },
-    orderBy: { rank: 'desc' },
-    select: { rank: true },
-  });
-  return last?.rank ?? null;
+/**
+ * Run a transaction at Serializable isolation, retrying on write-conflict (Prisma
+ * P2034 / Postgres 40001). Used by the board move so two concurrent drops onto the
+ * same gap can't both read the same neighbour ranks and compute a colliding rank —
+ * Postgres SSI aborts one and we recompute against the committed state.
+ */
+async function runSerializable<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await prisma.$transaction(fn, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      });
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code === 'P2034' && attempt < 4) continue; // serialization failure — retry
+      throw e;
+    }
+  }
 }
 
 export async function boardRoutes(app: FastifyInstance): Promise<void> {
@@ -80,33 +81,64 @@ export async function boardRoutes(app: FastifyInstance): Promise<void> {
       }
     }
 
-    // Rank from the drop neighbours; fall back to end-of-column if they don't
-    // bracket cleanly (e.g. stale neighbours).
-    const beforeRank = await rankOfKey(input.beforeId);
-    const afterRank = await rankOfKey(input.afterId);
-    let rank: string;
-    try {
-      rank =
-        beforeRank != null || afterRank != null
-          ? rankBetween(beforeRank, afterRank)
-          : rankBetween(await lastRankInColumn(issue.projectId, targetStatusId, key), null);
-    } catch {
-      rank = rankBetween(await lastRankInColumn(issue.projectId, targetStatusId, key), null);
-    }
-
     let closedAt: Date | null | undefined;
     if (targetStatus) {
       closedAt = targetStatus.category === 'done' ? (issue.closedAt ?? new Date()) : null;
     }
 
-    const data: Prisma.IssueUpdateInput = { rank };
-    if (input.statusId) data.status = { connect: { id: input.statusId } };
-    if (closedAt !== undefined) data.closedAt = closedAt;
-    if ('sprintId' in input) {
-      data.sprint = input.sprintId ? { connect: { id: input.sprintId } } : { disconnect: true };
-    }
+    // Read the drop neighbours and write the new rank INSIDE one serializable
+    // transaction so concurrent drops onto the same gap can't collide on a rank.
+    const updated = await runSerializable(async (tx) => {
+      const rankOf = async (k?: string): Promise<string | null> =>
+        k ? ((await tx.issue.findUnique({ where: { key: k }, select: { rank: true } }))?.rank ?? null) : null;
+      const endOfColumn = async (): Promise<string | null> =>
+        (
+          await tx.issue.findFirst({
+            where: { projectId: issue.projectId, statusId: targetStatusId, key: { not: key } },
+            orderBy: { rank: 'desc' },
+            select: { rank: true },
+          })
+        )?.rank ?? null;
 
-    const updated = await prisma.$transaction(async (tx) => {
+      const beforeRank = await rankOf(input.beforeId);
+      const afterRank = await rankOf(input.afterId);
+      let rank: string;
+      try {
+        rank =
+          beforeRank != null || afterRank != null
+            ? rankBetween(beforeRank, afterRank)
+            : rankBetween(await endOfColumn(), null);
+      } catch {
+        // Neighbours didn't bracket cleanly (e.g. stale) — append to the column end.
+        rank = rankBetween(await endOfColumn(), null);
+      }
+
+      // Resolve rank collisions: two concurrent drops onto the same gap compute the
+      // same rank (rankBetween is deterministic). The findFirst-by-rank read also
+      // gives Postgres SSI the predicate dependency it needs to serialize the two
+      // writers — the loser aborts with P2034, retries on a fresh snapshot, sees the
+      // sibling's committed rank here, and re-brackets to a distinct value.
+      for (let i = 0; i < 64; i++) {
+        const clash = await tx.issue.findFirst({
+          where: { projectId: issue.projectId, statusId: targetStatusId, rank, key: { not: key } },
+          select: { rank: true },
+        });
+        if (!clash) break;
+        const next = await tx.issue.findFirst({
+          where: { projectId: issue.projectId, statusId: targetStatusId, rank: { gt: rank }, key: { not: key } },
+          orderBy: { rank: 'asc' },
+          select: { rank: true },
+        });
+        rank = rankBetween(clash.rank, next?.rank ?? null);
+      }
+
+      const data: Prisma.IssueUpdateInput = { rank };
+      if (input.statusId) data.status = { connect: { id: input.statusId } };
+      if (closedAt !== undefined) data.closedAt = closedAt;
+      if ('sprintId' in input) {
+        data.sprint = input.sprintId ? { connect: { id: input.sprintId } } : { disconnect: true };
+      }
+
       const u = await tx.issue.update({ where: { key }, data, include: issueInclude });
       await recordAudit(tx, {
         actorId: user.id,

@@ -60,6 +60,22 @@ describe('board + move', () => {
     expect(columnKeys(b, 'Backlog')).toEqual(['GIRA-3', 'GIRA-1', 'GIRA-2']);
   });
 
+  it('keeps ranks distinct under concurrent moves onto the same gap (no collision)', async () => {
+    const { cookie, projectKey } = await setup(); // GIRA-1, GIRA-2, GIRA-3 in Backlog
+    // Two staff drop GIRA-2 and GIRA-3 into the SAME gap (above GIRA-1) at once.
+    const [a, b] = await Promise.all([
+      app.inject({ method: 'POST', url: '/issues/GIRA-2/move', headers: { cookie }, payload: { afterId: 'GIRA-1' } }),
+      app.inject({ method: 'POST', url: '/issues/GIRA-3/move', headers: { cookie }, payload: { afterId: 'GIRA-1' } }),
+    ]);
+    expect(a.statusCode).toBe(200);
+    expect(b.statusCode).toBe(200);
+    // The serializable move guarantees the two new ranks never collide.
+    expect(a.json().rank).not.toBe(b.json().rank);
+    const board2 = await board(cookie, projectKey);
+    const keys = columnKeys(board2, 'Backlog');
+    expect([...keys].sort()).toEqual(['GIRA-1', 'GIRA-2', 'GIRA-3']); // none lost, ordering deterministic
+  });
+
   it('moves across columns and sets closedAt when entering Done', async () => {
     const { cookie, projectKey, byName } = await setup();
     await app.inject({
