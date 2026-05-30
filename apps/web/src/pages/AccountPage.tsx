@@ -108,7 +108,7 @@ export function AccountPage() {
   const dirty = name.trim() !== u.name || locale !== u.locale;
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px 64px' }}>
+    <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', padding: '32px 24px 64px', boxSizing: 'border-box' }}>
       <h1 className="disp" style={{ fontSize: 44, color: 'var(--eg-iron)', margin: '0 0 4px', fontWeight: 900, letterSpacing: '-0.02em' }}>
         MI CUENTA
       </h1>

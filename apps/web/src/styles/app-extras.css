@@ -1296,8 +1296,12 @@ button {
   .topbar__btn { padding: 0 12px; flex-shrink: 0; }
   .topbar__acctwrap { flex-shrink: 0; }
 
-  /* Rail becomes an off-canvas drawer toggled by the hamburger. */
-  .main { grid-template-columns: 1fr; }
+  /* Rail becomes an off-canvas drawer toggled by the hamburger.
+     minmax(0,1fr) — NOT plain 1fr — so the single column can't grow past the
+     viewport: a 1fr track's implicit minimum is `auto` (min-content), which lets a
+     page whose root isn't a scroll container (e.g. the account page) push the track
+     out to its max-width and spill off the right edge. min 0 pins it to the screen. */
+  .main { grid-template-columns: minmax(0, 1fr); }
   .rail {
     position: fixed;
     top: var(--gs-topbar);
