@@ -43,6 +43,11 @@ const envSchema = z.object({
   // maintenance rollup + billing. Defaults to the maintainer's locale; self-hosters
   // in other regions should set this so late-night work lands in the right month.
   BILLING_TIMEZONE: z.string().default('Europe/Madrid'),
+  // Number of trusted reverse-proxy hops in front of the API, so `req.ip` is the
+  // real client (rate-limiting + audit). 1 = single nginx (local compose); behind a
+  // cloudflared tunnel + nginx set 2. Never higher than your real proxy depth, or
+  // X-Forwarded-For becomes spoofable.
+  TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(1),
 });
 
 const parsed = envSchema.parse(process.env);

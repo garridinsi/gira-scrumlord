@@ -5,6 +5,8 @@
 import nodemailer from 'nodemailer';
 import { config } from '../../config.js';
 
+const useAuth = Boolean(config.SMTP_USER && config.SMTP_PASS);
+
 const transport =
   config.NODE_ENV === 'test'
     ? nodemailer.createTransport({ jsonTransport: true })
@@ -13,11 +15,16 @@ const transport =
         port: config.SMTP_PORT,
         secure: config.SMTP_SECURE,
         // Authenticate only when credentials are provided (Gmail/relay); the dev
-        // Mailpit relay needs none.
-        auth:
-          config.SMTP_USER && config.SMTP_PASS
-            ? { user: config.SMTP_USER, pass: config.SMTP_PASS }
-            : undefined,
+        // Mailpit relay and the IP-allowlisted Workspace relay need none. When we DO
+        // send credentials, force an encrypted channel (mandatory STARTTLS on 587 /
+        // implicit TLS on 465) so the password is never transmitted in cleartext.
+        ...(useAuth
+          ? {
+              auth: { user: config.SMTP_USER!, pass: config.SMTP_PASS! },
+              requireTLS: !config.SMTP_SECURE,
+              tls: { minVersion: 'TLSv1.2' },
+            }
+          : {}),
       });
 
 export async function sendMagicLink(email: string, link: string): Promise<void> {

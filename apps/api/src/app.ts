@@ -26,11 +26,11 @@ export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: config.NODE_ENV !== 'test',
     bodyLimit: 2 * 1024 * 1024,
-    // Trust exactly one proxy hop (the nginx container in front of the API), so
-    // `req.ip` is the real client address — the rate-limiter keys per client and the
-    // audited session IP is accurate. One hop only, so X-Forwarded-For can't be
-    // spoofed past nginx (nginx overwrites the client-facing entry).
-    trustProxy: 1,
+    // Trust exactly TRUST_PROXY reverse-proxy hops in front of the API so `req.ip`
+    // is the real client (rate-limiter keys per client; accurate audit IP). 1 for a
+    // single nginx (local compose); 2 behind a cloudflared tunnel + nginx. Capping
+    // at the real proxy depth keeps X-Forwarded-For unspoofable past our own proxies.
+    trustProxy: config.TRUST_PROXY,
   });
 
   await registerSecurity(app);
