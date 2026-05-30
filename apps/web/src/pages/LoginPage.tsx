@@ -241,15 +241,18 @@ export function LoginPage() {
               if (email.trim()) sendLink.mutate(email.trim());
             }}
           >
-            <label className="caps" style={{ display: 'block', marginBottom: 6 }}>
+            <label className="caps" htmlFor="login-email" style={{ display: 'block', marginBottom: 6 }}>
               // CORREO · EMAIL
             </label>
             <input
+              id="login-email"
+              name="email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@correo.eus"
+              aria-label="Correo electrónico · Email"
               autoFocus
               style={{
                 fontFamily: 'var(--font-mono)',
