@@ -6,11 +6,16 @@ import { config as loadEnv } from 'dotenv';
 const here = path.dirname(fileURLToPath(import.meta.url));
 loadEnv({ path: path.resolve(here, '../../../.env') });
 
+const smtpUser = process.env.SMTP_USER;
+const smtpPass = process.env.SMTP_PASS;
+
 export const notifyConfig = {
   smtp: {
     host: process.env.SMTP_HOST ?? 'localhost',
     port: Number(process.env.SMTP_PORT ?? 1025),
     secure: process.env.SMTP_SECURE === 'true',
+    // Authenticate only when both credentials are set (Gmail/relay); dev Mailpit none.
+    ...(smtpUser && smtpPass ? { auth: { user: smtpUser, pass: smtpPass } } : {}),
   },
   mailFrom: process.env.MAIL_FROM ?? 'gira-scrumlord <no-reply@gira.local>',
   // Webhooks to private/loopback hosts are blocked unless explicitly allowed (dev/tests).

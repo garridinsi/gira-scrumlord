@@ -33,6 +33,11 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  // Optional SMTP auth — set both for an authenticated relay (e.g. Gmail:
+  // SMTP_USER=info@example.com, SMTP_PASS=<app password>). Left blank for the dev
+  // Mailpit relay, which needs no auth.
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default('gira-scrumlord <no-reply@gira.local>'),
   // IANA timezone used to bucket worklogs into calendar months for the monthly
   // maintenance rollup + billing. Defaults to the maintainer's locale; self-hosters

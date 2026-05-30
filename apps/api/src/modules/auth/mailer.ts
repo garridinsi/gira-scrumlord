@@ -12,6 +12,12 @@ const transport =
         host: config.SMTP_HOST,
         port: config.SMTP_PORT,
         secure: config.SMTP_SECURE,
+        // Authenticate only when credentials are provided (Gmail/relay); the dev
+        // Mailpit relay needs none.
+        auth:
+          config.SMTP_USER && config.SMTP_PASS
+            ? { user: config.SMTP_USER, pass: config.SMTP_PASS }
+            : undefined,
       });
 
 export async function sendMagicLink(email: string, link: string): Promise<void> {
