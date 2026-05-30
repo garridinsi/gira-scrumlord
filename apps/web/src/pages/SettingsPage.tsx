@@ -870,36 +870,17 @@ function RatesTab() {
           <span>PRIMER MATCH GANA · NUNCA FLOATS</span>
         </div>
         <div style={{ padding: 18, display: 'flex', gap: 0, alignItems: 'stretch' }}>
-          {(
-            [
-              {
-                scope: 'issue',
-                label: 'MTNR-18',
-                desc: 'override por issue · set from issue drawer',
-                active: true,
-              },
-              {
-                scope: 'project',
-                label: 'MTNR',
-                desc: 'override por proyecto',
-                active: false,
-              },
-              {
-                scope: 'client',
-                label: 'Mantenedor SL',
-                desc: 'fallback de cliente',
-                active: false,
-              },
-              {
-                scope: 'default',
-                label: '—',
-                desc: 'fallback global',
-                active: false,
-              },
-            ] as const
-          ).map((s, i, arr) => (
-            <ResolutionChainItem key={s.scope} s={s} i={i} total={arr.length} />
-          ))}
+          {(() => {
+            const count = (sc: string) => data.filter((r) => r.scope === sc).length;
+            const def = data.find((r) => r.scope === 'default');
+            const chain = [
+              { scope: 'issue', label: 'Issue', desc: count('issue') ? `${count('issue')} configurada(s) · set` : 'sin override · none', active: count('issue') > 0 },
+              { scope: 'project', label: 'Proyecto', desc: count('project') ? `${count('project')} proyecto(s)` : 'sin override · none', active: count('project') > 0 },
+              { scope: 'client', label: 'Cliente', desc: count('client') ? `${count('client')} cliente(s)` : 'sin fallback · none', active: count('client') > 0 },
+              { scope: 'default', label: 'Global', desc: def ? formatRatePerHour(def.hourlyCents, def.currency) : 'sin fallback · unset', active: !!def },
+            ];
+            return chain.map((s, i, arr) => <ResolutionChainItem key={s.scope} s={s} i={i} total={arr.length} />);
+          })()}
         </div>
         <div
           style={{
@@ -908,13 +889,20 @@ function RatesTab() {
             background: 'var(--eg-paper-2)',
           }}
         >
-          <code
-            style={{ background: 'transparent', border: 0, padding: 0, fontSize: 12 }}
-          >
-            {`resolveHourlyCents({ issue: 9000, project: 11500, client: 11000, default: 9500 })`}{' '}
-            =&gt;{' '}
-            <b style={{ color: 'var(--eg-iron)' }}>9000</b>
-            <span style={{ color: 'var(--eg-fg-3)' }}>{'  // issue.rate gana · wins'}</span>
+          <code style={{ background: 'transparent', border: 0, padding: 0, fontSize: 12, color: 'var(--eg-fg-2)' }}>
+            issue → project → client → default ·{' '}
+            <span style={{ color: 'var(--eg-fg-3)' }}>
+              el primer scope configurado gana · the first configured scope wins
+            </span>
+            {data.length === 0 && (
+              <>
+                <br />
+                <b style={{ color: 'var(--eg-red)' }}>
+                  // sin tarifas — la facturación fallará hasta configurar una · no rates yet — invoicing
+                  fails until one is set
+                </b>
+              </>
+            )}
           </code>
         </div>
       </section>
