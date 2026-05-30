@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { prisma } from '@gira/db';
-import { createWorklogSchema, startTimerSchema } from '@gira/shared';
+import { createWorklogSchema, startTimerSchema, updateWorklogSchema } from '@gira/shared';
+import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
-import { conflict, notFound } from '../../lib/http-error.js';
+import { conflict, forbidden, notFound } from '../../lib/http-error.js';
 import { assertCanAccessProject, assertCanWrite, assertStaff } from '../../lib/scope.js';
 import { toTimerView, toWorklogView } from '../../lib/views.js';
 import { loadIssueOr404 } from '../issues/service.js';
@@ -45,6 +46,68 @@ export async function timeRoutes(app: FastifyInstance): Promise<void> {
       include: { user: true },
     });
     return reply.code(201).send(toWorklogView(worklog));
+  });
+
+  // Edit/delete a worklog. Staff only (assertCanWrite), and only the logger or an
+  // admin may touch it. A worklog already claimed by a FINALIZED annex (issued/paid/
+  // void) is frozen — the annex must be voided first — so a billed figure can't be
+  // mutated out from under a sent document. Draft-claimed worklogs are still editable
+  // (the draft can be regenerated).
+  async function loadEditableWorklog(id: string, user: ReturnType<typeof currentUser>) {
+    const wl = await prisma.worklog.findUnique({
+      where: { id },
+      include: {
+        invoice: { select: { status: true } },
+        issue: { select: { key: true } },
+      },
+    });
+    if (!wl) throw notFound('worklog not found');
+    if (wl.userId !== user.id && user.role !== 'admin') {
+      throw forbidden('only the logger or an admin can change this worklog');
+    }
+    if (wl.invoiceId && wl.invoice && wl.invoice.status !== 'draft') {
+      throw conflict('this worklog is billed on a finalized annex — void the annex first');
+    }
+    return wl;
+  }
+
+  app.patch('/worklogs/:id', { preHandler: requireAuth }, async (req) => {
+    const user = currentUser(req);
+    assertCanWrite(user);
+    const { id } = req.params as { id: string };
+    const input = updateWorklogSchema.parse(req.body);
+    const before = await loadEditableWorklog(id, user);
+    const updated = await prisma.$transaction(async (tx) => {
+      const u = await tx.worklog.update({ where: { id }, data: input, include: { user: true } });
+      await recordAudit(tx, {
+        actorId: user.id,
+        action: 'worklog.update',
+        entityType: 'Worklog',
+        entityId: id,
+        before: { minutes: before.minutes, billable: before.billable, note: before.note },
+        after: { minutes: u.minutes, billable: u.billable, note: u.note },
+      });
+      return u;
+    });
+    return toWorklogView(updated);
+  });
+
+  app.delete('/worklogs/:id', { preHandler: requireAuth }, async (req, reply) => {
+    const user = currentUser(req);
+    assertCanWrite(user);
+    const { id } = req.params as { id: string };
+    const before = await loadEditableWorklog(id, user);
+    await prisma.$transaction(async (tx) => {
+      await tx.worklog.delete({ where: { id } });
+      await recordAudit(tx, {
+        actorId: user.id,
+        action: 'worklog.delete',
+        entityType: 'Worklog',
+        entityId: id,
+        before: { minutes: before.minutes, issueKey: before.issue.key },
+      });
+    });
+    return reply.code(204).send();
   });
 
   // ── timers (one active per user) ───────────────────────────────────────

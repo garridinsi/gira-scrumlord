@@ -72,4 +72,89 @@ describe('time tracking', () => {
     const stop = await app.inject({ method: 'POST', url: '/timers/stop', headers: { cookie } });
     expect(stop.statusCode).toBe(404);
   });
+
+  it('lets the logger edit and delete their own worklog', async () => {
+    const { cookie } = await setupIssue();
+    const id = (
+      await app.inject({
+        method: 'POST',
+        url: '/issues/GIRA-1/worklogs',
+        headers: { cookie },
+        payload: { minutes: 60, note: 'typo', billable: true },
+      })
+    ).json().id as string;
+
+    const edit = await app.inject({
+      method: 'PATCH',
+      url: `/worklogs/${id}`,
+      headers: { cookie },
+      payload: { minutes: 45, note: 'fixed', billable: false },
+    });
+    expect(edit.statusCode).toBe(200);
+    expect(edit.json()).toMatchObject({ minutes: 45, note: 'fixed', billable: false });
+
+    const del = await app.inject({ method: 'DELETE', url: `/worklogs/${id}`, headers: { cookie } });
+    expect(del.statusCode).toBe(204);
+    expect(await prisma.worklog.count()).toBe(0);
+  });
+
+  it('forbids editing another user’s worklog (unless admin)', async () => {
+    const { cookie } = await setupIssue();
+    const id = (
+      await app.inject({
+        method: 'POST',
+        url: '/issues/GIRA-1/worklogs',
+        headers: { cookie },
+        payload: { minutes: 60, billable: true },
+      })
+    ).json().id as string;
+
+    const other = await actingAs({ role: 'member' });
+    const denied = await app.inject({
+      method: 'PATCH',
+      url: `/worklogs/${id}`,
+      headers: { cookie: other.cookie },
+      payload: { minutes: 1 },
+    });
+    expect(denied.statusCode).toBe(403);
+
+    const admin = await actingAs({ role: 'admin' });
+    const ok = await app.inject({
+      method: 'PATCH',
+      url: `/worklogs/${id}`,
+      headers: { cookie: admin.cookie },
+      payload: { minutes: 30 },
+    });
+    expect(ok.statusCode).toBe(200);
+  });
+
+  it('refuses to edit/delete a worklog billed on a finalized annex', async () => {
+    // Set up a client-linked project so we can invoice the worklog.
+    const client = await prisma.client.create({ data: { name: 'C', slug: 'c', currency: 'EUR' } });
+    const { user, cookie } = await actingAs({ role: 'admin' });
+    await seedProject({ reporterId: user.id, key: 'BILL', clientId: client.id });
+    await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey: 'BILL', title: 'W' } });
+    const wlId = (
+      await app.inject({
+        method: 'POST',
+        url: '/issues/BILL-1/worklogs',
+        headers: { cookie },
+        payload: { minutes: 60, billable: true },
+      })
+    ).json().id as string;
+    await app.inject({ method: 'POST', url: '/rates', headers: { cookie }, payload: { scope: 'default', hourlyCents: 6000 } });
+    const invId = (await app.inject({ method: 'POST', url: `/clients/${client.id}/invoices`, headers: { cookie } })).json().id as string;
+
+    // While the annex is a draft, editing is still allowed.
+    expect(
+      (await app.inject({ method: 'PATCH', url: `/worklogs/${wlId}`, headers: { cookie }, payload: { note: 'draft edit' } })).statusCode,
+    ).toBe(200);
+
+    // Issue the annex (finalize) — now the worklog is frozen.
+    await app.inject({ method: 'POST', url: `/invoices/${invId}/issue`, headers: { cookie } });
+    expect(
+      (await app.inject({ method: 'PATCH', url: `/worklogs/${wlId}`, headers: { cookie }, payload: { minutes: 1 } })).statusCode,
+    ).toBe(409);
+    expect((await app.inject({ method: 'DELETE', url: `/worklogs/${wlId}`, headers: { cookie } })).statusCode).toBe(409);
+  });
 });
