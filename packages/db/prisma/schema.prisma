@@ -134,14 +134,27 @@ model User {
   name      String
   kind      UserKind @default(staff)
   role      UserRole @default(member)
-  clientId  String? // required when kind = client (app-enforced)
-  client    Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId  String? // required when kind = client (app-enforced + DB CHECK)
+  // RESTRICT, not SetNull: a client must not be deletable while it still has users,
+  // because SetNull would silently produce kind=client + clientId=NULL rows that
+  // break tenant isolation (a null clientId widens, not scopes, the portal). The
+  // clients delete route detaches/blocks first.
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Restrict)
   isActive  Boolean  @default(true)
+  // Per-user UI language preference (es | en | both). Drives the i18n layer.
+  locale    String   @default("es")
+  // Set when an admin (or self) deactivates the account; sessions are revoked in
+  // the same transaction so a reactivated user can't resurrect a stale cookie.
+  deactivatedAt DateTime?
+  // Stamped each time a magic-link sign-in completes — lets admins tell an invited
+  // person who never signed in from an active one.
+  lastLoginAt   DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   identities      Identity[]
   sessions        Session[]
+  emailChanges    EmailChangeToken[]
   assignedIssues  Issue[]    @relation("IssueAssignee")
   reportedIssues  Issue[]    @relation("IssueReporter")
   comments              Comment[]
@@ -178,6 +191,9 @@ model Session {
   ip        String?
   expiresAt DateTime
   revokedAt DateTime?
+  // Touched (throttled) on each authenticated request so the account page can
+  // show "last active" per device. Null until the first touch after creation.
+  lastSeenAt DateTime?
   createdAt DateTime  @default(now())
 
   @@index([userId])
@@ -192,6 +208,24 @@ model MagicLinkToken {
   createdAt  DateTime  @default(now())
 
   @@index([email])
+}
+
+/// Verified email change. The token is minted bound to {userId, newEmail} and the
+/// link is emailed to the NEW address only — proving control of it before the
+/// switch — so this can never be an account-takeover vector. Single-use
+/// (consumedAt), short-lived (expiresAt), and rejected up front if newEmail
+/// already maps to a user.
+model EmailChangeToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  newEmail   String
+  tokenHash  String    @unique // sha256 of the single-use token
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
 }
 
 // ────────────────────────────────────────────────────────────── tracker ──

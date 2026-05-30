@@ -4,16 +4,20 @@ import { createWorklogSchema, startTimerSchema } from '@gira/shared';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
 import { conflict, notFound } from '../../lib/http-error.js';
-import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
+import { assertCanAccessProject, assertCanWrite, assertStaff } from '../../lib/scope.js';
 import { toTimerView, toWorklogView } from '../../lib/views.js';
 import { loadIssueOr404 } from '../issues/service.js';
 
 export async function timeRoutes(app: FastifyInstance): Promise<void> {
   // ── worklogs ──────────────────────────────────────────────────────────
+  // Staff-only: worklogs carry internal `note` free-text and staff identities that
+  // were never meant for clients. Clients see accrued cost (a computed figure) via
+  // the portal, never the raw worklog rows — so this list is gated to staff even for
+  // the requester's own project.
   app.get('/issues/:key/worklogs', { preHandler: requireAuth }, async (req) => {
     const { key } = req.params as { key: string };
+    assertStaff(currentUser(req));
     const issue = await loadIssueOr404(key);
-    assertCanAccessProject(currentUser(req), { clientId: issue.project.clientId });
     const logs = await prisma.worklog.findMany({
       where: { issueId: issue.id },
       include: { user: true },

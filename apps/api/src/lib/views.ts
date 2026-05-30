@@ -22,9 +22,11 @@ import type {
   IntakeSourceView,
   IssueView,
   LabelView,
+  PublicUserView,
   SprintView,
   StatusView,
   TimerView,
+  UserLocale,
   UserView,
   VelocityView,
   WorklogView,
@@ -50,8 +52,20 @@ export function toUserView(u: User): UserView {
     kind: u.kind,
     role: u.role,
     clientId: u.clientId,
+    locale: u.locale as UserLocale,
     isActive: u.isActive,
+    lastLoginAt: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
   };
+}
+
+/**
+ * Client-safe projection: id + display name only. Use this for any user reference
+ * embedded in a payload a client can reach (comment authors, issue assignee/reporter,
+ * worklog loggers) so staff email/role never leak to an external client. The full
+ * toUserView is reserved for the session identity and staff-only team endpoints.
+ */
+export function toPublicUserView(u: { id: string; name: string }): PublicUserView {
+  return { id: u.id, name: u.name };
 }
 
 export function toLabelView(l: Label): LabelView {
@@ -66,7 +80,7 @@ export function toCommentView(c: Comment & { author?: User | null }): CommentVie
   return {
     id: c.id,
     body: c.body,
-    author: c.author ? toUserView(c.author) : null,
+    author: c.author ? toPublicUserView(c.author) : null,
     createdAt: c.createdAt.toISOString(),
   };
 }
@@ -79,7 +93,7 @@ export function toWorklogView(w: Worklog & { user?: User | null }): WorklogView 
     billable: w.billable,
     startedAt: w.startedAt ? w.startedAt.toISOString() : null,
     loggedAt: w.loggedAt.toISOString(),
-    user: w.user ? toUserView(w.user) : null,
+    user: w.user ? toPublicUserView(w.user) : null,
   };
 }
 
@@ -156,8 +170,8 @@ export function toIssueView(i: IssueWithRelations, projectKey?: string): IssueVi
     statusId: i.statusId,
     statusName: i.status?.name,
     statusCategory: i.status?.category,
-    assignee: i.assignee ? toUserView(i.assignee) : null,
-    reporter: i.reporter ? toUserView(i.reporter) : null,
+    assignee: i.assignee ? toPublicUserView(i.assignee) : null,
+    reporter: i.reporter ? toPublicUserView(i.reporter) : null,
     sprintId: i.sprintId,
     parentId: i.parentId,
     storyPoints: i.storyPoints,

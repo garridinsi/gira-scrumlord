@@ -14,6 +14,7 @@ import type {
   SprintState,
   StatusCategory,
   UserKind,
+  UserLocale,
   UserRole,
 } from './enums.js';
 
@@ -34,8 +35,35 @@ export interface UserView {
   kind: UserKind;
   role: UserRole;
   clientId: string | null;
+  /** Per-user UI language preference (es | en | both). */
+  locale: UserLocale;
   /** Present on management/list responses; omitted from the session identity. */
   isActive?: boolean;
+  /** ISO timestamp of the last completed magic-link sign-in; null if never. */
+  lastLoginAt?: string | null;
+}
+
+/**
+ * Client-safe projection of a user: identity (id) + display name only, never the
+ * email or role. Used for any user reference embedded in a payload a client can
+ * reach (comment authors, issue assignee/reporter, worklog loggers) so staff PII
+ * never crosses the wire to an external client. The full UserView is reserved for
+ * the authenticated session identity and the staff-only team/management endpoints.
+ */
+export interface PublicUserView {
+  id: string;
+  name: string;
+}
+
+/** One of a user's active server sessions, as shown on their account page. */
+export interface SessionView {
+  id: string;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  lastSeenAt: string | null;
+  /** True for the session making this request (don't offer to revoke it blindly). */
+  current: boolean;
 }
 
 export interface LabelView {
@@ -63,8 +91,8 @@ export interface IssueView {
   /** Status name + category — populated when the issue is loaded with its status. */
   statusName?: string;
   statusCategory?: StatusCategory;
-  assignee: UserView | null;
-  reporter: UserView | null;
+  assignee: PublicUserView | null;
+  reporter: PublicUserView | null;
   sprintId: string | null;
   parentId: string | null;
   storyPoints: number | null;
@@ -84,7 +112,7 @@ export interface IssueView {
 export interface CommentView {
   id: string;
   body: string;
-  author: UserView | null;
+  author: PublicUserView | null;
   createdAt: string;
 }
 
@@ -197,7 +225,7 @@ export interface WorklogView {
   billable: boolean;
   startedAt: string | null;
   loggedAt: string;
-  user: UserView | null;
+  user: PublicUserView | null;
 }
 
 export interface ChannelView {

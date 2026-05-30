@@ -8,6 +8,8 @@ export const priority = z.enum(['low', 'medium', 'high', 'urgent', 'emergency'])
 export const statusCategory = z.enum(['todo', 'in_progress', 'done']);
 export const userKind = z.enum(['staff', 'client']);
 export const userRole = z.enum(['admin', 'member', 'viewer']);
+/** Per-user UI language preference: Spanish, English, or the bilingual default. */
+export const userLocale = z.enum(['es', 'en', 'both']);
 export const billingMode = z.enum(['hourly', 'fixed']);
 export const rateScope = z.enum(['default', 'client', 'project', 'issue']);
 export const sprintState = z.enum(['future', 'active', 'closed']);
@@ -23,6 +25,7 @@ export type Priority = z.infer<typeof priority>;
 export type StatusCategory = z.infer<typeof statusCategory>;
 export type UserKind = z.infer<typeof userKind>;
 export type UserRole = z.infer<typeof userRole>;
+export type UserLocale = z.infer<typeof userLocale>;
 export type BillingMode = z.infer<typeof billingMode>;
 export type RateScope = z.infer<typeof rateScope>;
 export type SprintState = z.infer<typeof sprintState>;

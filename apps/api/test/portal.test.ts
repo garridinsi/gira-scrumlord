@@ -100,4 +100,66 @@ describe('client portal (M2)', () => {
     });
     expect(res.statusCode).toBe(403);
   });
+
+  it('never leaks staff email or internal worklog notes to a client', async () => {
+    const { client, staff } = await setup();
+    // Staff create an issue assigned to themselves, comment, and log billable time
+    // with an internal note that a client must never see.
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Customer-visible ticket' });
+    await patch(staff.cookie, 'ACME-1', { assigneeId: staff.user.id });
+    await app.inject({
+      method: 'POST',
+      url: '/issues/ACME-1/comments',
+      headers: { cookie: staff.cookie },
+      payload: { body: 'staff note on the ticket' },
+    });
+    await app.inject({
+      method: 'POST',
+      url: '/issues/ACME-1/worklogs',
+      headers: { cookie: staff.cookie },
+      payload: { minutes: 30, billable: true, note: 'INTERNAL: client is being difficult' },
+    });
+
+    const viewer = await actingAs({ kind: 'client', role: 'viewer', clientId: client.id });
+
+    // Issue payload: assignee/reporter must be id+name only — no staff email.
+    const issueRes = await app.inject({
+      method: 'GET',
+      url: '/issues/ACME-1',
+      headers: { cookie: viewer.cookie },
+    });
+    expect(issueRes.statusCode).toBe(200);
+    const issue = issueRes.json();
+    expect(issue.assignee).toMatchObject({ id: staff.user.id, name: staff.user.name });
+    expect(issue.assignee.email).toBeUndefined();
+    expect(issue.reporter?.email).toBeUndefined();
+    expect(JSON.stringify(issue)).not.toContain(staff.user.email);
+
+    // Comments: author must be id+name only — no staff email.
+    const commentsRes = await app.inject({
+      method: 'GET',
+      url: '/issues/ACME-1/comments',
+      headers: { cookie: viewer.cookie },
+    });
+    expect(commentsRes.statusCode).toBe(200);
+    expect(JSON.stringify(commentsRes.json())).not.toContain(staff.user.email);
+    expect(commentsRes.json()[0].author.email).toBeUndefined();
+
+    // Worklogs (with internal note + staff identity) are staff-only: a client is denied.
+    const worklogsRes = await app.inject({
+      method: 'GET',
+      url: '/issues/ACME-1/worklogs',
+      headers: { cookie: viewer.cookie },
+    });
+    expect(worklogsRes.statusCode).toBe(403);
+
+    // Staff still get the full worklog list incl. the note.
+    const staffWorklogs = await app.inject({
+      method: 'GET',
+      url: '/issues/ACME-1/worklogs',
+      headers: { cookie: staff.cookie },
+    });
+    expect(staffWorklogs.statusCode).toBe(200);
+    expect(staffWorklogs.json()[0].note).toContain('INTERNAL');
+  });
 });

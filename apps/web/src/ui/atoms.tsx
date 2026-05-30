@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Shared design-system atoms, ported from the EG "Mantenedor" handoff.
 import type { CSSProperties, ReactNode } from 'react';
-import type { IssueType, LabelView, Priority, UserView } from '@gira/shared';
+import type { IssueType, LabelView, Priority, PublicUserView } from '@gira/shared';
 
 // ── Bilingual stack · ES primary, EN mono below ──────────────────────────
 type BiSize = 'big' | 'tiny';
@@ -175,7 +175,7 @@ export function Avatar({
   lg,
   style,
 }: {
-  user?: UserView | null;
+  user?: PublicUserView | null;
   name?: string;
   seed?: string;
   lg?: boolean;
