@@ -17,6 +17,7 @@ export function LoginPage() {
 
   return (
     <div
+      className="eg-login"
       style={{
         width: '100%',
         minHeight: '100vh',
@@ -31,6 +32,7 @@ export function LoginPage() {
     >
       {/* Left poster */}
       <div
+        className="eg-login__poster"
         style={{
           position: 'relative',
           padding: 56,
@@ -193,6 +195,7 @@ export function LoginPage() {
 
       {/* Right login card */}
       <div
+        className="eg-login__card"
         style={{
           background: 'var(--eg-paper)',
           borderLeft: '12px solid var(--eg-yellow)',

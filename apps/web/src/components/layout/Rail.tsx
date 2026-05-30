@@ -13,10 +13,15 @@ interface RailItem {
   lore?: string;
 }
 
-export function Rail() {
+export function Rail({ open = false, onNavigate }: { open?: boolean; onNavigate?: () => void } = {}) {
   const { key } = useParams();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+
+  const go = (to: string) => {
+    navigate(to);
+    onNavigate?.(); // close the mobile drawer after picking a destination
+  };
 
   const board = useQuery({
     queryKey: ['board', key],
@@ -81,7 +86,7 @@ export function Rail() {
       type="button"
       className={'rail__item' + (isActive(it) ? ' active' : '') + (it.lore ? ' lore' : '')}
       data-lore={it.lore}
-      onClick={() => it.to && navigate(it.to)}
+      onClick={() => it.to && go(it.to)}
       disabled={!it.to}
       style={{
         alignItems: 'flex-start',
@@ -119,7 +124,7 @@ export function Rail() {
   const ok = health.data?.status === 'ok';
 
   return (
-    <aside className="rail">
+    <aside className={'rail' + (open ? ' rail--open' : '')}>
       <div className="rail__section">
         <div className="rail__head">
           <span>// project</span>

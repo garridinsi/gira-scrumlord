@@ -6,7 +6,7 @@ import { incidents, projects } from '../../api/client';
 import { useMe, useLogout } from '../../hooks/useAuth';
 import { Avatar, EyeGlyph, Glyph } from '../../ui/atoms';
 
-export function TopBar() {
+export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
   const navigate = useNavigate();
   const { key } = useParams();
   const me = useMe();
@@ -32,6 +32,17 @@ export function TopBar() {
 
   return (
     <div className="topbar">
+      <button
+        type="button"
+        className="topbar__menu"
+        onClick={() => onMenuClick?.()}
+        aria-label="Menú · Menu"
+        title="Menú · Menu"
+      >
+        <span className="topbar__menu-bars" aria-hidden="true">
+          ☰
+        </span>
+      </button>
       <button
         type="button"
         className="topbar__brand"

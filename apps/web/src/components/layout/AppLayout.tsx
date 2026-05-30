@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import { useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useMe } from '../../hooks/useAuth';
 import { Rail } from './Rail';
@@ -6,6 +7,8 @@ import { TopBar } from './TopBar';
 
 export function AppLayout() {
   const me = useMe();
+  // On phones the rail is an off-canvas drawer toggled from the TopBar hamburger.
+  const [navOpen, setNavOpen] = useState(false);
 
   if (me.isLoading) {
     return (
@@ -27,10 +30,18 @@ export function AppLayout() {
   }
 
   return (
-    <div className="app">
-      <TopBar />
+    <div className={'app' + (navOpen ? ' app--nav-open' : '')}>
+      <TopBar onMenuClick={() => setNavOpen((v) => !v)} />
       <div className="main">
-        <Rail />
+        <Rail open={navOpen} onNavigate={() => setNavOpen(false)} />
+        {navOpen && (
+          <button
+            type="button"
+            className="rail-backdrop"
+            aria-label="Cerrar menú · Close menu"
+            onClick={() => setNavOpen(false)}
+          />
+        )}
         <Outlet />
       </div>
     </div>
