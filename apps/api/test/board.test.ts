@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { actingAs } from './helpers/auth.js';
-import { resetDb } from './helpers/db.js';
+import { prisma, resetDb } from './helpers/db.js';
 import { seedProject } from './helpers/fixtures.js';
 
 describe('board + move', () => {
@@ -74,6 +74,24 @@ describe('board + move', () => {
     const board2 = await board(cookie, projectKey);
     const keys = columnKeys(board2, 'Backlog');
     expect([...keys].sort()).toEqual(['GIRA-1', 'GIRA-2', 'GIRA-3']); // none lost, ordering deterministic
+  });
+
+  it('rebalances and places correctly when neighbours admit no rank between them', async () => {
+    const { cookie, projectKey } = await setup(); // GIRA-1/2/3 in Backlog
+    // Force immediate-neighbour ranks: GIRA-1='m', GIRA-2='m0' (nothing fits between).
+    await prisma.issue.update({ where: { key: 'GIRA-1' }, data: { rank: 'm' } });
+    await prisma.issue.update({ where: { key: 'GIRA-2' }, data: { rank: 'm0' } });
+    // Drop GIRA-3 between them: below GIRA-1 (beforeId) and above GIRA-2 (afterId).
+    const res = await app.inject({
+      method: 'POST',
+      url: '/issues/GIRA-3/move',
+      headers: { cookie },
+      payload: { beforeId: 'GIRA-1', afterId: 'GIRA-2' },
+    });
+    expect(res.statusCode).toBe(200);
+    // The column was rebalanced; GIRA-3 sits between GIRA-1 and GIRA-2, order intact.
+    const b = await board(cookie, projectKey);
+    expect(columnKeys(b, 'Backlog')).toEqual(['GIRA-1', 'GIRA-3', 'GIRA-2']);
   });
 
   it('moves across columns and sets closedAt when entering Done', async () => {

@@ -165,6 +165,29 @@ describe('invoicing (M5)', () => {
     expect(gen.json().error ?? gen.json().message).toMatch(/fixed price/i);
   });
 
+  it('does not reuse an existing annex number after a draft is deleted (max-based seq)', async () => {
+    const { client, staff } = await setup();
+    await setRate(staff.cookie, 6000);
+    // Two annexes from two issues.
+    await create(staff.cookie, { projectKey: 'ACME', title: 'A' });
+    await logWork(staff.cookie, 'ACME-1', 30);
+    const a = (await generate(staff.cookie, client.id)).json();
+    expect(a.number).toMatch(/-0001$/);
+    await create(staff.cookie, { projectKey: 'ACME', title: 'B' });
+    await logWork(staff.cookie, 'ACME-2', 30);
+    const b = (await generate(staff.cookie, client.id)).json();
+    expect(b.number).toMatch(/-0002$/);
+
+    // Delete the FIRST draft (frees A's hours). The old count-based numbering would
+    // now generate ...-0002 again and collide; max-based yields ...-0003.
+    expect((await app.inject({ method: 'DELETE', url: `/invoices/${a.id}`, headers: { cookie: staff.cookie } })).statusCode).toBe(204);
+    await create(staff.cookie, { projectKey: 'ACME', title: 'C' });
+    await logWork(staff.cookie, 'ACME-3', 30);
+    const c = await generate(staff.cookie, client.id);
+    expect(c.statusCode).toBe(201);
+    expect(c.json().number).toMatch(/-0003$/);
+  });
+
   it('deleting a draft releases its worklogs so they can be re-invoiced', async () => {
     const { client, staff } = await setup();
     await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });

@@ -163,4 +163,24 @@ describe('users', () => {
     });
     expect(w.statusCode).toBe(403);
   });
+
+  it('keeps kind↔clientId consistent on update', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const [a, b] = await Promise.all([
+      prisma.client.create({ data: { name: 'A', slug: 'cid-a' } }),
+      prisma.client.create({ data: { name: 'B', slug: 'cid-b' } }),
+    ]);
+    const clientUser = (
+      await post(admin.cookie, '/users', { email: 'c@acme.test', name: 'C', kind: 'client', clientId: a.id })
+    ).json();
+    const staffUser = (await post(admin.cookie, '/users', { email: 's@acme.test', name: 'S' })).json();
+
+    // A client user cannot be un-scoped or moved to another tenant.
+    expect((await patch(admin.cookie, `/users/${clientUser.id}`, { clientId: null })).statusCode).toBe(400);
+    expect((await patch(admin.cookie, `/users/${clientUser.id}`, { clientId: b.id })).statusCode).toBe(400);
+    // A staff user cannot be scoped to a client.
+    expect((await patch(admin.cookie, `/users/${staffUser.id}`, { clientId: a.id })).statusCode).toBe(400);
+    // A no-op (same client) is fine.
+    expect((await patch(admin.cookie, `/users/${clientUser.id}`, { clientId: a.id })).statusCode).toBe(200);
+  });
 });

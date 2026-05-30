@@ -8,6 +8,7 @@ import { type ResolvedRate, accruedCents, resolveRate } from '@gira/domain';
 import type { GenerateInvoice, InvoiceListItemView, InvoiceView } from '@gira/shared';
 import { recordAudit } from '@gira/sauron';
 import { badRequest, notFound } from '../../lib/http-error.js';
+import { runSerializable } from '../../lib/tx.js';
 
 const toResolved = (r: Rate | null | undefined): ResolvedRate | null =>
   r ? { hourlyCents: r.hourlyCents, currency: r.currency } : null;
@@ -97,7 +98,10 @@ export async function generateInvoice(
     loggedAt.lte = end;
   }
 
-  const invoice = await prisma.$transaction(async (tx) => {
+  // Serializable + retry: the annex number is derived from the current max for the
+  // year, and two concurrent generates reading the same max would otherwise produce
+  // a duplicate number (unique-constraint 500). SSI aborts the loser, which retries.
+  const invoice = await runSerializable(async (tx) => {
     const worklogs = await tx.worklog.findMany({
       where: {
         billable: true,
@@ -214,8 +218,15 @@ export async function generateInvoice(
 
     // ANX = non-fiscal billing annex (the fiscal invoice is issued via TicketBAI).
     const year = new Date().getFullYear();
-    const seq = await tx.invoice.count({ where: { number: { startsWith: `ANX-${year}-` } } });
-    const number = `ANX-${year}-${String(seq + 1).padStart(4, '0')}`;
+    // MAX-based (not count-based): deleting a draft must NOT cause the sequence to
+    // reuse a still-existing number. Take the highest existing ANX-YYYY-NNNN and +1.
+    const last = await tx.invoice.findFirst({
+      where: { number: { startsWith: `ANX-${year}-` } },
+      orderBy: { number: 'desc' },
+      select: { number: true },
+    });
+    const lastSeq = last ? Number.parseInt(last.number.slice(`ANX-${year}-`.length), 10) || 0 : 0;
+    const number = `ANX-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 
     const created = await tx.invoice.create({
       data: {

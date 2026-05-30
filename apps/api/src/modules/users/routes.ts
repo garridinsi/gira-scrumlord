@@ -86,6 +86,18 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     if (before.kind === 'client' && data.role != null && data.role !== 'viewer') {
       throw badRequest('client users must be viewers');
     }
+    // Invariant: kind ↔ clientId must stay consistent. A client user must keep a
+    // (non-null) clientId and must not be silently moved to another tenant (which
+    // would expose another client's portal to that user's existing sessions); a
+    // staff user must never be scoped to a client. Email/kind are immutable here.
+    if ('clientId' in data && data.clientId !== undefined) {
+      if (before.kind === 'client' && data.clientId !== before.clientId) {
+        throw badRequest('cannot move a client user to a different client');
+      }
+      if (before.kind === 'staff' && data.clientId !== null) {
+        throw badRequest('staff users are not scoped to a client');
+      }
+    }
 
     const demotingFromAdmin = data.role != null && data.role !== 'admin' && before.role === 'admin';
     const deactivating = data.isActive === false;

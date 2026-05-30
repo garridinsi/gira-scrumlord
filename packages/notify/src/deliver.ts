@@ -56,18 +56,33 @@ export async function deliver(
     }
 
     if (channel.kind === 'webhook') {
-      await assertResolvedHostSafe(channel.target, opts.allowPrivate ?? notifyConfig.allowPrivateWebhooks);
+      const allowPrivate = opts.allowPrivate ?? notifyConfig.allowPrivateWebhooks;
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
       try {
-        const res = await fetch(channel.target, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
-        if (!res.ok) return { ok: false, error: `webhook responded ${res.status}` };
-        return { ok: true };
+        // Follow redirects MANUALLY, re-validating each hop's host — a validated
+        // public endpoint could otherwise 302 us to a private/metadata address
+        // (SSRF). Cap the hops to avoid loops.
+        let url = channel.target;
+        for (let hop = 0; hop < 5; hop++) {
+          await assertResolvedHostSafe(url, allowPrivate);
+          const res = await fetch(url, {
+            method: hop === 0 ? 'POST' : 'GET',
+            headers: { 'content-type': 'application/json' },
+            body: hop === 0 ? JSON.stringify(payload) : undefined,
+            redirect: 'manual',
+            signal: controller.signal,
+          });
+          if (res.status >= 300 && res.status < 400) {
+            const loc = res.headers.get('location');
+            if (!loc) return { ok: false, error: `webhook redirect with no location (${res.status})` };
+            url = new URL(loc, url).toString(); // resolve relative; re-validated next loop
+            continue;
+          }
+          if (!res.ok) return { ok: false, error: `webhook responded ${res.status}` };
+          return { ok: true };
+        }
+        return { ok: false, error: 'webhook exceeded redirect limit' };
       } finally {
         clearTimeout(timeout);
       }

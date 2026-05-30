@@ -1,34 +1,110 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { Prisma, prisma } from '@gira/db';
-import { rankBetween } from '@gira/domain';
+import { NoRankSpaceError, rankBetween } from '@gira/domain';
 import { moveIssueSchema } from '@gira/shared';
 import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
 import { badRequest } from '../../lib/http-error.js';
 import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
+import { runSerializable } from '../../lib/tx.js';
 import { toIssueView, toStatusView } from '../../lib/views.js';
 import { issueInclude, loadIssueOr404 } from '../issues/service.js';
 import { getProjectByKeyOr404 } from '../projects/service.js';
 
-/**
- * Run a transaction at Serializable isolation, retrying on write-conflict (Prisma
- * P2034 / Postgres 40001). Used by the board move so two concurrent drops onto the
- * same gap can't both read the same neighbour ranks and compute a colliding rank —
- * Postgres SSI aborts one and we recompute against the committed state.
- */
-async function runSerializable<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await prisma.$transaction(fn, {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      });
-    } catch (e) {
-      const code = (e as { code?: string }).code;
-      if (code === 'P2034' && attempt < 4) continue; // serialization failure — retry
-      throw e;
-    }
+/** A spread of distinct, strictly-ascending ranks for a freshly rebalanced column. */
+function freshRanks(n: number): string[] {
+  const out: string[] = [];
+  let prev: string | null = null;
+  for (let i = 0; i < n; i++) {
+    const r = rankBetween(prev, null);
+    out.push(r);
+    prev = r;
   }
+  return out;
+}
+
+/**
+ * Decide the moved issue's new rank within its target column, INSIDE the given
+ * transaction. Normally a fractional rank between the drop neighbours; if no value
+ * exists between them (immediate neighbours / inserting before the first rank) or
+ * the column is too dense, the whole column is rebalanced to evenly-spaced ranks
+ * and the card placed at the drop index. Returns the moved card's rank. Sibling
+ * rows are updated here only on the rebalance path.
+ */
+async function placeInColumn(
+  tx: Prisma.TransactionClient,
+  projectId: string,
+  statusId: string,
+  movedKey: string,
+  beforeKey?: string,
+  afterKey?: string,
+): Promise<string> {
+  const rankOf = async (k?: string): Promise<string | null> =>
+    k ? ((await tx.issue.findUnique({ where: { key: k }, select: { rank: true } }))?.rank ?? null) : null;
+  const endOfColumn = async (): Promise<string | null> =>
+    (
+      await tx.issue.findFirst({
+        where: { projectId, statusId, key: { not: movedKey } },
+        orderBy: { rank: 'desc' },
+        select: { rank: true },
+      })
+    )?.rank ?? null;
+
+  const beforeRank = await rankOf(beforeKey);
+  const afterRank = await rankOf(afterKey);
+
+  try {
+    let rank =
+      beforeRank != null || afterRank != null
+        ? rankBetween(beforeRank, afterRank)
+        : rankBetween(await endOfColumn(), null);
+
+    // Resolve rank collisions. The findFirst-by-rank read also gives Postgres SSI
+    // the predicate dependency that serializes two concurrent drops onto the same
+    // gap (the loser aborts P2034, retries, and re-brackets here).
+    for (let i = 0; i < 64; i++) {
+      const clash = await tx.issue.findFirst({
+        where: { projectId, statusId, rank, key: { not: movedKey } },
+        select: { rank: true },
+      });
+      if (!clash) return rank;
+      const next = await tx.issue.findFirst({
+        where: { projectId, statusId, rank: { gt: rank }, key: { not: movedKey } },
+        orderBy: { rank: 'asc' },
+        select: { rank: true },
+      });
+      rank = rankBetween(clash.rank, next?.rank ?? null); // may throw NoRankSpaceError
+    }
+    // 64 iterations without a free slot — fall through to a rebalance.
+  } catch (e) {
+    if (!(e instanceof NoRankSpaceError)) throw e;
+    // No value between the neighbours — rebalance below.
+  }
+
+  // Rebalance: assign fresh evenly-ascending ranks to the whole target column,
+  // inserting the moved card at the requested drop position.
+  const others = await tx.issue.findMany({
+    where: { projectId, statusId, key: { not: movedKey } },
+    orderBy: { rank: 'asc' },
+    select: { id: true, key: true },
+  });
+  let idx = others.length; // default: end of column
+  if (afterKey) {
+    const j = others.findIndex((o) => o.key === afterKey);
+    if (j >= 0) idx = j;
+  } else if (beforeKey) {
+    const j = others.findIndex((o) => o.key === beforeKey);
+    if (j >= 0) idx = j + 1;
+  }
+
+  const fresh = freshRanks(others.length + 1);
+  for (let pos = 0; pos < others.length + 1; pos++) {
+    if (pos === idx) continue; // reserved for the moved card
+    const other = others[pos < idx ? pos : pos - 1]!;
+    await tx.issue.update({ where: { id: other.id }, data: { rank: fresh[pos]! } });
+  }
+  return fresh[idx]!;
 }
 
 export async function boardRoutes(app: FastifyInstance): Promise<void> {
@@ -86,51 +162,18 @@ export async function boardRoutes(app: FastifyInstance): Promise<void> {
       closedAt = targetStatus.category === 'done' ? (issue.closedAt ?? new Date()) : null;
     }
 
-    // Read the drop neighbours and write the new rank INSIDE one serializable
-    // transaction so concurrent drops onto the same gap can't collide on a rank.
+    // Compute the new rank and write it INSIDE one serializable transaction so
+    // concurrent drops onto the same gap can't collide; placeInColumn rebalances
+    // the column if the neighbours admit no value between them.
     const updated = await runSerializable(async (tx) => {
-      const rankOf = async (k?: string): Promise<string | null> =>
-        k ? ((await tx.issue.findUnique({ where: { key: k }, select: { rank: true } }))?.rank ?? null) : null;
-      const endOfColumn = async (): Promise<string | null> =>
-        (
-          await tx.issue.findFirst({
-            where: { projectId: issue.projectId, statusId: targetStatusId, key: { not: key } },
-            orderBy: { rank: 'desc' },
-            select: { rank: true },
-          })
-        )?.rank ?? null;
-
-      const beforeRank = await rankOf(input.beforeId);
-      const afterRank = await rankOf(input.afterId);
-      let rank: string;
-      try {
-        rank =
-          beforeRank != null || afterRank != null
-            ? rankBetween(beforeRank, afterRank)
-            : rankBetween(await endOfColumn(), null);
-      } catch {
-        // Neighbours didn't bracket cleanly (e.g. stale) — append to the column end.
-        rank = rankBetween(await endOfColumn(), null);
-      }
-
-      // Resolve rank collisions: two concurrent drops onto the same gap compute the
-      // same rank (rankBetween is deterministic). The findFirst-by-rank read also
-      // gives Postgres SSI the predicate dependency it needs to serialize the two
-      // writers — the loser aborts with P2034, retries on a fresh snapshot, sees the
-      // sibling's committed rank here, and re-brackets to a distinct value.
-      for (let i = 0; i < 64; i++) {
-        const clash = await tx.issue.findFirst({
-          where: { projectId: issue.projectId, statusId: targetStatusId, rank, key: { not: key } },
-          select: { rank: true },
-        });
-        if (!clash) break;
-        const next = await tx.issue.findFirst({
-          where: { projectId: issue.projectId, statusId: targetStatusId, rank: { gt: rank }, key: { not: key } },
-          orderBy: { rank: 'asc' },
-          select: { rank: true },
-        });
-        rank = rankBetween(clash.rank, next?.rank ?? null);
-      }
+      const rank = await placeInColumn(
+        tx,
+        issue.projectId,
+        targetStatusId,
+        key,
+        input.beforeId,
+        input.afterId,
+      );
 
       const data: Prisma.IssueUpdateInput = { rank };
       if (input.statusId) data.status = { connect: { id: input.statusId } };

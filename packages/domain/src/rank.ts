@@ -15,6 +15,18 @@ function val(ch: string): number {
 }
 
 /**
+ * Thrown when two ranks are immediate neighbours (e.g. "m" and "m0", or inserting
+ * before "0") and admit no string strictly between them. The board move catches
+ * this and rebalances the column rather than writing an out-of-order rank.
+ */
+export class NoRankSpaceError extends Error {
+  constructor(lo: string, hi: string) {
+    super(`no rank exists strictly between "${lo}" and "${hi}" — rebalance needed`);
+    this.name = 'NoRankSpaceError';
+  }
+}
+
+/**
  * Returns a rank string strictly between `prev` and `next` (lexicographically).
  * Pass `null`/`undefined` for `prev` to mean "before the first" and for `next`
  * to mean "after the last". Throws if `prev >= next`.
@@ -36,18 +48,31 @@ function between(lo: string, hi: string): string {
   let i = 0;
   for (;;) {
     const p = i < lo.length ? val(lo[i]!) : 0;
-    const n = hi !== '' && i < hi.length ? val(hi[i]!) : BASE;
+    // hi === '' means +infinity (pad with BASE). A FINITE hi that's exhausted pads
+    // with 0 — its value is "this prefix followed by zeros", NOT unbounded. Padding
+    // a finite-exhausted hi with BASE was the bug: it let results sort AFTER hi
+    // (e.g. between("m","m0") wrongly returned "m0i").
+    const n = hi === '' ? BASE : i < hi.length ? val(hi[i]!) : 0;
     if (p === n) {
+      // Both exhausted and still equal → lo and hi denote the same point
+      // (hi = lo + "0…0"); nothing exists strictly between them.
+      const loDone = i >= lo.length;
+      const hiDone = hi !== '' && i >= hi.length;
+      if (loDone && hiDone) throw new NoRankSpaceError(lo, hi);
       result += DIGITS[p]!;
       i++;
       continue;
+    }
+    if (p > n) {
+      // Only reachable on invalid input (lo >= hi); rankBetween already guards this.
+      throw new NoRankSpaceError(lo, hi);
     }
     const mid = Math.floor((p + n) / 2);
     if (mid !== p) {
       return result + DIGITS[mid]!;
     }
-    // lo and hi are adjacent at this digit: keep lo's digit, then the upper bound
-    // falls away (the prefix is already < hi), so recurse with no upper bound.
+    // Digits are adjacent (n === p + 1): keep lo's digit — we're now below hi here,
+    // so the upper bound falls away and we recurse with no upper bound.
     result += DIGITS[p]!;
     return result + between(lo.slice(i + 1), '');
   }
