@@ -112,6 +112,32 @@ describe('account self-service', () => {
       expect(await prisma.emailChangeToken.count({ where: { userId: user.id } })).toBe(0);
     });
 
+    it('is case-insensitive: a case variant of an existing email is rejected + stored lowercased', async () => {
+      const { user, cookie } = await actingAs({ email: 'me@example.test' });
+      await makeUser({ email: 'taken@example.test' });
+
+      // A case variant of an existing address must NOT create a shadow account.
+      const collide = await app.inject({
+        method: 'POST',
+        url: '/auth/email-change/request',
+        headers: { cookie },
+        payload: { newEmail: 'TAKEN@Example.test' },
+      });
+      expect(collide.statusCode).toBe(409);
+      expect(await prisma.emailChangeToken.count({ where: { userId: user.id } })).toBe(0);
+
+      // A fresh mixed-case address is normalized to lowercase before persisting.
+      const ok = await app.inject({
+        method: 'POST',
+        url: '/auth/email-change/request',
+        headers: { cookie },
+        payload: { newEmail: 'New.Mixed@Example.TEST' },
+      });
+      expect(ok.statusCode).toBe(202);
+      const tok = await prisma.emailChangeToken.findFirst({ where: { userId: user.id } });
+      expect(tok?.newEmail).toBe('new.mixed@example.test');
+    });
+
     it('request mints a single-use token to the new address (202)', async () => {
       const { user, cookie } = await actingAs({ email: 'me@example.test' });
       const res = await app.inject({

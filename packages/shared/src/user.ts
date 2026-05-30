@@ -8,7 +8,10 @@ import { userKind, userLocale, userRole } from './enums.js';
  */
 export const createUserSchema = z
   .object({
-    email: z.string().trim().email().max(200),
+    // Lowercase to match the login path (magicLinkRequestSchema) and keep the
+    // case-sensitive unique index honest — otherwise Foo@x.com and foo@x.com become
+    // two accounts and magic-link (which lowercases) can only reach one of them.
+    email: z.string().trim().toLowerCase().email().max(200),
     name: z.string().trim().min(1).max(120),
     kind: userKind.default('staff'),
     role: userRole.default('member'),
@@ -58,7 +61,9 @@ export type SelfProfile = z.infer<typeof selfProfileSchema>;
 
 /** Request a verified email change — the link is sent to this NEW address. */
 export const emailChangeRequestSchema = z.object({
-  newEmail: z.string().trim().email().max(200),
+  // Lowercase like login + create so the collision check and the persisted identity
+  // can't be bypassed by a case variant of an existing address.
+  newEmail: z.string().trim().toLowerCase().email().max(200),
 });
 export type EmailChangeRequest = z.infer<typeof emailChangeRequestSchema>;
 

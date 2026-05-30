@@ -753,14 +753,20 @@ export function BoardPage() {
     e.preventDefault();
     if (!dragKey) return;
 
-    // Find drop index from mouse position
+    // Find drop index from mouse position. The dragged card is still rendered (only
+    // opacity-ghosted), so exclude it from the scan — otherwise its lingering DOM node
+    // shifts every index below it and getDropNeighbors (which filters the dragged card
+    // out of colIssues) computes neighbours one slot too low on downward same-column
+    // drops. Filtering here keeps the scan's index space identical to the neighbour
+    // list and the optimistic splice.
     const colEl = e.currentTarget as HTMLElement;
-    const cards = colEl.querySelectorAll('[data-issue-key]');
-    let dropIndex = colIssues.length;
+    const cards = Array.from(colEl.querySelectorAll('[data-issue-key]')).filter(
+      (c) => c.getAttribute('data-issue-key') !== dragKey,
+    );
+    let dropIndex = cards.length;
 
     for (let i = 0; i < cards.length; i++) {
-      const card = cards[i] as HTMLElement;
-      const rect = card.getBoundingClientRect();
+      const rect = (cards[i] as HTMLElement).getBoundingClientRect();
       if (e.clientY < rect.top + rect.height / 2) {
         dropIndex = i;
         break;

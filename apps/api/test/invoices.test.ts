@@ -335,6 +335,25 @@ describe('invoicing (M5)', () => {
     expect(gen.json().lines[0]).toMatchObject({ issueKey: 'ACME-1', minutes: 120 });
   });
 
+  it('excludes a worklog at the start of next month from the earlier annex (half-open end)', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Boundary' });
+    await setRate(staff.cookie, 6000);
+    const logAt = (loggedAt: string, minutes: number) =>
+      app.inject({ method: 'POST', url: '/issues/ACME-1/worklogs', headers: { cookie: staff.cookie }, payload: { minutes, billable: true, loggedAt } });
+
+    // 22:00:00Z = Jun 1 00:00 Madrid (CEST) → monthKey June → must NOT bill on May annex.
+    await logAt('2026-05-31T22:00:00.000Z', 60);
+    // 21:59:59Z = May 31 23:59:59 Madrid → May → must bill on May annex.
+    await logAt('2026-05-31T21:59:59.000Z', 30);
+
+    const gen = await generate(staff.cookie, client.id, { periodStart: '2026-05-01', periodEnd: '2026-05-31' });
+    expect(gen.statusCode).toBe(201);
+    // Only the 30-min May worklog is billed — the start-of-June one is excluded.
+    expect(gen.json().lines[0].minutes).toBe(30);
+    expect(gen.json().subtotalCents).toBe(3000);
+  });
+
   it('refuses to bill a rate whose currency differs from the client currency', async () => {
     const { client, staff } = await setup(); // client currency EUR
     await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });

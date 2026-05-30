@@ -33,22 +33,20 @@ function tzOffsetMs(instant: Date, timeZone: string): number {
 }
 
 /**
- * Convert a calendar day (taken from a UTC-midnight Date) into the UTC instant for
- * the START or END of that same calendar day in BILLING_TIMEZONE. This is what makes
- * an invoice's period agree with the monthly rollup, which buckets worklogs by
- * calendar month in BILLING_TIMEZONE — without it, a worklog logged just after
- * midnight local time near a month boundary lands in different buckets (the monthly
- * view counts it, the UTC-naive invoice missed it, or vice-versa).
+ * The UTC instant for 00:00:00.000 of a calendar day (taken from a UTC-midnight
+ * Date) in BILLING_TIMEZONE. This is what makes an invoice's period agree with the
+ * monthly rollup, which buckets worklogs by calendar month in BILLING_TIMEZONE.
+ *
+ * The period uses a HALF-OPEN interval [start-of-periodStart, start-of-(periodEnd+1)):
+ * we deliberately avoid an inclusive 23:59:59.999 end bound because Intl.DateTimeFormat
+ * has no sub-second field, so the offset sample would truncate the .999ms and push the
+ * bound ~2s late — re-leaking start-of-next-month worklogs into the earlier annex. A
+ * whole-second 00:00 boundary has no fractional part to lose.
  */
-function zonedDayBoundaryUtc(day: Date, end: boolean, timeZone: string): Date {
-  const y = day.getUTCFullYear();
-  const mo = day.getUTCMonth();
-  const d = day.getUTCDate();
-  const guess = end
-    ? Date.UTC(y, mo, d, 23, 59, 59, 999)
-    : Date.UTC(y, mo, d, 0, 0, 0, 0);
-  // One offset correction is enough at month boundaries (Madrid's DST switch is at
-  // 02:00/03:00, never at the 00:00 boundary we care about).
+function zonedDayStartUtc(day: Date, timeZone: string): Date {
+  const guess = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 0, 0, 0, 0);
+  // One offset correction is enough at calendar-day boundaries (Madrid's DST switch
+  // is at 02:00/03:00, never at the 00:00 boundary we care about).
   return new Date(guess - tzOffsetMs(new Date(guess), timeZone));
 }
 
@@ -131,9 +129,18 @@ export async function generateInvoice(
 
   // Period bounds are interpreted in BILLING_TIMEZONE (not UTC) so the worklogs an
   // annex bills are exactly the ones the monthly rollup attributes to that month.
+  // Half-open: gte start-of-periodStart, lt start-of-(periodEnd + 1 day).
   const loggedAt: Prisma.DateTimeFilter = {};
-  if (input.periodStart) loggedAt.gte = zonedDayBoundaryUtc(input.periodStart, false, config.BILLING_TIMEZONE);
-  if (input.periodEnd) loggedAt.lte = zonedDayBoundaryUtc(input.periodEnd, true, config.BILLING_TIMEZONE);
+  if (input.periodStart) {
+    loggedAt.gte = zonedDayStartUtc(input.periodStart, config.BILLING_TIMEZONE);
+  }
+  if (input.periodEnd) {
+    // Date.UTC handles month/year rollover (day+1 = 32 → the 1st of next month).
+    const dayAfter = new Date(
+      Date.UTC(input.periodEnd.getUTCFullYear(), input.periodEnd.getUTCMonth(), input.periodEnd.getUTCDate() + 1),
+    );
+    loggedAt.lt = zonedDayStartUtc(dayAfter, config.BILLING_TIMEZONE);
+  }
 
   // Serializable + retry: the annex number is derived from the current max for the
   // year, and two concurrent generates reading the same max would otherwise produce

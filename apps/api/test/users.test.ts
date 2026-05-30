@@ -88,6 +88,15 @@ describe('users', () => {
     expect((await post(member.cookie, '/users', { email: 'x@example.test', name: 'X' })).statusCode).toBe(403);
   });
 
+  it('treats email case-insensitively on create (no case-variant shadow account)', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const created = await post(admin.cookie, '/users', { email: 'Case@Example.test', name: 'A' });
+    expect(created.statusCode).toBe(201);
+    expect(created.json().email).toBe('case@example.test'); // stored lowercased
+    // A case variant collides with the lowercased existing row.
+    expect((await post(admin.cookie, '/users', { email: 'CASE@example.TEST', name: 'B' })).statusCode).toBe(409);
+  });
+
   it('changes roles but blocks self-demotion and removing the last admin', async () => {
     const admin = await actingAs({ role: 'admin' });
     const other = await makeUser({ role: 'member', name: 'Other' });
