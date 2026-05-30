@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copy to deploy/cloudflared/config.yml on the server (gitignored) after running
+# `cloudflared tunnel create`. The <UUID> below is your tunnel id; the matching
+# <UUID>.json credentials file lives alongside this file (also gitignored).
+#
+# DNS: `cloudflared tunnel route dns <name> gira.garridinsi.dev` creates the CNAME
+# in Cloudflare automatically.
+
+tunnel: <UUID>
+credentials-file: /etc/cloudflared/<UUID>.json
+
+ingress:
+  - hostname: gira.garridinsi.dev
+    service: http://web:8080
+  - service: http_status:404

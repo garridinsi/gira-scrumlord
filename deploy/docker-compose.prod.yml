@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Production stack for gira-scrumlord behind a Cloudflare tunnel.
+#
+# NOTHING is published to the host — the only ingress is the `cloudflared` tunnel,
+# which reaches the `web` container over the internal Docker network. All secrets
+# live in ./.env (gitignored); see deploy/DEPLOY-PROD.md.
+#
+#   cd deploy && docker compose -f docker-compose.prod.yml up -d --build
+#
+# Build context is the repo root (`..`) because this file lives in deploy/.
+
+x-env: &env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://gira:${POSTGRES_PASSWORD}@postgres:5432/gira?schema=public
+  # The API refuses to boot in production if this is still a dev placeholder.
+  SESSION_SECRET: ${SESSION_SECRET:?set a strong unique SESSION_SECRET in .env}
+  COOKIE_SECURE: "true"
+  APP_URL: ${APP_URL:?set APP_URL, e.g. https://gira.garridinsi.dev}
+  # cloudflared + nginx = 2 proxy hops, so req.ip resolves to the real client.
+  TRUST_PROXY: "2"
+  BILLING_TIMEZONE: ${BILLING_TIMEZONE:-Europe/Madrid}
+  ALLOW_PRIVATE_WEBHOOKS: "false"
+  # Email — IP-allowlisted Google Workspace SMTP relay (no auth) by default.
+  SMTP_HOST: ${SMTP_HOST:-smtp-relay.gmail.com}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASS: ${SMTP_PASS:-}
+  MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM, e.g. "gira-scrumlord <noreply@enekogarrido.com>"}
+
+x-app: &app
+  build:
+    context: ..
+    dockerfile: Dockerfile
+  image: gira-scrumlord-app:prod
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gira
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: gira
+    volumes:
+      - gira_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U gira -d gira']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot: apply migrations, then exit. api/scrumlord wait for it.
+  migrate:
+    <<: *app
+    command: ['pnpm', '--filter', '@gira/db', 'exec', 'prisma', 'migrate', 'deploy']
+    environment: *env
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    command: ['pnpm', '--filter', '@gira/api', 'start']
+    environment: *env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  scrumlord:
+    <<: *app
+    command: ['pnpm', '--filter', '@gira/scrumlord', 'start']
+    environment: *env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # The eye. Read-only audit, internal only (not exposed; reach it via the API's
+  # /audit proxy or an SSH tunnel). Binds :6660 as non-root inside.
+  sauron:
+    <<: *app
+    command: ['pnpm', '--filter', '@gira/sauron', 'start']
+    environment:
+      <<: *env
+      SAURON_PORT: '6660'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: /api
+    image: gira-scrumlord-web:prod
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  # The only ingress. Routes gira.garridinsi.dev -> http://web:8080 per
+  # ./cloudflared/config.yml (tunnel id + credentials created during setup).
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - web
+
+volumes:
+  gira_pgdata:
