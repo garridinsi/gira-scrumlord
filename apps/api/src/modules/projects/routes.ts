@@ -10,7 +10,7 @@ import {
 import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
-import { notFound } from '../../lib/http-error.js';
+import { conflict, notFound } from '../../lib/http-error.js';
 import { toLabelView, toStatusView } from '../../lib/views.js';
 import {
   assertCanAccessProject,
@@ -57,6 +57,18 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
     const before = await getProjectByKeyOr404(key);
     assertCanAccessProject(user, before);
     const data = updateProjectSchema.parse(req.body);
+    // Switching a sprints project to monthly while a sprint is still active/future
+    // would strand that sprint (the monthly lens never surfaces sprints, and the
+    // single-active-sprint guard later blocks reopening cleanly). Make the user close
+    // it first rather than silently orphaning it.
+    if (data.cadence && data.cadence !== 'sprints' && before.cadence === 'sprints') {
+      const live = await prisma.sprint.count({
+        where: { projectId: before.id, state: { in: ['active', 'future'] } },
+      });
+      if (live > 0) {
+        throw conflict('close or delete the active/future sprints before switching to monthly cadence');
+      }
+    }
     return prisma.$transaction(async (tx) => {
       const after = await tx.project.update({ where: { key }, data });
       await recordAudit(tx, {
