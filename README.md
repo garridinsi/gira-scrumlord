@@ -77,15 +77,15 @@ The logo is a tornado. The tornado is you at the end of the quarter.
 | User permissions & client isolation | ✅ | Clients are always read-only viewers, scoped to their own data — they can never reach a staff write/config surface (single-point `kind=staff` write gate). Rate-limited auth, CSRF + SSRF guards, CSP, and a prod secret fail-fast round it out. |
 | `sauron` — audit log | ✅ | Append-only. Read-only. Listens on **port 666**. It only watches. Don't touch. |
 | `scrumlord` — the daemon | ✅ | A real `pg-boss` worker. Governs the dailies: rolls sprints, reaps timers, drains the outbox. |
-| Notifications & **emergency paging** | ✅ | Email/webhook channels; an `emergency` opens an incident and the pager keeps nudging until someone acks. |
+| Notifications & **emergency paging** | ✅ | Email/webhook channels; an `emergency` opens an incident and the pager keeps nudging until someone acks. In-app **Incidents** board to ack/resolve. |
 | Personal notifications | ✅ | Get an email when an issue is **assigned to you**, and when **your reported/assigned issue changes status** — you never get spammed about your own actions. |
 | Grafana / WordPress intake | ✅ | A Grafana `critical` alert auto-files an `emergency` ticket (deduped) and pages you. WordPress forms become tickets. (`packages/chaos`) |
-| Auto-assignment | ✅ | Rule-based: new intake issues get an owner by type/priority/label. |
+| Auto-assignment | ✅ | Rule-based: new intake issues get an owner by type/priority/label — configurable from Settings → Integraciones. |
 | Slack intake | 🚧 | Same adapter pattern, later. Notifications still drafted in ancient Aramaic. |
 | Client portal | ✅ | Clients log in and get their own world: open/done/in-progress, time, money, their invoices, and a form to file requests (capped to `medium` — no self-declared emergencies). |
 | Dark mode | ✅ | Still the only mode. Darkness is the PM's natural state. |
 | AI | ❌ | We vibe by hand here, the way the gods intended. |
-| Tests | ✅ | **162 of them.** The README used to say we don't test. The README was coping. |
+| Tests | ✅ | **170 of them.** The README used to say we don't test. The README was coping. |
 
 ---
 
