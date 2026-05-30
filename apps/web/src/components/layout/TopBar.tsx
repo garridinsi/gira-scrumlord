@@ -18,6 +18,7 @@ export function TopBar() {
     refetchInterval: 60_000,
   });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [acctOpen, setAcctOpen] = useState(false);
   const [q, setQ] = useState('');
 
   const current = projectList.data?.find((p) => p.key === key);
@@ -155,17 +156,72 @@ export function TopBar() {
           <span>Avisos · Notify</span>
           {notifyCount > 0 && <span className="num">{notifyCount}</span>}
         </button>
-        <button
-          type="button"
-          className="topbar__btn"
-          onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/login') })}
-          style={{ background: 'var(--eg-yellow)', color: 'var(--eg-iron)', border: 0 }}
-          title="Cerrar sesión · Log out"
-        >
-          {me.data && <Avatar user={me.data} />}
-          <span>{me.data?.name?.split(' ')[0] ?? '—'}</span>
-        </button>
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            className="topbar__btn"
+            onClick={() => setAcctOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={acctOpen}
+            style={{ background: 'var(--eg-yellow)', color: 'var(--eg-iron)', border: 0 }}
+            title="Mi cuenta · My account"
+          >
+            {me.data && <Avatar user={me.data} />}
+            <span>{me.data?.name?.split(' ')[0] ?? '—'}</span>
+            <span className="chev">▾</span>
+          </button>
+          {acctOpen && (
+            <div
+              role="menu"
+              onMouseLeave={() => setAcctOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                zIndex: 60,
+                minWidth: 200,
+                background: 'var(--eg-paper)',
+                border: '2px solid var(--eg-iron)',
+                boxShadow: '4px 4px 0 var(--eg-iron)',
+              }}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAcctOpen(false);
+                  navigate('/account');
+                }}
+                style={menuItemStyle}
+              >
+                Mi cuenta · My account
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/login') })}
+                style={{ ...menuItemStyle, borderBottom: 0, color: 'var(--eg-red)' }}
+              >
+                Cerrar sesión · Log out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
+const menuItemStyle: React.CSSProperties = {
+  display: 'block',
+  width: '100%',
+  padding: '10px 14px',
+  border: 0,
+  borderBottom: '1px solid var(--eg-rule)',
+  background: 'var(--eg-paper)',
+  cursor: 'pointer',
+  textAlign: 'left',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12,
+  color: 'var(--eg-iron)',
+};

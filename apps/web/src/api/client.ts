@@ -16,6 +16,7 @@ import type {
   InvoiceListItemView,
   VelocityView,
   ProjectMonthlyView,
+  SessionView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -28,6 +29,7 @@ import type {
   MoveIssue,
   CreateComment,
   CreateWorklog,
+  UpdateWorklog,
   CreateClient,
   UpdateClient,
   CreateProject,
@@ -42,6 +44,7 @@ import type {
   CreateRequest,
   CreateUser,
   UpdateUser,
+  SelfProfile,
 } from '@gira/shared';
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000';
@@ -165,6 +168,21 @@ export const auth = {
   // /auth/me returns { user }, like /auth/callback — unwrap so me.data is a UserView
   // (otherwise me.data.kind is undefined and client users never reach the portal).
   me: () => request<{ user: UserView }>('/auth/me').then((r) => r.user),
+
+  // Self-service profile (name + locale only — never role/kind/email).
+  updateMe: (data: SelfProfile) =>
+    request<{ user: UserView }>('/auth/me', { method: 'PATCH', ...json(data) }).then((r) => r.user),
+
+  // Active sessions for the signed-in user + "log out everywhere else".
+  sessions: () => request<SessionView[]>('/auth/sessions'),
+  revokeOtherSessions: () =>
+    request<{ revoked: number }>('/auth/sessions/revoke-others', { method: 'POST' }),
+
+  // Verified email change: request mails a link to the NEW address; confirm switches.
+  requestEmailChange: (newEmail: string) =>
+    request<{ status: string }>('/auth/email-change/request', { method: 'POST', ...json({ newEmail }) }),
+  confirmEmailChange: (token: string) =>
+    request<{ email: string }>('/auth/email-change/confirm', { method: 'POST', ...json({ token }) }),
 };
 
 // ---------------------------------------------------------------------------
@@ -325,6 +343,9 @@ export const issues = {
     list: (key: string) => request<WorklogRecord[]>(`/issues/${key}/worklogs`),
     create: (key: string, data: CreateWorklog) =>
       request<WorklogRecord>(`/issues/${key}/worklogs`, { method: 'POST', ...json(data) }),
+    update: (id: string, data: UpdateWorklog) =>
+      request<WorklogRecord>(`/worklogs/${id}`, { method: 'PATCH', ...json(data) }),
+    delete: (id: string) => request<void>(`/worklogs/${id}`, { method: 'DELETE' }),
   },
 
   cost: (key: string) => request<CostView>(`/issues/${key}/cost`),

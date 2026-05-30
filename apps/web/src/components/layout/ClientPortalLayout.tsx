@@ -94,6 +94,16 @@ export function ClientPortalLayout() {
           </NavLink>
 
           <NavLink
+            to="/portal/account"
+            className={({ isActive }) =>
+              'cp-nav__item' + (isActive ? ' cp-nav__item--active' : '')
+            }
+          >
+            <span className="cp-nav__es">Mi cuenta</span>
+            <span className="cp-nav__en">Account</span>
+          </NavLink>
+
+          <NavLink
             to="/portal/request"
             className={({ isActive }) =>
               'cp-nav__item cp-nav__item--cta' +

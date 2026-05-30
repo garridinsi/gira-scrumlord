@@ -2,8 +2,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { ClientPortalLayout } from './components/layout/ClientPortalLayout';
+import { AccountPage } from './pages/AccountPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { BacklogPage } from './pages/BacklogPage';
+import { EmailChangeConfirmPage } from './pages/EmailChangeConfirmPage';
 import { BillingPage } from './pages/BillingPage';
 import { BoardPage } from './pages/BoardPage';
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage';
@@ -29,6 +31,8 @@ export function App() {
       {/* Public auth routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      {/* Confirm a verified email change (link is emailed to the new address). */}
+      <Route path="/account/confirm-email" element={<EmailChangeConfirmPage />} />
 
       {/* Client portal routes (auth-guarded, client-only chrome) */}
       <Route element={<ClientPortalLayout />}>
@@ -38,6 +42,7 @@ export function App() {
         <Route path="/portal/invoices" element={<PortalInvoicesPage />} />
         <Route path="/portal/invoices/:id" element={<PortalInvoiceDetailPage />} />
         <Route path="/portal/request" element={<PortalRequestPage />} />
+        <Route path="/portal/account" element={<AccountPage />} />
       </Route>
 
       {/* Staff app routes (auth-guarded shell — redirects client users to portal) */}
@@ -55,6 +60,7 @@ export function App() {
         <Route path="/billing" element={<BillingPage />} />
         <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/account" element={<AccountPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
