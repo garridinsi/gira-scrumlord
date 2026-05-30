@@ -149,7 +149,7 @@ export function TopBar() {
         <button
           type="button"
           className="topbar__btn"
-          onClick={() => navigate('/audit')}
+          onClick={() => navigate('/incidents')}
           style={{ border: 0, background: 'none' }}
         >
           <span>Avisos · Notify</span>

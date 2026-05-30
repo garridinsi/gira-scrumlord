@@ -3,10 +3,10 @@
 import { useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ChannelView, IntakeSourceView, UserView, UserKind, UserRole } from '@gira/shared';
-import type { CreateUser, UpdateUser } from '@gira/shared';
+import type { ChannelView, IntakeSourceView, UserView, UserKind, UserRole, LabelView } from '@gira/shared';
+import type { CreateUser, UpdateUser, CreateAssignmentRule } from '@gira/shared';
 import { clients, rates, projects, channels, intake, users, ApiError } from '../api/client';
-import type { ClientRecord, RateRecord } from '../api/client';
+import type { ClientRecord, RateRecord, AssignmentRuleRecord } from '../api/client';
 import type { CreateClient, UpdateClient, UpsertRate, CreateChannel, CreateIntakeSource } from '@gira/shared';
 import { Subbar } from '../ui/Subbar';
 import { Avatar, Plate } from '../ui/atoms';
@@ -1286,11 +1286,491 @@ function ChannelsTab() {
   );
 }
 
+// ── Inline select helper (reused in assignment rules) ─────────────────────────
+
+const SEL: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 12,
+  padding: '6px 10px',
+  border: '1.5px solid var(--eg-iron)',
+  background: 'var(--eg-paper)',
+  color: 'var(--eg-iron)',
+  outline: 'none',
+};
+
+// ── Assignment Rules Section ──────────────────────────────────────────────────
+
+function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+
+  // Project selector
+  const projectsQ = useQuery({ queryKey: ['projects'], queryFn: () => projects.list() });
+  const [selectedKey, setSelectedKey] = useState('');
+
+  // Rules for selected project
+  const rulesQ = useQuery({
+    queryKey: ['assignment-rules', selectedKey],
+    queryFn: () => intake.rules.list(selectedKey),
+    enabled: Boolean(selectedKey),
+  });
+
+  // Users (for assignee dropdown)
+  const usersQ = useQuery({ queryKey: ['users'], queryFn: () => users.list() });
+
+  // Labels for selected project
+  const labelsQ = useQuery({
+    queryKey: ['labels', selectedKey],
+    queryFn: () => projects.labels.list(selectedKey),
+    enabled: Boolean(selectedKey),
+  });
+
+  // Create form
+  const [showForm, setShowForm] = useState(false);
+  const [formOrder, setFormOrder] = useState('0');
+  const [formMatchType, setFormMatchType] = useState('');
+  const [formMatchPriority, setFormMatchPriority] = useState('');
+  const [formMatchLabelId, setFormMatchLabelId] = useState('');
+  const [formAssigneeId, setFormAssigneeId] = useState('');
+
+  function resetForm() {
+    setFormOrder('0');
+    setFormMatchType('');
+    setFormMatchPriority('');
+    setFormMatchLabelId('');
+    setFormAssigneeId('');
+    setShowForm(false);
+  }
+
+  const createMut = useMutation({
+    mutationFn: () => {
+      const data: CreateAssignmentRule = {
+        assigneeId: formAssigneeId,
+        order: parseInt(formOrder, 10) || 0,
+        ...(formMatchType ? { matchType: formMatchType as CreateAssignmentRule['matchType'] } : {}),
+        ...(formMatchPriority ? { matchPriority: formMatchPriority as CreateAssignmentRule['matchPriority'] } : {}),
+        ...(formMatchLabelId ? { matchLabelId: formMatchLabelId } : {}),
+      };
+      return intake.rules.create(selectedKey, data);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['assignment-rules', selectedKey] });
+      toast({ tone: 'ok', title: 'Regla creada · Rule created' });
+      resetForm();
+    },
+    onError: (err) => {
+      toast({
+        tone: 'danger',
+        title: 'Error al crear regla · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
+    },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => intake.rules.delete(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['assignment-rules', selectedKey] });
+      toast({ tone: 'ok', title: 'Regla eliminada · Rule deleted' });
+    },
+    onError: (err) => {
+      toast({
+        tone: 'danger',
+        title: 'Error al eliminar · Delete failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
+    },
+  });
+
+  const rules: AssignmentRuleRecord[] = rulesQ.data ?? [];
+  const userList: UserView[] = usersQ.data ?? [];
+  const labelList: LabelView[] = labelsQ.data ?? [];
+
+  function userNameById(id: string): string {
+    return userList.find((u) => u.id === id)?.name ?? id;
+  }
+
+  function labelNameById(id: string): string {
+    return labelList.find((l) => l.id === id)?.name ?? id;
+  }
+
+  return (
+    <section
+      style={{
+        marginTop: 28,
+        borderTop: '2px solid var(--eg-iron)',
+        paddingTop: 20,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+      }}
+    >
+      {/* Section heading */}
+      <div>
+        <div
+          className="caps"
+          style={{ color: 'var(--eg-fg-3)', marginBottom: 4 }}
+        >
+          // REGLAS DE ASIGNACIÓN · ASSIGNMENT RULES
+        </div>
+        <div
+          className="mono"
+          style={{ fontSize: 11, color: 'var(--eg-fg-4)', lineHeight: 1.5 }}
+        >
+          La primera regla que coincide asigna el ticket entrante ·{' '}
+          <span style={{ color: 'var(--eg-fg-5)' }}>
+            First matching rule (by order) auto-assigns a new intake issue.
+          </span>
+        </div>
+      </div>
+
+      {/* Project selector */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <label className="caps" style={{ color: 'var(--eg-fg-3)', whiteSpace: 'nowrap' }}>
+          // proyecto · project
+        </label>
+        <select
+          value={selectedKey}
+          onChange={(e) => {
+            setSelectedKey(e.currentTarget.value);
+            setShowForm(false);
+          }}
+          style={{ ...SEL, minWidth: 220 }}
+        >
+          <option value="">— seleccionar proyecto · pick a project —</option>
+          {(projectsQ.data ?? []).map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.key} · {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {selectedKey && (
+        <>
+          {/* Rules table */}
+          <section style={{ border: '2px solid var(--eg-iron)' }}>
+            <div
+              className="tag-head"
+              style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}
+            >
+              <span>
+                // REGLAS · RULES · {selectedKey} · {rules.length}
+              </span>
+              <span
+                className="mono"
+                style={{ fontSize: 10, color: 'var(--eg-fg-4)' }}
+              >
+                orden · order ↑ primera coincidencia · first match wins
+              </span>
+            </div>
+
+            {rulesQ.isLoading && (
+              <div className="gs-state" style={{ minHeight: 60 }}>
+                <span className="gs-loading">cargando reglas · loading rules</span>
+              </div>
+            )}
+
+            {!rulesQ.isLoading && rules.length === 0 && (
+              <div className="gs-state" style={{ minHeight: 60 }}>
+                <span
+                  className="mono"
+                  style={{
+                    color: 'var(--eg-fg-3)',
+                    fontSize: 11,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  // sin reglas · no assignment rules
+                </span>
+              </div>
+            )}
+
+            {rules.map((rule, i) => (
+              <div
+                key={rule.id}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '50px 120px 120px 1fr 1fr auto',
+                  gap: 12,
+                  alignItems: 'center',
+                  padding: '9px 14px',
+                  borderBottom: i < rules.length - 1 ? '1px dashed var(--eg-rule)' : 'none',
+                  background: i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)',
+                }}
+              >
+                {/* Order */}
+                <span
+                  className="mono"
+                  style={{ fontSize: 12, fontWeight: 700, color: 'var(--eg-fg-3)' }}
+                >
+                  #{rule.order}
+                </span>
+
+                {/* matchType */}
+                <span>
+                  {rule.matchType ? (
+                    <span
+                      className="plate"
+                      style={{
+                        background: 'var(--eg-paper-3)',
+                        color: 'var(--eg-iron)',
+                        fontSize: 10,
+                      }}
+                    >
+                      {rule.matchType}
+                    </span>
+                  ) : (
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-5)' }}>
+                      cualquiera · any
+                    </span>
+                  )}
+                </span>
+
+                {/* matchPriority */}
+                <span>
+                  {rule.matchPriority ? (
+                    <span
+                      className="plate"
+                      style={{
+                        background: 'var(--eg-paper-3)',
+                        color: 'var(--eg-iron)',
+                        fontSize: 10,
+                      }}
+                    >
+                      {rule.matchPriority}
+                    </span>
+                  ) : (
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-5)' }}>
+                      cualquiera · any
+                    </span>
+                  )}
+                </span>
+
+                {/* matchLabel */}
+                <span>
+                  {rule.matchLabelId ? (
+                    <span
+                      className="plate"
+                      style={{
+                        background: 'var(--eg-paper-3)',
+                        color: 'var(--eg-iron)',
+                        fontSize: 10,
+                      }}
+                    >
+                      {labelNameById(rule.matchLabelId)}
+                    </span>
+                  ) : (
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-5)' }}>
+                      cualquiera · any
+                    </span>
+                  )}
+                </span>
+
+                {/* Assignee */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span
+                    className="mono"
+                    style={{ fontSize: 11, color: 'var(--eg-fg-3)' }}
+                  >
+                    →
+                  </span>
+                  <span
+                    className="disp"
+                    style={{ fontSize: 13, fontWeight: 700, color: 'var(--eg-iron)' }}
+                  >
+                    {userNameById(rule.assigneeId)}
+                  </span>
+                </div>
+
+                {/* Delete */}
+                {canWrite && (
+                  <button
+                    type="button"
+                    className="b-btn b-btn--ghost"
+                    style={{ fontSize: 11, padding: '4px 6px', color: 'var(--eg-red)' }}
+                    onClick={() => {
+                      if (confirm('¿Borrar esta regla de asignación? · Delete this assignment rule?')) {
+                        deleteMut.mutate(rule.id);
+                      }
+                    }}
+                    disabled={deleteMut.isPending}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </section>
+
+          {/* Create form */}
+          {canWrite && showForm && (
+            <section style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)' }}>
+              <div
+                className="tag-head"
+                style={{ background: 'var(--eg-yellow)', padding: '8px 14px' }}
+              >
+                <span>// NUEVA REGLA · NEW ASSIGNMENT RULE</span>
+                <button
+                  className="b-btn b-btn--ghost"
+                  style={{ fontSize: 11 }}
+                  onClick={resetForm}
+                >
+                  ✕ cancelar
+                </button>
+              </div>
+              <div
+                style={{
+                  padding: '16px 14px',
+                  display: 'grid',
+                  gridTemplateColumns: '70px 140px 160px 1fr 1fr',
+                  gap: 12,
+                  alignItems: 'end',
+                }}
+              >
+                {/* Order */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+                    // orden
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={formOrder}
+                    onChange={(e) => setFormOrder(e.currentTarget.value)}
+                    style={{ ...SEL, width: '100%' }}
+                  />
+                </div>
+
+                {/* matchType */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+                    // tipo · type
+                  </label>
+                  <select
+                    value={formMatchType}
+                    onChange={(e) => setFormMatchType(e.currentTarget.value)}
+                    style={SEL}
+                  >
+                    <option value="">cualquiera · any</option>
+                    <option value="task">task</option>
+                    <option value="bug">bug</option>
+                    <option value="story">story</option>
+                    <option value="epic">epic</option>
+                  </select>
+                </div>
+
+                {/* matchPriority */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+                    // prioridad · priority
+                  </label>
+                  <select
+                    value={formMatchPriority}
+                    onChange={(e) => setFormMatchPriority(e.currentTarget.value)}
+                    style={SEL}
+                  >
+                    <option value="">cualquiera · any</option>
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                    <option value="urgent">urgent</option>
+                    <option value="emergency">emergency</option>
+                  </select>
+                </div>
+
+                {/* matchLabel */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+                    // etiqueta · label
+                  </label>
+                  <select
+                    value={formMatchLabelId}
+                    onChange={(e) => setFormMatchLabelId(e.currentTarget.value)}
+                    style={SEL}
+                  >
+                    <option value="">cualquiera · any</option>
+                    {labelList.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Assignee (required) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+                    // asignar a · assign to *
+                  </label>
+                  <select
+                    value={formAssigneeId}
+                    onChange={(e) => setFormAssigneeId(e.currentTarget.value)}
+                    style={SEL}
+                  >
+                    <option value="">— seleccionar usuario —</option>
+                    {userList.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div
+                style={{
+                  padding: '0 14px 14px',
+                  display: 'flex',
+                  gap: 8,
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                }}
+              >
+                {createMut.isError && (
+                  <span
+                    className="mono"
+                    style={{ color: 'var(--eg-red)', fontSize: 11 }}
+                  >
+                    // error · comprueba los campos
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="b-btn b-btn--ink"
+                  onClick={() => createMut.mutate()}
+                  disabled={createMut.isPending || !formAssigneeId}
+                >
+                  {createMut.isPending ? '...' : '+ Crear Regla · Create Rule'}
+                </button>
+              </div>
+            </section>
+          )}
+
+          {canWrite && !showForm && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="b-btn"
+                onClick={() => setShowForm(true)}
+              >
+                + Regla
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 // ── Intake Tab ────────────────────────────────────────────────────────────────
 
 function IntakeTab() {
   const qc = useQueryClient();
   const toast = useToast();
+  const me = useMe();
+  const canWrite = me.data?.role === 'admin' || me.data?.role === 'member';
   const list = useQuery({
     queryKey: ['intake-sources'],
     queryFn: () => intake.sources.list(),
@@ -1631,6 +2111,8 @@ function IntakeTab() {
           </button>
         </div>
       )}
+
+      <AssignmentRulesSection canWrite={canWrite} />
     </div>
   );
 }
