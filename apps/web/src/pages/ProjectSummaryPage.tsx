@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { ProjectSummaryView } from '@gira/shared';
-import { projects, ApiError } from '../api/client';
+import { projects, clients, ApiError } from '../api/client';
 import type { SprintRecord } from '../api/client';
 import { Plate, SpinGlyph } from '../ui/atoms';
 import { Subbar } from '../ui/Subbar';
@@ -572,6 +572,125 @@ function ActiveSprintPanel({
 }
 
 // ── Monthly budget editor ─────────────────────────────────────────────────────
+// General project settings: name, description, and — critically — the client link
+// that gates monthly invoicing (a project with no client can't be billed). Mirrors
+// the budget/cadence strips; writer-only.
+function ProjectSettingsStrip({ projectKey }: { projectKey: string }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const me = useMe();
+
+  const projectQ = useQuery({
+    queryKey: ['project', projectKey],
+    queryFn: () => projects.get(projectKey),
+    enabled: !!projectKey,
+    staleTime: 60_000,
+  });
+  const clientsQ = useQuery({ queryKey: ['clients'], queryFn: () => clients.list(), staleTime: 60_000 });
+
+  const [name, setName] = useState<string | null>(null);
+  const [description, setDescription] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null); // null = untouched
+
+  const p = projectQ.data;
+  const nameVal = name ?? p?.name ?? '';
+  const descVal = description ?? p?.description ?? '';
+  const clientVal = clientId ?? p?.clientId ?? '';
+
+  const save = useMutation({
+    mutationFn: () =>
+      projects.update(projectKey, {
+        name: nameVal.trim(),
+        description: descVal,
+        clientId: clientVal === '' ? null : clientVal,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['project', projectKey] });
+      void qc.invalidateQueries({ queryKey: ['monthly', projectKey] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+      setName(null);
+      setDescription(null);
+      setClientId(null);
+      toast({ tone: 'ok', title: 'Proyecto actualizado · Project updated' });
+    },
+    onError: (err) => {
+      toast({ tone: 'danger', title: 'Error al guardar · Save failed', body: err instanceof ApiError ? err.message : 'Error' });
+    },
+  });
+
+  const isWriter = me.data?.role === 'admin' || me.data?.role === 'member';
+  if (!p || !isWriter) return null;
+
+  const dirty = nameVal.trim() !== p.name || descVal !== (p.description ?? '') || clientVal !== (p.clientId ?? '');
+
+  return (
+    <section style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)', marginBottom: 18 }}>
+      <div className="tag-head" style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}>
+        <span>// AJUSTES · PROJECT SETTINGS</span>
+        <span className="mono" style={{ fontSize: 10, letterSpacing: '0.1em' }}>
+          {p.clientId ? 'CLIENTE · LINKED' : 'SIN CLIENTE · UNLINKED'}
+        </span>
+      </div>
+      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <label className="caps" htmlFor="ps-name" style={{ display: 'block', marginBottom: 4 }}>
+              nombre · name
+            </label>
+            <input
+              id="ps-name"
+              value={nameVal}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={120}
+              style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <label className="caps" htmlFor="ps-client" style={{ display: 'block', marginBottom: 4 }}>
+              cliente · client {p.clientId ? '' : '(necesario para facturar)'}
+            </label>
+            <select
+              id="ps-client"
+              value={clientVal}
+              onChange={(e) => setClientId(e.target.value)}
+              style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
+            >
+              <option value="">— sin cliente · none —</option>
+              {(clientsQ.data ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="caps" htmlFor="ps-desc" style={{ display: 'block', marginBottom: 4 }}>
+            descripción · description
+          </label>
+          <textarea
+            id="ps-desc"
+            value={descVal}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            maxLength={5000}
+            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 13, resize: 'vertical' }}
+          />
+        </div>
+        <button
+          type="button"
+          className="b-btn b-btn--ink"
+          style={{ alignSelf: 'flex-start' }}
+          disabled={!dirty || !nameVal.trim() || save.isPending}
+          onClick={() => save.mutate()}
+        >
+          {save.isPending ? 'Guardando…' : 'Guardar ajustes · Save settings'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function BudgetEditorStrip({ projectKey }: { projectKey: string }) {
   const qc = useQueryClient();
   const toast = useToast();
@@ -1064,6 +1183,9 @@ export function ProjectSummaryPage() {
 
         {/* Sprint history table */}
         {sprintsList.length > 0 && <SprintVelocityTable sprintsData={sprintsList} />}
+
+        {/* General settings: name, description, client link (gates invoicing) */}
+        <ProjectSettingsStrip projectKey={key} />
 
         {/* Cadence toggle */}
         <CadenceStrip projectKey={key} />

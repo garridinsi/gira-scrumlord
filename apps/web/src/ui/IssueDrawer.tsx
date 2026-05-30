@@ -362,35 +362,8 @@ function WorklogsTab({ issueKey }: { issueKey: string }) {
         </div>
       )}
 
-      {logs.map((l, i) => (
-        <div
-          key={l.id}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'auto 1fr auto auto',
-            gap: 12,
-            alignItems: 'center',
-            padding: '8px 10px',
-            borderBottom: '1px dashed var(--eg-iron)',
-            fontSize: 13,
-          }}
-        >
-          <Avatar user={l.user} />
-          <div>
-            <div style={{ color: 'var(--eg-iron)' }}>{l.note || '—'}</div>
-            <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.08em', marginTop: 2 }}>
-              {formatRelativeTime(l.loggedAt)}
-            </div>
-          </div>
-          <span className="mono" style={{ fontSize: 11, color: 'var(--eg-iron)', fontWeight: 600 }}>
-            {formatMinutes(l.minutes)}
-          </span>
-          {l.billable ? (
-            <span className="chip chip--green">$</span>
-          ) : (
-            <span className="chip chip--low">·</span>
-          )}
-        </div>
+      {logs.map((l) => (
+        <WorklogRow key={l.id} log={l} issueKey={issueKey} />
       ))}
 
       {/* Add worklog form */}
@@ -447,6 +420,124 @@ function WorklogsTab({ issueKey }: { issueKey: string }) {
           + Añadir registro · Add worklog
         </button>
       )}
+    </div>
+  );
+}
+
+// One worklog row with inline edit + delete (owner-or-admin; API refuses if the
+// worklog is billed on a finalized annex).
+function WorklogRow({ log, issueKey }: { log: WorklogRecord; issueKey: string }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [editing, setEditing] = useState(false);
+  const [minutes, setMinutes] = useState(String(log.minutes));
+  const [note, setNote] = useState(log.note);
+  const [billable, setBillable] = useState(log.billable);
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['worklogs', issueKey] });
+    void queryClient.invalidateQueries({ queryKey: ['issue', issueKey] });
+  };
+  const onError = (err: unknown) =>
+    toast({ tone: 'danger', title: 'Error', body: err instanceof ApiError ? err.message : 'Error' });
+
+  const update = useMutation({
+    mutationFn: () => issues.worklogs.update(log.id, { minutes: Number(minutes), note: note.trim(), billable }),
+    onSuccess: () => {
+      invalidate();
+      setEditing(false);
+      toast({ tone: 'ok', title: 'Registro actualizado · Worklog updated' });
+    },
+    onError,
+  });
+  const remove = useMutation({
+    mutationFn: () => issues.worklogs.delete(log.id),
+    onSuccess: () => {
+      invalidate();
+      toast({ tone: 'ok', title: 'Registro eliminado · Worklog deleted' });
+    },
+    onError,
+  });
+
+  if (editing) {
+    return (
+      <div style={{ padding: '10px', borderBottom: '1px dashed var(--eg-iron)', background: 'var(--eg-paper-2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="number"
+            value={minutes}
+            onChange={(e) => setMinutes(e.target.value)}
+            style={{ width: '50%', padding: '6px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 12 }}
+          />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+            <input type="checkbox" checked={billable} onChange={(e) => setBillable(e.target.checked)} />
+            Facturable · Billable
+          </label>
+        </div>
+        <input
+          type="text"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Nota · Note"
+          style={{ padding: '6px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 12 }}
+        />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="b-btn b-btn--ink"
+            disabled={!minutes || Number(minutes) <= 0 || update.isPending}
+            onClick={() => update.mutate()}
+          >
+            Guardar · Save
+          </button>
+          <button type="button" className="b-btn b-btn--ghost" onClick={() => setEditing(false)}>
+            Cancelar · Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'auto 1fr auto auto auto',
+        gap: 12,
+        alignItems: 'center',
+        padding: '8px 10px',
+        borderBottom: '1px dashed var(--eg-iron)',
+        fontSize: 13,
+      }}
+    >
+      <Avatar user={log.user} />
+      <div>
+        <div style={{ color: 'var(--eg-iron)' }}>{log.note || '—'}</div>
+        <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.08em', marginTop: 2 }}>
+          {formatRelativeTime(log.loggedAt)}
+        </div>
+      </div>
+      <span className="mono" style={{ fontSize: 11, color: 'var(--eg-iron)', fontWeight: 600 }}>
+        {formatMinutes(log.minutes)}
+      </span>
+      {log.billable ? <span className="chip chip--green">$</span> : <span className="chip chip--low">·</span>}
+      <span style={{ display: 'inline-flex', gap: 4 }}>
+        <button type="button" className="b-btn b-btn--ghost" title="Editar · Edit" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => setEditing(true)}>
+          ✎
+        </button>
+        <button
+          type="button"
+          className="b-btn b-btn--ghost"
+          title="Eliminar · Delete"
+          style={{ fontSize: 11, padding: '2px 6px', color: 'var(--eg-red)' }}
+          disabled={remove.isPending}
+          onClick={() => {
+            if (window.confirm('¿Eliminar este registro? · Delete this worklog?')) remove.mutate();
+          }}
+        >
+          ✕
+        </button>
+      </span>
     </div>
   );
 }
