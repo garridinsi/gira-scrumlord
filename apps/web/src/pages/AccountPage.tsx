@@ -108,10 +108,13 @@ export function AccountPage() {
   const dirty = name.trim() !== u.name || locale !== u.locale;
 
   return (
-    <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', padding: '32px 24px 64px', boxSizing: 'border-box' }}>
-      <h1 className="disp" style={{ fontSize: 44, color: 'var(--eg-iron)', margin: '0 0 4px', fontWeight: 900, letterSpacing: '-0.02em' }}>
-        MI CUENTA
-      </h1>
+    // Scroll container: the staff shell is height:100dvh / overflow:hidden, so without
+    // its own overflow this page's content was clipped below the fold on short screens.
+    <div style={{ height: '100%', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', padding: '32px 24px 64px', boxSizing: 'border-box' }}>
+        <h1 className="disp" style={{ fontSize: 44, color: 'var(--eg-iron)', margin: '0 0 4px', fontWeight: 900, letterSpacing: '-0.02em' }}>
+          MI CUENTA
+        </h1>
       <div className="mono" style={{ fontSize: 12, color: 'var(--eg-fg-3)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 28 }}>
         — MY ACCOUNT —
       </div>
@@ -238,6 +241,7 @@ export function AccountPage() {
           </span>
         )}
       </Card>
+      </div>
     </div>
   );
 }
