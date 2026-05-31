@@ -47,6 +47,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
         type="button"
         className="topbar__brand"
         onClick={() => navigate('/projects')}
+        aria-label="gira-scrumlord · ir a proyectos · home"
         style={{ cursor: 'pointer', border: 0 }}
       >
         <Glyph />

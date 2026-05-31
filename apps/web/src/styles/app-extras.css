@@ -1342,18 +1342,25 @@ button {
   .gs-tablewrap > * {
     min-width: var(--gs-tw-min, 700px);
   }
-  /* …but the title banner and the empty-state stay at viewport width and WRAP, so
-     their text is fully readable without a sideways scroll (only the grid scrolls). */
+  /* Every section title banner wraps on a phone — their long bilingual subtitles
+     (white-space:nowrap by default) would otherwise overflow their section and push
+     the whole page sideways (the rates resolution-chain banner did exactly this). */
+  .tag-head {
+    flex-wrap: wrap;
+    gap: 2px 12px;
+  }
+  .tag-head > span {
+    white-space: normal;
+  }
+  /* Inside a scroll-table the banner + empty-state stay at viewport width and pinned
+     to the left, so only the data grid scrolls under them. */
   .gs-tablewrap > .tag-head,
   .gs-tablewrap > .gs-state {
     min-width: 0;
   }
   .gs-tablewrap > .tag-head {
-    flex-wrap: wrap;
-    gap: 2px 12px;
-  }
-  .gs-tablewrap > .tag-head > span {
-    white-space: normal;
+    position: sticky;
+    left: 0;
   }
 
   /* Primary nav (drawer) + collapsed topbar buttons meet the 44px touch minimum. */
@@ -1523,3 +1530,24 @@ button {
     white-space: nowrap;
   }
 }
+
+/* Skip-to-content link — visually hidden until focused (keyboard users tab to it
+   first and jump past the topbar + rail). */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -64px;
+  z-index: 200;
+  background: var(--eg-yellow);
+  color: var(--eg-iron);
+  border: 2px solid var(--eg-iron);
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+.skip-link:focus { top: 8px; }

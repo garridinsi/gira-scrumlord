@@ -74,6 +74,7 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
         </button>
       </div>
       <div
+        className="gs-form-grid"
         style={{
           padding: '16px 18px',
           display: 'grid',

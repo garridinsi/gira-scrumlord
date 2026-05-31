@@ -451,7 +451,7 @@ export function SauronPage() {
           background: 'var(--eg-iron)',
         }}
       >
-        <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '680px' }}>
+        <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '880px' }}>
         {/* Column headers */}
         <div
           style={{

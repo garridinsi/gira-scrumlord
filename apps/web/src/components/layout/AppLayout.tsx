@@ -48,6 +48,9 @@ export function AppLayout() {
 
   return (
     <div className={'app' + (navOpen ? ' app--nav-open' : '')}>
+      <a href="#main-content" className="skip-link">
+        Saltar al contenido · Skip to content
+      </a>
       <TopBar onMenuClick={() => setNavOpen((v) => !v)} />
       <div className="main">
         <Rail open={navOpen} onNavigate={() => setNavOpen(false)} />
@@ -59,7 +62,11 @@ export function AppLayout() {
             onClick={() => setNavOpen(false)}
           />
         )}
-        <Outlet />
+        {/* Semantic main landmark + skip-link target. display:contents keeps the page
+            as the grid's content cell so layout/scroll are unchanged. */}
+        <main id="main-content" tabIndex={-1} style={{ display: 'contents' }}>
+          <Outlet />
+        </main>
       </div>
     </div>
   );
