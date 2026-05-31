@@ -1342,6 +1342,19 @@ button {
   .gs-tablewrap > * {
     min-width: var(--gs-tw-min, 700px);
   }
+  /* …but the title banner and the empty-state stay at viewport width and WRAP, so
+     their text is fully readable without a sideways scroll (only the grid scrolls). */
+  .gs-tablewrap > .tag-head,
+  .gs-tablewrap > .gs-state {
+    min-width: 0;
+  }
+  .gs-tablewrap > .tag-head {
+    flex-wrap: wrap;
+    gap: 2px 12px;
+  }
+  .gs-tablewrap > .tag-head > span {
+    white-space: normal;
+  }
 
   /* Primary nav (drawer) + collapsed topbar buttons meet the 44px touch minimum. */
   .rail__item {
