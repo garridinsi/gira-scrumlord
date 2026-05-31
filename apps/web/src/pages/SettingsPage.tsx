@@ -940,7 +940,7 @@ function ResolutionChainItem({
           border: '1.5px solid var(--eg-iron)',
           background: s.active ? 'var(--eg-yellow)' : 'var(--eg-paper-2)',
           padding: 12,
-          opacity: s.active ? 1 : 0.55,
+          opacity: s.active ? 1 : 0.92,
           position: 'relative',
         }}
       >
@@ -958,7 +958,7 @@ function ResolutionChainItem({
           style={{
             fontSize: 11,
             marginTop: 6,
-            color: 'var(--eg-fg-3)',
+            color: 'var(--eg-fg-2)',
             textDecoration: s.active ? 'none' : 'line-through',
           }}
         >
@@ -969,7 +969,7 @@ function ResolutionChainItem({
           style={{
             fontSize: 10,
             marginTop: 8,
-            color: s.active ? 'var(--eg-iron)' : 'var(--eg-fg-3)',
+            color: s.active ? 'var(--eg-iron)' : 'var(--eg-fg-2)',
             letterSpacing: '0.12em',
             textTransform: 'uppercase',
             fontWeight: 700,
