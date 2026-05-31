@@ -3,11 +3,13 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { projects, system } from '../../api/client';
 import { Bi } from '../../ui/atoms';
+import { NavIcon, type IconName } from '../../ui/icons';
 
 interface RailItem {
   id: string;
   es: string;
   en: string;
+  icon: IconName;
   to?: string;
   num?: string;
   lore?: string;
@@ -51,25 +53,25 @@ export function Rail({ open = false, onNavigate }: { open?: boolean; onNavigate?
 
   // Maintenance projects organize by calendar month, not sprints.
   const cadenceItem: RailItem = isMonthly
-    ? { id: 'monthly', es: 'Mensual', en: 'Monthly', to: `${p}/monthly` }
-    : { id: 'sprints', es: 'Sprints', en: 'Sprints', to: `${p}/sprints`, num: sprints.data ? String(sprints.data.length) : '' };
+    ? { id: 'monthly', es: 'Mensual', en: 'Monthly', icon: 'monthly', to: `${p}/monthly` }
+    : { id: 'sprints', es: 'Sprints', en: 'Sprints', icon: 'sprints', to: `${p}/sprints`, num: sprints.data ? String(sprints.data.length) : '' };
 
   const projectItems: RailItem[] = [
-    { id: 'board', es: 'Tablero', en: 'Board', to: `${p}/board`, num: boardTotal != null ? String(boardTotal) : '' },
-    { id: 'backlog', es: 'Pendientes', en: 'Backlog', to: `${p}/backlog`, num: backlog.data ? String(backlog.data.length) : '' },
+    { id: 'board', es: 'Tablero', en: 'Board', icon: 'board', to: `${p}/board`, num: boardTotal != null ? String(boardTotal) : '' },
+    { id: 'backlog', es: 'Pendientes', en: 'Backlog', icon: 'backlog', to: `${p}/backlog`, num: backlog.data ? String(backlog.data.length) : '' },
     cadenceItem,
-    { id: 'summary', es: 'Resumen', en: 'Summary', to: `${p}` },
+    { id: 'summary', es: 'Resumen', en: 'Summary', icon: 'summary', to: `${p}` },
   ];
   const loreItems: RailItem[] = [
-    { id: 'audit', es: 'Auditoría', en: 'Sauron · Audit', to: '/audit', num: ':666' },
-    { id: 'scrumlord', es: 'Daemon', en: 'Scrumlord', lore: 'pg-boss · 4 jobs queued', num: '4' },
+    { id: 'audit', es: 'Auditoría', en: 'Sauron · Audit', icon: 'audit', to: '/audit', num: ':666' },
+    { id: 'scrumlord', es: 'Daemon', en: 'Scrumlord', icon: 'daemon', lore: 'pg-boss · 4 jobs queued', num: '4' },
   ];
   const adminItems: RailItem[] = [
-    { id: 'billing', es: 'Facturación', en: 'Billing', to: '/billing' },
-    { id: 'rates', es: 'Tarifas', en: 'Rates', to: '/settings?tab=rates' },
-    { id: 'team', es: 'Equipo', en: 'Team', to: '/settings?tab=team' },
-    { id: 'clients', es: 'Clientes', en: 'Clients', to: '/settings?tab=clients' },
-    { id: 'settings', es: 'Ajustes', en: 'Settings', to: '/settings' },
+    { id: 'billing', es: 'Facturación', en: 'Billing', icon: 'billing', to: '/billing' },
+    { id: 'rates', es: 'Tarifas', en: 'Rates', icon: 'rates', to: '/settings?tab=rates' },
+    { id: 'team', es: 'Equipo', en: 'Team', icon: 'team', to: '/settings?tab=team' },
+    { id: 'clients', es: 'Clientes', en: 'Clients', icon: 'clients', to: '/settings?tab=clients' },
+    { id: 'settings', es: 'Ajustes', en: 'Settings', icon: 'settings', to: '/settings' },
   ];
 
   const isActive = (it: RailItem) => {
@@ -103,15 +105,13 @@ export function Rail({ open = false, onNavigate }: { open?: boolean; onNavigate?
       <span
         className="ico"
         style={{
-          background: 'var(--eg-iron)',
-          clipPath:
-            it.id === 'board'
-              ? 'polygon(0 0, 100% 0, 100% 70%, 0 70%, 0 100%, 50% 100%, 50% 30%, 100% 30%)'
-              : 'none',
-          opacity: isActive(it) ? 1 : 0.7,
-          marginTop: 4,
+          color: 'var(--eg-iron)',
+          opacity: isActive(it) ? 1 : 0.72,
+          marginTop: 2,
         }}
-      />
+      >
+        <NavIcon name={it.icon} size={16} />
+      </span>
       <Bi es={it.es} en={it.en} size="tiny" />
       {it.num && (
         <span className="num" style={{ marginTop: 4 }}>

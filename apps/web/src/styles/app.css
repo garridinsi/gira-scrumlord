@@ -241,8 +241,8 @@
 }
 .rail__item.active .num { color: var(--eg-iron); font-weight: 700; }
 .rail__item .ico {
-  width: 14px; height: 14px; display: inline-block; flex-shrink: 0;
-  background: var(--eg-iron);
+  display: inline-flex; flex-shrink: 0;
+  color: var(--eg-iron);
 }
 .rail__foot {
   margin-top: auto;
