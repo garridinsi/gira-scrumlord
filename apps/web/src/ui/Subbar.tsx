@@ -20,7 +20,6 @@ export function Subbar({ tabs, right }: { tabs: SubTab[]; right?: ReactNode }) {
           type="button"
           className={'subbar__tab' + (t.active ? ' active' : '')}
           onClick={t.onClick}
-          style={{ background: 'none' }}
         >
           {t.es ? <Bi es={t.es} en={t.en} size="tiny" /> : <span>{t.label}</span>}
           {t.count != null && <span className="ct">{t.count}</span>}

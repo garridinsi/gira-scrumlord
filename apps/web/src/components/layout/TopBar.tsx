@@ -64,7 +64,6 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
           onClick={() => setMenuOpen((v) => !v)}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          aria-label="Cambiar proyecto · Switch project"
           style={{ border: 0, background: 'none', height: '100%' }}
         >
           <span className="pk">{key ?? '—'}</span>

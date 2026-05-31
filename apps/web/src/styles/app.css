@@ -277,6 +277,7 @@
   font-family: var(--font-display); font-weight: 700;
   font-size: 14px; text-transform: uppercase; letter-spacing: 0.02em;
   color: var(--eg-fg-3); cursor: pointer;
+  background: none; border: 0;
   border-right: 1px solid var(--eg-iron);
 }
 .subbar__tab.active {
