@@ -65,7 +65,7 @@
   /* Foreground scale */
   --eg-fg-1: var(--eg-iron);
   --eg-fg-2: #2a3543;
-  --eg-fg-3: #5a6573;
+  --eg-fg-3: #4f5765; /* AA 4.5:1 incl. on the tan paper-3 table headers (was #5a6573) */
   --eg-fg-4: #6b7480; /* AA 4.5:1 on paper/paper-2 (was #8e96a1 ≈ 3:1) */
   --eg-fg-5: #b6bcc3;
 
