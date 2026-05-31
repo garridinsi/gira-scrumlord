@@ -1324,4 +1324,15 @@ button {
     border: 0;
     background: rgba(11, 22, 32, 0.55);
   }
+
+  /* Tab strips (settings + project sub-nav) are wider than a phone; let them scroll
+     horizontally so the rightmost tabs (Team / Settings / Monthly) stay reachable
+     instead of being clipped off the edge. */
+  .subbar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .subbar::-webkit-scrollbar { display: none; }
+  .subbar__tab { flex-shrink: 0; }
 }
