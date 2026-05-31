@@ -818,6 +818,7 @@ export function BacklogPage() {
         }
       />
 
+      <h1 className="sr-only">Pendientes · Backlog · {key}</h1>
       <FilterBar
         projectKey={key}
         myId={me.data?.id ?? null}

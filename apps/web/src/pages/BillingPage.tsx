@@ -85,7 +85,6 @@ function GenerateForm({ clientId, currency }: { clientId: string; currency: stri
     border: '1.5px solid var(--eg-iron)',
     background: 'var(--eg-paper)',
     color: 'var(--eg-iron)',
-    outline: 'none',
     width: '100%',
     boxSizing: 'border-box' as const,
   };
@@ -366,7 +365,6 @@ export function BillingPage() {
     border: '2px solid var(--eg-iron)',
     background: 'var(--eg-paper)',
     color: 'var(--eg-iron)',
-    outline: 'none',
     minWidth: 260,
     cursor: 'pointer',
   };

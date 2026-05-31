@@ -100,9 +100,9 @@
 .avatar--lg { width: 32px; height: 32px; font-size: 12px; }
 .avatar--gold { background: var(--eg-gold); }
 .avatar--yellow { background: var(--eg-yellow); }
-.avatar--red { background: var(--eg-red); color: var(--eg-paper); }
+.avatar--red { background: var(--eg-red); color: #fff; }
 .avatar--ink { background: var(--eg-iron); color: var(--eg-yellow); }
-.avatar--green { background: var(--eg-green); color: var(--eg-paper); }
+.avatar--green { background: var(--eg-green); color: #fff; }
 
 /* ─── App shell ──────────────────────────────────────────── */
 

@@ -66,7 +66,7 @@
   --eg-fg-1: var(--eg-iron);
   --eg-fg-2: #2a3543;
   --eg-fg-3: #5a6573;
-  --eg-fg-4: #8e96a1;
+  --eg-fg-4: #6b7480; /* AA 4.5:1 on paper/paper-2 (was #8e96a1 ≈ 3:1) */
   --eg-fg-5: #b6bcc3;
 
   /* Surface scale */
@@ -242,6 +242,33 @@ a {
 }
 a:hover { color: var(--eg-red); text-decoration-color: var(--eg-red); }
 a:focus-visible { outline: 3px solid var(--eg-yellow); outline-offset: 2px; }
+
+/* Keyboard focus ring on every interactive control (WCAG 2.4.7). The design relied
+   on hover only; this makes focus visible without changing the resting look. */
+button:focus-visible,
+[role='button']:focus-visible,
+[tabindex]:focus-visible,
+summary:focus-visible,
+.btn:focus-visible,
+.b-btn:focus-visible,
+.chip:focus-visible {
+  outline: 3px solid var(--eg-yellow);
+  outline-offset: 2px;
+}
+/* On the dark iron chrome (topbar / portal bar / tabs) a yellow ring sits inside so
+   it stays visible against the dark background. */
+.topbar :focus-visible,
+.cp-topbar :focus-visible,
+.subbar__tab:focus-visible,
+.cp-nav__item:focus-visible,
+.rail__item:focus-visible {
+  outline-offset: -3px;
+}
+/* Yellow buttons get an iron ring (yellow-on-yellow is invisible). */
+.btn--yellow:focus-visible,
+.b-btn--ink:focus-visible {
+  outline-color: var(--eg-iron);
+}
 
 strong,b { font-weight: 700; color: var(--eg-fg-1); }
 

@@ -35,8 +35,12 @@ export function Bi({
     .join(' ');
   return (
     <span className={cls} style={style}>
-      <span className="bi__es">{es}</span>
-      <span className="bi__en">{en}</span>
+      <span className="bi__es" lang="es">
+        {es}
+      </span>
+      <span className="bi__en" lang="en">
+        {en}
+      </span>
     </span>
   );
 }

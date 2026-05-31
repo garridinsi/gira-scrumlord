@@ -75,7 +75,6 @@ function Field({
           border: '1.5px solid var(--eg-iron)',
           background: 'var(--eg-paper)',
           color: 'var(--eg-iron)',
-          outline: 'none',
           width: '100%',
         }}
       />
@@ -105,7 +104,6 @@ function CurrencySelect({
           border: '1.5px solid var(--eg-iron)',
           background: 'var(--eg-paper)',
           color: 'var(--eg-iron)',
-          outline: 'none',
         }}
       >
         {CURRENCIES.map((c) => (
@@ -638,7 +636,6 @@ function RatesTab() {
                   border: '1.5px solid var(--eg-iron)',
                   background: 'var(--eg-paper)',
                   color: 'var(--eg-iron)',
-                  outline: 'none',
                 }}
               >
                 <option value="default">default</option>
@@ -663,7 +660,6 @@ function RatesTab() {
                     border: '1.5px solid var(--eg-iron)',
                     background: 'var(--eg-paper)',
                     color: 'var(--eg-iron)',
-                    outline: 'none',
                   }}
                 >
                   <option value="">— seleccionar cliente —</option>
@@ -686,7 +682,6 @@ function RatesTab() {
                     border: '1.5px solid var(--eg-iron)',
                     background: 'var(--eg-paper)',
                     color: 'var(--eg-iron)',
-                    outline: 'none',
                   }}
                 >
                   <option value="">— seleccionar proyecto —</option>
@@ -1122,7 +1117,6 @@ function ChannelsTab() {
                   border: '1.5px solid var(--eg-iron)',
                   background: 'var(--eg-paper)',
                   color: 'var(--eg-iron)',
-                  outline: 'none',
                 }}
               >
                 <option value="webhook">webhook</option>
@@ -1288,7 +1282,6 @@ const SEL: React.CSSProperties = {
   border: '1.5px solid var(--eg-iron)',
   background: 'var(--eg-paper)',
   color: 'var(--eg-iron)',
-  outline: 'none',
 };
 
 // ── Assignment Rules Section ──────────────────────────────────────────────────
@@ -1905,7 +1898,6 @@ function IntakeTab() {
                   border: '1.5px solid var(--eg-iron)',
                   background: 'var(--eg-paper)',
                   color: 'var(--eg-iron)',
-                  outline: 'none',
                 }}
               >
                 <option value="generic">generic</option>
@@ -1929,7 +1921,6 @@ function IntakeTab() {
                   border: '1.5px solid var(--eg-iron)',
                   background: 'var(--eg-paper)',
                   color: 'var(--eg-iron)',
-                  outline: 'none',
                 }}
               >
                 <option value="">— seleccionar —</option>
@@ -1959,7 +1950,6 @@ function IntakeTab() {
                   border: '1.5px solid var(--eg-iron)',
                   background: 'var(--eg-paper)',
                   color: 'var(--eg-iron)',
-                  outline: 'none',
                 }}
               >
                 <option value="bug">bug</option>
@@ -1991,7 +1981,6 @@ function IntakeTab() {
                   border: '1.5px solid var(--eg-iron)',
                   background: 'var(--eg-paper)',
                   color: 'var(--eg-iron)',
-                  outline: 'none',
                 }}
               >
                 <option value="low">low</option>
@@ -2121,7 +2110,6 @@ const SELECT_STYLE: React.CSSProperties = {
   border: '1.5px solid var(--eg-iron)',
   background: 'var(--eg-paper)',
   color: 'var(--eg-iron)',
-  outline: 'none',
 };
 
 function TeamTab() {

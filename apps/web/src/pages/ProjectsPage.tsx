@@ -164,6 +164,7 @@ export function ProjectsPage() {
 
   return (
     <div className="body">
+      <h1 className="sr-only">Proyectos · Projects</h1>
       <Subbar
         tabs={[{ es: 'Proyectos', en: 'Projects', active: true, count: list.data?.length ?? null }]}
         right={

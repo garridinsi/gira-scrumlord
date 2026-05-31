@@ -69,7 +69,6 @@ function ExternalRefEditor({ invoiceId, current }: { invoiceId: string; current:
     border: '1.5px solid var(--eg-iron)',
     background: 'var(--eg-paper)',
     color: 'var(--eg-iron)',
-    outline: 'none',
     minWidth: 200,
     letterSpacing: '0.06em',
   };

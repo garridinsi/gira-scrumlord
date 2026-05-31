@@ -47,6 +47,9 @@ export function ClientPortalLayout() {
 
   return (
     <div className="cp-shell">
+      <a href="#main-content" className="skip-link">
+        Saltar al contenido · Skip to content
+      </a>
       {/* ── Top bar ────────────────────────────────────────────── */}
       <header className="cp-topbar">
         <div className="cp-topbar__brand">
@@ -128,7 +131,7 @@ export function ClientPortalLayout() {
       </header>
 
       {/* ── Page content ───────────────────────────────────────── */}
-      <main className="cp-body">
+      <main id="main-content" tabIndex={-1} className="cp-body">
         <Outlet />
       </main>
     </div>

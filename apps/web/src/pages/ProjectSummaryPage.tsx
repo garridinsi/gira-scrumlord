@@ -814,7 +814,6 @@ function BudgetEditorStrip({ projectKey }: { projectKey: string }) {
               background: 'var(--eg-paper)',
               color: 'var(--eg-iron)',
               padding: '5px 8px',
-              outline: 'none',
             }}
           />
         </label>
@@ -849,7 +848,6 @@ function BudgetEditorStrip({ projectKey }: { projectKey: string }) {
               background: 'var(--eg-paper)',
               color: 'var(--eg-iron)',
               padding: '5px 8px',
-              outline: 'none',
             }}
           />
         </label>

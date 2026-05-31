@@ -834,6 +834,7 @@ export function BoardPage() {
 
   return (
     <div className="body">
+      <h1 className="sr-only">Tablero · Board · {projectKey}</h1>
       <Subbar
         tabs={boardTabs.map((t, i) => i === 0 ? { ...t, count: totalIssues } : t)}
         right={
