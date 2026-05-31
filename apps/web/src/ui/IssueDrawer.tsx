@@ -1069,8 +1069,8 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
       aria-label={issueKey}
     >
       <div
+        className="gs-drawer"
         style={{
-          width: 820,
           background: 'var(--eg-paper)',
           borderLeft: '2px solid var(--eg-iron)',
           boxShadow: '-12px 0 0 -8px var(--eg-iron)',
@@ -1151,7 +1151,7 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
         )}
 
         {issue && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', flex: 1, overflow: 'hidden' }}>
+          <div className="gs-drawer__body" style={{ display: 'grid', gridTemplateColumns: '1fr 280px', flex: 1, overflow: 'hidden' }}>
             {/* Main panel */}
             <div style={{ overflow: 'auto', padding: '18px 22px', borderRight: '1px solid var(--eg-iron)' }}>
               <div className="caps">// título · title</div>

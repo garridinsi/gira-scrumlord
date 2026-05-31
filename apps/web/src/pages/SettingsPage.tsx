@@ -251,6 +251,7 @@ function ClientsTab() {
             </button>
           </div>
           <div
+            className="gs-form-grid"
             style={{
               padding: '16px 18px',
               display: 'grid',
@@ -307,7 +308,7 @@ function ClientsTab() {
       )}
 
       {/* Clients table */}
-      <section style={{ border: '2px solid var(--eg-iron)' }}>
+      <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}>
         <div
           className="tag-head"
           style={{ background: 'var(--eg-yellow)', padding: '8px 14px', borderColor: 'var(--eg-iron)' }}
@@ -331,6 +332,7 @@ function ClientsTab() {
             {editId === c.id ? (
               /* Inline edit row */
               <div
+                className="gs-form-grid"
                 style={{
                   padding: '12px 16px',
                   borderBottom: i < data.length - 1 ? '1px solid var(--eg-rule)' : 'none',
@@ -605,6 +607,7 @@ function RatesTab() {
             </button>
           </div>
           <div
+            className="gs-form-grid"
             style={{
               padding: '16px 18px',
               display: 'grid',
@@ -754,7 +757,7 @@ function RatesTab() {
       )}
 
       {/* Rates table */}
-      <section style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)' }}>
+      <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)', ['--gs-tw-min' as string]: '760px' }}>
         <div
           className="tag-head"
           style={{
@@ -869,7 +872,7 @@ function RatesTab() {
           <span>// CADENA DE RESOLUCIÓN · RESOLUTION CHAIN</span>
           <span>PRIMER MATCH GANA · NUNCA FLOATS</span>
         </div>
-        <div style={{ padding: 18, display: 'flex', gap: 0, alignItems: 'stretch' }}>
+        <div className="gs-reschain" style={{ padding: 18, display: 'flex', gap: 0, alignItems: 'stretch' }}>
           {(() => {
             const count = (sc: string) => data.filter((r) => r.scope === sc).length;
             const def = data.find((r) => r.scope === 'default');
@@ -982,6 +985,7 @@ function ResolutionChainItem({
       </div>
       {i < total - 1 && (
         <div
+          className="gs-reschain__arrow"
           style={{
             width: 32,
             display: 'flex',
@@ -1087,6 +1091,7 @@ function ChannelsTab() {
             </button>
           </div>
           <div
+            className="gs-form-grid"
             style={{
               padding: '16px 18px',
               display: 'grid',
@@ -1148,7 +1153,7 @@ function ChannelsTab() {
         </section>
       )}
 
-      <section style={{ border: '2px solid var(--eg-iron)' }}>
+      <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}>
         <div
           className="tag-head"
           style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}
@@ -1437,7 +1442,7 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
       {selectedKey && (
         <>
           {/* Rules table */}
-          <section style={{ border: '2px solid var(--eg-iron)' }}>
+          <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}>
             <div
               className="tag-head"
               style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}
@@ -1609,6 +1614,7 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
                 </button>
               </div>
               <div
+                className="gs-form-grid"
                 style={{
                   padding: '16px 14px',
                   display: 'grid',
@@ -1865,6 +1871,7 @@ function IntakeTab() {
             </button>
           </div>
           <div
+            className="gs-form-grid"
             style={{
               padding: '16px 18px',
               display: 'grid',
@@ -2012,7 +2019,7 @@ function IntakeTab() {
         </section>
       )}
 
-      <section style={{ border: '2px solid var(--eg-iron)' }}>
+      <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}>
         <div
           className="tag-head"
           style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}
@@ -2377,7 +2384,7 @@ function TeamTab() {
       )}
 
       {/* Users table */}
-      <section style={{ border: '2px solid var(--eg-iron)' }}>
+      <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '720px' }}>
         <div
           className="tag-head"
           style={{ background: 'var(--eg-iron)', color: 'var(--eg-yellow)', padding: '8px 14px', borderColor: 'var(--eg-iron)' }}

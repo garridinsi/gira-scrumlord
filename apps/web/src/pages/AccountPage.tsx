@@ -62,7 +62,7 @@ function ReadOnlyRow({ label, value }: { label: string; value: string }) {
       <span className="caps" style={{ color: 'var(--eg-fg-4)' }}>
         {label}
       </span>
-      <span className="mono" style={{ fontSize: 13, color: 'var(--eg-iron)', textAlign: 'right' }}>
+      <span className="mono" style={{ fontSize: 13, color: 'var(--eg-iron)', textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>
         {value}
       </span>
     </div>

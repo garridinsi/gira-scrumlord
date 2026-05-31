@@ -336,15 +336,17 @@ function SprintGroup({
               Sin tickets en este sprint · No issues in sprint
             </div>
           ) : (
-            sprintIssues.map((iss, i) => (
-              <BacklogRow
-                key={iss.key}
-                issue={iss}
-                odd={i % 2 === 1}
-                sprints={allSprints}
-                onAssignToSprint={onAssignToSprint}
-              />
-            ))
+            <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '720px' }}>
+              {sprintIssues.map((iss, i) => (
+                <BacklogRow
+                  key={iss.key}
+                  issue={iss}
+                  odd={i % 2 === 1}
+                  sprints={allSprints}
+                  onAssignToSprint={onAssignToSprint}
+                />
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -409,15 +411,17 @@ function BacklogGroup({
             Backlog vacío · Nothing unscheduled
           </div>
         ) : (
-          backlogIssues.map((iss, i) => (
-            <BacklogRow
-              key={iss.key}
-              issue={iss}
-              odd={i % 2 === 1}
-              sprints={allSprints}
-              onAssignToSprint={onAssignToSprint}
-            />
-          ))
+          <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '720px' }}>
+            {backlogIssues.map((iss, i) => (
+              <BacklogRow
+                key={iss.key}
+                issue={iss}
+                odd={i % 2 === 1}
+                sprints={allSprints}
+                onAssignToSprint={onAssignToSprint}
+              />
+            ))}
+          </div>
         )}
       </div>
     </section>
@@ -470,7 +474,6 @@ function CreateSprintModal({
           flexDirection: 'column',
           alignSelf: 'flex-start',
           marginTop: 80,
-          marginRight: 40,
         }}
       >
         <div

@@ -1,14 +1,31 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useMe } from '../../hooks/useAuth';
 import { Rail } from './Rail';
 import { TopBar } from './TopBar';
 
 export function AppLayout() {
   const me = useMe();
+  const { pathname } = useLocation();
   // On phones the rail is an off-canvas drawer toggled from the TopBar hamburger.
   const [navOpen, setNavOpen] = useState(false);
+
+  // Close the drawer on any navigation (back/forward, topbar links, redirects) so it
+  // never covers the page you just landed on.
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  // Escape closes the drawer (it behaves as a modal surface on phones).
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setNavOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navOpen]);
 
   if (me.isLoading) {
     return (

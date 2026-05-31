@@ -59,7 +59,8 @@ function BigStat({
       <div
         className="disp"
         style={{
-          fontSize: 52,
+          fontSize: 'clamp(32px, 9vw, 52px)',
+          overflowWrap: 'anywhere',
           lineHeight: 1,
           marginTop: 6,
           fontWeight: 900,
@@ -1060,6 +1061,7 @@ export function ProjectSummaryPage() {
       >
         {/* Section title */}
         <div
+          className="summary-head"
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr auto auto',
@@ -1074,7 +1076,8 @@ export function ProjectSummaryPage() {
             <h1
               className="disp"
               style={{
-                fontSize: 48,
+                fontSize: 'clamp(28px, 9vw, 48px)',
+                overflowWrap: 'break-word',
                 lineHeight: 0.9,
                 color: 'var(--eg-iron)',
                 margin: 0,
@@ -1115,6 +1118,7 @@ export function ProjectSummaryPage() {
 
         {/* 4 stat tiles */}
         <div
+          className="summary-stats"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
@@ -1170,6 +1174,7 @@ export function ProjectSummaryPage() {
 
         {/* Active sprint panel + velocity chart */}
         <div
+          className="summary-chartrow"
           style={{
             display: 'grid',
             gridTemplateColumns: summary.activeSprint ? '1fr 1.4fr' : '1fr',

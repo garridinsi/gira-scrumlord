@@ -391,6 +391,7 @@ export function MonthlyPage() {
         </div>
 
         {/* Column headings */}
+        <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '720px' }}>
         <div
           style={{
             display: 'grid',
@@ -439,6 +440,7 @@ export function MonthlyPage() {
             />
           ))
         )}
+        </div>
       </div>
     </div>
   );

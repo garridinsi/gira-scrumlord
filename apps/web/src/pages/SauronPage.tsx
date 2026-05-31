@@ -273,6 +273,7 @@ export function SauronPage() {
 
       {/* Hero strip */}
       <div
+        className="sauron-hero"
         style={{
           background: 'var(--eg-iron)',
           borderBottom: '2px solid var(--eg-yellow)',
@@ -293,7 +294,8 @@ export function SauronPage() {
             <h1
               className="disp"
               style={{
-                fontSize: 46,
+                fontSize: 'clamp(28px, 9vw, 46px)',
+                overflowWrap: 'break-word',
                 color: 'var(--eg-paper)',
                 margin: 0,
                 lineHeight: 0.9,
@@ -351,7 +353,7 @@ export function SauronPage() {
           <div
             className="disp"
             style={{
-              fontSize: 56,
+              fontSize: 'clamp(34px, 12vw, 56px)',
               color: 'var(--eg-yellow)',
               lineHeight: 0.9,
               letterSpacing: '-0.02em',
@@ -385,7 +387,7 @@ export function SauronPage() {
             />
             <span
               className="disp"
-              style={{ fontSize: 28, color: 'var(--eg-paper)', lineHeight: 1 }}
+              style={{ fontSize: 'clamp(20px, 6vw, 28px)', color: 'var(--eg-paper)', lineHeight: 1 }}
             >
               {auditQ.isError ? 'ERROR' : 'VIGILANDO'}
             </span>
@@ -449,6 +451,7 @@ export function SauronPage() {
           background: 'var(--eg-iron)',
         }}
       >
+        <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '680px' }}>
         {/* Column headers */}
         <div
           style={{
@@ -524,6 +527,7 @@ export function SauronPage() {
         {entries.map((entry, i) => (
           <AuditRow key={entry.id} entry={entry} i={i} />
         ))}
+        </div>
 
         {/* Footer cmdline */}
         {entries.length > 0 && (

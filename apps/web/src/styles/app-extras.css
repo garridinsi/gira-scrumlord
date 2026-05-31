@@ -1335,4 +1335,178 @@ button {
   }
   .subbar::-webkit-scrollbar { display: none; }
   .subbar__tab { flex-shrink: 0; }
+
+  /* Dense data tables scroll as a unit at a readable min-width so the fixed/1fr grid
+     columns can't collapse and overlap ("NOMBREEMAIL"). Wrapper is .gs-tablewrap;
+     per-table width via style={{ ['--gs-tw-min']: '760px' }}. */
+  .gs-tablewrap > * {
+    min-width: var(--gs-tw-min, 700px);
+  }
+
+  /* Primary nav (drawer) + collapsed topbar buttons meet the 44px touch minimum. */
+  .rail__item {
+    min-height: 44px;
+    padding-top: 11px;
+    padding-bottom: 11px;
+    align-items: center;
+  }
+  .topbar__btn {
+    min-width: 44px;
+    justify-content: center;
+  }
+}
+
+/* ── Responsive building blocks (ungated; inert on desktop because content fits) ── */
+
+/* Horizontal-scroll wrapper for dense tables. */
+.gs-tablewrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Cap every scrim modal so it can't run off a phone (BoardPage/Backlog new-issue
+   dialogs). min(480, …) == 480 on desktop, so this is inert there. The wider issue
+   drawer opts out via .gs-drawer below (defined after, so it wins). */
+.gs-scrim > * {
+  width: min(480px, calc(100vw - 32px));
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* The issue slide-over: 820 on desktop, full-width on phones/small tablets. */
+.gs-drawer {
+  width: 820px;
+  max-width: 100vw;
+}
+@media (max-width: 860px) {
+  .gs-drawer {
+    width: 100vw !important;
+    border-left: 0 !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Forms (not tables) stack to one column; resolution chain stacks vertically with a
+   rotated down-arrow; touch targets floor at 44px. */
+@media (max-width: 640px) {
+  .gs-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .b-btn {
+    min-height: 44px;
+  }
+  .gs-tablewrap select,
+  .gs-tablewrap input {
+    min-height: 44px;
+  }
+  .gs-reschain {
+    flex-direction: column;
+  }
+  .gs-reschain > div {
+    flex: none;
+    width: 100%;
+  }
+  .gs-reschain__arrow {
+    width: 100% !important;
+    height: 24px;
+    transform: rotate(90deg);
+  }
+}
+
+/* Posters/heroes collapse to one column; KPI tiles to 2-up; drawer body stacks;
+   the client portal shell wraps its nav to a scrollable second row. */
+@media (max-width: 720px) {
+  .sauron-hero {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 14px 16px !important;
+  }
+  .summary-head {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .summary-stats {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .summary-chartrow {
+    grid-template-columns: 1fr !important;
+  }
+  .gs-drawer__body {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Client portal top bar: pin brand + logout on row 1, scroll the nav on row 2 so
+     clients can always reach Logout / New request. */
+  .cp-topbar {
+    height: auto;
+    flex-wrap: wrap;
+  }
+  .cp-topbar__brand {
+    flex: 1;
+    min-width: 0;
+  }
+  .cp-nav {
+    order: 3;
+    flex-basis: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cp-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .cp-nav__item {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+  }
+  .cp-topbar__client {
+    max-width: 120px;
+  }
+  .cp-page {
+    padding: 24px 16px;
+  }
+  .cp-poster {
+    padding: 28px 16px 24px;
+  }
+  .cp-request {
+    padding: 24px 16px;
+  }
+  .cp-project-grid {
+    grid-template-columns: 1fr;
+  }
+  .cp-filter-pill {
+    padding: 8px 14px;
+  }
+  .cp-topbar__logout {
+    padding: 9px 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .summary-stats {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Tablet (769–1024): the desktop layout wastes width and clips the topbar. Shrink the
+   rail, drop the lore chips, and let the project name truncate. */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --gs-rail: 200px;
+  }
+  .topbar__brand {
+    min-width: 200px;
+  }
+  .topbar__btn.lore {
+    display: none;
+  }
+  .topbar__projectwrap {
+    min-width: 0;
+  }
+  .topbar__projectname {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

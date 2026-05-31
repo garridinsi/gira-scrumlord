@@ -449,7 +449,13 @@ export function SprintsPage() {
           </span>
         </div>
 
+        {/* Create form inline */}
+        {creating && (
+          <CreateSprintInline projectKey={key} onDone={() => setCreating(false)} />
+        )}
+
         {/* Column headings */}
+        <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '760px' }}>
         <div
           style={{
             display: 'grid',
@@ -464,11 +470,6 @@ export function SprintsPage() {
             <span key={h} className="caps">{h}</span>
           ))}
         </div>
-
-        {/* Create form inline */}
-        {creating && (
-          <CreateSprintInline projectKey={key} onDone={() => setCreating(false)} />
-        )}
 
         {/* Sprint rows */}
         {ordered.length === 0 ? (
@@ -492,6 +493,7 @@ export function SprintsPage() {
         ) : (
           ordered.map((s) => <SprintRow key={s.id} sprint={s} projectKey={key} />)
         )}
+        </div>
       </div>
     </div>
   );

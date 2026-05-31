@@ -413,6 +413,7 @@ export function IncidentsPage() {
         </div>
 
         {/* Column headers */}
+        <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '980px' }}>
         <div
           style={{
             display: 'grid',
@@ -483,6 +484,7 @@ export function IncidentsPage() {
         {data.map((inc, i) => (
           <IncidentRow key={inc.id} inc={inc} i={i} canWrite={canWrite} />
         ))}
+        </div>
       </div>
     </div>
   );

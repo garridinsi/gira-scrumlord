@@ -103,7 +103,7 @@ function GenerateForm({ clientId, currency }: { clientId: string; currency: stri
         style={{
           padding: '16px 18px',
           display: 'grid',
-          gridTemplateColumns: '180px 180px 1fr',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
           gap: 14,
           alignItems: 'end',
         }}
@@ -211,6 +211,7 @@ function InvoiceList({ clientId }: { clientId: string }) {
         <span>IMPORTE CONGELADO EN EMISIÓN · RATE FROZEN AT GENERATION</span>
       </div>
 
+      <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '900px' }}>
       {/* Header row */}
       <div
         style={{
@@ -338,6 +339,7 @@ function InvoiceList({ clientId }: { clientId: string }) {
           </span>
         </Link>
       ))}
+      </div>
     </section>
   );
 }
@@ -374,6 +376,7 @@ export function BillingPage() {
       <div style={{ flex: 1, overflow: 'auto', padding: '18px 22px', background: 'var(--eg-paper)' }}>
         {/* Page header */}
         <div
+          className="summary-head"
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr auto',

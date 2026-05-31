@@ -155,7 +155,8 @@ export function PortalInvoicesPage() {
 
       {/* Invoice list */}
       {data.length > 0 && (
-        <div style={{ border: '2px solid var(--eg-iron)' }}>
+        <div style={{ border: '2px solid var(--eg-iron)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+         <div style={{ minWidth: 800 }}>
           {/* Table header */}
           <div
             style={{
@@ -258,6 +259,7 @@ export function PortalInvoicesPage() {
               </span>
             </button>
           ))}
+         </div>
         </div>
       )}
     </div>
