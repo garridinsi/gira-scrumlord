@@ -128,7 +128,7 @@ describe('time tracking', () => {
     expect(ok.statusCode).toBe(200);
   });
 
-  it('refuses to edit/delete a worklog billed on a finalized annex', async () => {
+  it('refuses to edit/delete a worklog claimed by any annex (draft or finalized)', async () => {
     // Set up a client-linked project so we can invoice the worklog.
     const client = await prisma.client.create({ data: { name: 'C', slug: 'c', currency: 'EUR' } });
     const { user, cookie } = await actingAs({ role: 'admin' });
@@ -145,16 +145,18 @@ describe('time tracking', () => {
     await app.inject({ method: 'POST', url: '/rates', headers: { cookie }, payload: { scope: 'default', hourlyCents: 6000 } });
     const invId = (await app.inject({ method: 'POST', url: `/clients/${client.id}/invoices`, headers: { cookie } })).json().id as string;
 
-    // While the annex is a draft, editing is still allowed.
-    expect(
-      (await app.inject({ method: 'PATCH', url: `/worklogs/${wlId}`, headers: { cookie }, payload: { note: 'draft edit' } })).statusCode,
-    ).toBe(200);
+    // Lock-on-claim: even on a DRAFT annex the worklog is now frozen, because the
+    // annex's subtotal/lines are frozen at generation and issuing does not recompute —
+    // editing a claimed worklog would silently desync the document from the hours.
+    const draftEdit = await app.inject({ method: 'PATCH', url: `/worklogs/${wlId}`, headers: { cookie }, payload: { note: 'draft edit' } });
+    expect(draftEdit.statusCode).toBe(409);
+    expect(draftEdit.json().error).toMatch(/draft annex/);
 
-    // Issue the annex (finalize) — now the worklog is frozen.
+    // Issue the annex (finalize) — still refused, with the finalized-annex message.
     await app.inject({ method: 'POST', url: `/invoices/${invId}/issue`, headers: { cookie } });
-    expect(
-      (await app.inject({ method: 'PATCH', url: `/worklogs/${wlId}`, headers: { cookie }, payload: { minutes: 1 } })).statusCode,
-    ).toBe(409);
+    const finalEdit = await app.inject({ method: 'PATCH', url: `/worklogs/${wlId}`, headers: { cookie }, payload: { minutes: 1 } });
+    expect(finalEdit.statusCode).toBe(409);
+    expect(finalEdit.json().error).toMatch(/finalized annex/);
     expect((await app.inject({ method: 'DELETE', url: `/worklogs/${wlId}`, headers: { cookie } })).statusCode).toBe(409);
   });
 });

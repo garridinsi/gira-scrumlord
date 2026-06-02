@@ -240,7 +240,11 @@ model Project {
   monthlyBudgetMinutes Int?
   monthlyBudgetCents   Int?
   clientId     String?
-  client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  // RESTRICT, not SetNull: SetNull would silently null a project's clientId when its
+  // client is deleted, orphaning the project (and all its issues/worklogs) OUT of any
+  // tenant scope — a null clientId widens, not scopes, access. The clients-delete route
+  // refuses while projects still reference the client. Mirrors the User→Client choice.
+  client       Client?       @relation(fields: [clientId], references: [id], onDelete: Restrict)
   issueCounter Int           @default(0) // atomic source of PROJ-N keys
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -386,6 +390,10 @@ model Worklog {
   @@index([issueId])
   @@index([userId])
   @@index([invoiceId])
+  // Hot path: invoice generation + monthly rollup scan the un-invoiced billable pool
+  // filtered by loggedAt range inside a SERIALIZABLE tx. Index it to keep that scan
+  // (and its serialization-abort window) bounded as worklog history grows.
+  @@index([loggedAt])
 }
 
 /// A running stopwatch. At most one active timer per user. Stopping writes a Worklog.
@@ -409,7 +417,11 @@ model Invoice {
   number        String        @unique // ANX-YYYY-NNNN annex ref, assigned at creation
   externalInvoiceRef String?   // the real TicketBAI fiscal invoice number, recorded by staff
   clientId      String
-  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  // RESTRICT, not Cascade: a non-fiscal billing annex (and its externalInvoiceRef link
+  // to a real TicketBAI invoice) is a financial record — deleting a client must NOT
+  // silently destroy its issued/paid annexes. The clients-delete route refuses while
+  // any invoice still references the client.
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
   status        InvoiceStatus @default(draft)
   currency      String // ISO 4217, snapshot of the client's currency
   subtotalCents Int           @default(0) // sum of line amounts, frozen

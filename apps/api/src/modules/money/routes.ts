@@ -64,10 +64,22 @@ export async function moneyRoutes(app: FastifyInstance): Promise<void> {
 
     let rate;
     if (input.scope === 'default') {
+      // There's exactly one default-scope rate (the global fallback), enforced by the
+      // Rate_one_default partial unique index. Prisma can't `upsert` on a partial index,
+      // so: update if one exists, else create — and if a concurrent create wins the race
+      // (P2002 on the index), fall back to updating the winner rather than 500-ing.
       const existing = await prisma.rate.findFirst({ where: { scope: 'default' } });
-      rate = existing
-        ? await prisma.rate.update({ where: { id: existing.id }, data: fields })
-        : await prisma.rate.create({ data: { scope: 'default', ...fields } });
+      if (existing) {
+        rate = await prisma.rate.update({ where: { id: existing.id }, data: fields });
+      } else {
+        try {
+          rate = await prisma.rate.create({ data: { scope: 'default', ...fields } });
+        } catch (e) {
+          if ((e as { code?: string }).code !== 'P2002') throw e;
+          const winner = await prisma.rate.findFirstOrThrow({ where: { scope: 'default' } });
+          rate = await prisma.rate.update({ where: { id: winner.id }, data: fields });
+        }
+      }
     } else if (input.scope === 'client') {
       rate = await prisma.rate.upsert({
         where: { clientId: input.clientId! },

@@ -110,6 +110,38 @@ describe('invoicing (M5)', () => {
     expect(got.json().externalInvoiceRef).toBe('TBAI-2026-000123');
   });
 
+  it('refuses to void an issued annex that is linked to a fiscal invoice until the ref is cleared', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
+    await logWork(staff.cookie, 'ACME-1', 60);
+    await setRate(staff.cookie, 6000);
+    const id = (await generate(staff.cookie, client.id)).json().id as string;
+    await app.inject({ method: 'POST', url: `/invoices/${id}/issue`, headers: { cookie: staff.cookie } });
+    await app.inject({
+      method: 'POST',
+      url: `/invoices/${id}/external-ref`,
+      headers: { cookie: staff.cookie },
+      payload: { externalInvoiceRef: 'TBAI-2026-000999' },
+    });
+
+    // Voiding now would silently decouple the annex from its fiscal invoice → refused.
+    const blocked = await app.inject({ method: 'POST', url: `/invoices/${id}/void`, headers: { cookie: staff.cookie } });
+    expect(blocked.statusCode).toBe(400);
+    expect(blocked.json().error).toMatch(/fiscal/);
+    expect((await app.inject({ method: 'GET', url: `/invoices/${id}`, headers: { cookie: staff.cookie } })).json().status).toBe('issued');
+
+    // Clear the fiscal ref first, then voiding is allowed.
+    await app.inject({
+      method: 'POST',
+      url: `/invoices/${id}/external-ref`,
+      headers: { cookie: staff.cookie },
+      payload: { externalInvoiceRef: '' },
+    });
+    const voided = await app.inject({ method: 'POST', url: `/invoices/${id}/void`, headers: { cookie: staff.cookie } });
+    expect(voided.statusCode).toBe(200);
+    expect(voided.json().status).toBe('void');
+  });
+
   it('never bills the same hours twice', async () => {
     const { client, staff } = await setup();
     await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });

@@ -274,15 +274,22 @@ export async function generateInvoice(
 
     // ANX = non-fiscal billing annex (the fiscal invoice is issued via TicketBAI).
     const year = new Date().getFullYear();
-    // MAX-based (not count-based): deleting a draft must NOT cause the sequence to
-    // reuse a still-existing number. Take the highest existing ANX-YYYY-NNNN and +1.
-    const last = await tx.invoice.findFirst({
-      where: { number: { startsWith: `ANX-${year}-` } },
-      orderBy: { number: 'desc' },
+    // NUMERIC max (not count-based, not lexicographic): deleting a draft must not let
+    // the sequence reuse a live number, AND `ORDER BY number DESC` is a STRING sort —
+    // it would rank ANX-2026-9999 above ANX-2026-10000 once past 9999. So fetch the
+    // year's numbers and take the true integer max of the suffix; a row whose suffix
+    // doesn't parse is skipped (never collapsed to 0, which would mint a colliding
+    // ...-0001). The unique constraint + serializable retry are the final backstop.
+    const prefix = `ANX-${year}-`;
+    const existing = await tx.invoice.findMany({
+      where: { number: { startsWith: prefix } },
       select: { number: true },
     });
-    const lastSeq = last ? Number.parseInt(last.number.slice(`ANX-${year}-`.length), 10) || 0 : 0;
-    const number = `ANX-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
+    const maxSeq = existing.reduce((max, { number: n }) => {
+      const seq = Number.parseInt(n.slice(prefix.length), 10);
+      return Number.isFinite(seq) && seq > max ? seq : max;
+    }, 0);
+    const number = `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
 
     const created = await tx.invoice.create({
       data: {
@@ -387,7 +394,19 @@ export async function voidInvoice(id: string, actorId: string): Promise<InvoiceV
   const invoice = await loadInvoiceOr404(id);
   if (invoice.status === 'paid') throw badRequest('a paid invoice cannot be voided');
   if (invoice.status === 'void') throw badRequest('invoice is already void');
-  const updated = await prisma.$transaction(async (tx) => {
+  // An issued annex that already backs a real TicketBAI fiscal invoice (externalInvoiceRef
+  // set) must not be voided out from under it: voiding frees its worklogs to be re-billed
+  // on a new annex, silently decoupling the non-fiscal annex from the fiscal document.
+  // Require the staffer to clear the fiscal reference first (an explicit, audited act).
+  if (invoice.status === 'issued' && invoice.externalInvoiceRef) {
+    throw badRequest(
+      `this annex is linked to fiscal invoice ${invoice.externalInvoiceRef} — clear the fiscal reference before voiding`,
+    );
+  }
+  // Serializable + worklog-pool mutation, same as generateInvoice: a concurrent generate
+  // reads the un-invoiced pool, so freeing worklogs here under default isolation could
+  // race it. runSerializable makes the loser retry on a fresh snapshot.
+  const updated = await runSerializable(async (tx) => {
     await tx.worklog.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
     const u = await tx.invoice.update({
       where: { id },
@@ -399,7 +418,7 @@ export async function voidInvoice(id: string, actorId: string): Promise<InvoiceV
       action: 'invoice.void',
       entityType: 'Invoice',
       entityId: id,
-      before: { status: invoice.status },
+      before: { status: invoice.status, externalInvoiceRef: invoice.externalInvoiceRef },
       after: { status: 'void' },
     });
     return u;
@@ -411,7 +430,9 @@ export async function voidInvoice(id: string, actorId: string): Promise<InvoiceV
 export async function deleteInvoice(id: string, actorId: string): Promise<void> {
   const invoice = await loadInvoiceOr404(id);
   if (invoice.status !== 'draft') throw badRequest('only a draft invoice can be deleted');
-  await prisma.$transaction(async (tx) => {
+  // Serializable for the same reason as voidInvoice: freeing the worklog pool races a
+  // concurrent generate that reads it.
+  await runSerializable(async (tx) => {
     await tx.worklog.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
     await tx.invoice.delete({ where: { id } });
     await recordAudit(tx, {

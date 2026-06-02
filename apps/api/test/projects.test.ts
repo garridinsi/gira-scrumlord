@@ -162,6 +162,43 @@ describe('clients + projects + isolation', () => {
     expect(ok.statusCode).toBe(204);
   });
 
+  it('refuses to delete a client that still has projects (FK RESTRICT, clean 409)', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const client = await prisma.client.create({ data: { name: 'Has Projects', slug: 'hasprojects' } });
+    await prisma.project.create({ data: { key: 'OWNED', name: 'Owned', clientId: client.id } });
+
+    const blocked = await app.inject({
+      method: 'DELETE',
+      url: `/clients/${client.id}`,
+      headers: { cookie: admin.cookie },
+    });
+    // A raw FK SET NULL would have silently orphaned OWNED out of tenant scope; instead
+    // RESTRICT + the pre-check refuse with a clean message.
+    expect(blocked.statusCode).toBe(409);
+    expect(blocked.json().error).toMatch(/project/);
+    // The project must still be attached (not nulled out).
+    expect((await prisma.project.findUnique({ where: { key: 'OWNED' } }))?.clientId).toBe(client.id);
+  });
+
+  it('refuses to delete a client that still has billing annexes (financial records kept)', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const client = await prisma.client.create({ data: { name: 'Has Annex', slug: 'hasannex', currency: 'EUR' } });
+    // A bare invoice row is enough to assert the Invoice→Client RESTRICT guard.
+    await prisma.invoice.create({
+      data: { number: 'ANX-2099-0001', clientId: client.id, status: 'issued', currency: 'EUR' },
+    });
+
+    const blocked = await app.inject({
+      method: 'DELETE',
+      url: `/clients/${client.id}`,
+      headers: { cookie: admin.cookie },
+    });
+    expect(blocked.statusCode).toBe(409);
+    expect(blocked.json().error).toMatch(/annex|financial/);
+    // The annex must survive (Cascade would have destroyed it).
+    expect(await prisma.invoice.count({ where: { clientId: client.id } })).toBe(1);
+  });
+
   it('client (viewer) cannot create a project', async () => {
     const client = await prisma.client.create({ data: { name: 'C', slug: 'c' } });
     const { cookie } = await actingAs({ kind: 'client', role: 'viewer', clientId: client.id });

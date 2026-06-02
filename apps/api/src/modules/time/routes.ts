@@ -65,8 +65,18 @@ export async function timeRoutes(app: FastifyInstance): Promise<void> {
     if (wl.userId !== user.id && user.role !== 'admin') {
       throw forbidden('only the logger or an admin can change this worklog');
     }
-    if (wl.invoiceId && wl.invoice && wl.invoice.status !== 'draft') {
-      throw conflict('this worklog is billed on a finalized annex — void the annex first');
+    if (wl.invoiceId) {
+      // Lock-on-claim: once a worklog is attached to ANY annex it must not be mutated.
+      // The annex freezes its subtotal + line minutes/amounts at generation and
+      // issueInvoice only flips status (it does NOT recompute), so editing a claimed
+      // worklog — even on a *draft* — silently desyncs the document from the hours and
+      // a stale draft could be issued. To change billed hours: delete/regenerate the
+      // draft (which frees the worklog via SetNull), or void a finalized annex first.
+      throw conflict(
+        wl.invoice && wl.invoice.status === 'draft'
+          ? 'this worklog is on a draft annex — delete or regenerate the draft to edit it'
+          : 'this worklog is billed on a finalized annex — void the annex first',
+      );
     }
     return wl;
   }
