@@ -276,6 +276,29 @@ export function LoginPage() {
             >
               {sendLink.isPending ? 'Enviando…' : 'Envíame el enlace · Mail me the link →'}
             </button>
+
+            {sendLink.isError && (
+              // Generic, non-enumerating: a transport/CORS/5xx failure must not leave the
+              // app's sole entry point silently reverting with no feedback. This says
+              // nothing about whether the account exists.
+              <div
+                role="alert"
+                className="mono"
+                style={{
+                  marginTop: 16,
+                  padding: '10px 12px',
+                  border: '2px solid var(--eg-red)',
+                  background: 'var(--eg-red)',
+                  color: 'var(--eg-paper)',
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  boxShadow: '3px 3px 0 var(--eg-iron)',
+                }}
+              >
+                No pudimos enviar el enlace ahora mismo. Inténtalo de nuevo.{' '}
+                <span style={{ opacity: 0.85 }}>Couldn&rsquo;t send the link right now — please try again.</span>
+              </div>
+            )}
           </form>
         ) : (
           <div style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-yellow)', padding: 18, boxShadow: '4px 4px 0 var(--eg-iron)' }}>

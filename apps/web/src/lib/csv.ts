@@ -9,7 +9,15 @@ type Cell = string | number | null | undefined;
 export function toCsv(rows: Cell[][]): string {
   const esc = (v: Cell): string => {
     const s = v == null ? '' : String(v);
-    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    // Neutralize spreadsheet formula injection: Excel/Sheets/LibreOffice execute a cell
+    // whose text begins with = + - @ (or a leading TAB/CR). Issue titles flow in from
+    // unauthenticated intake (WordPress/Grafana) and portal requests, so `=HYPERLINK(...)`
+    // could run on open. Prefix dangerous TEXT with an apostrophe (rendered as literal
+    // text) and force-quote — but never touch a real number like "-7.40".
+    const dangerous =
+      typeof v === 'string' && /^[=+\-@\t\r]/.test(s) && !/^[+-]?\d+(\.\d+)?$/.test(s);
+    const body = dangerous ? `'${s}` : s;
+    return dangerous || /[",\n\r]/.test(body) ? `"${body.replace(/"/g, '""')}"` : body;
   };
   return rows.map((r) => r.map(esc).join(',')).join('\r\n');
 }
