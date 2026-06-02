@@ -152,11 +152,105 @@ function TimerPanel({ issueKey, toast }: { issueKey: string; toast: ReturnType<t
 
 // ── Details tab ───────────────────────────────────────────────────────────────
 
-function DetailsTab({ issue }: { issue: IssueView }) {
+function DetailsTab({
+  issue,
+  onSave,
+  saving,
+}: {
+  issue: IssueView;
+  onSave: (description: string) => Promise<unknown>;
+  saving: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const begin = () => {
+    setDraft(issue.description ?? '');
+    setEditing(true);
+  };
+
+  const commit = async () => {
+    // Unchanged → just close, no needless request.
+    if (draft === (issue.description ?? '')) {
+      setEditing(false);
+      return;
+    }
+    try {
+      await onSave(draft);
+      setEditing(false);
+    } catch {
+      // The parent mutation already surfaces the error toast. Keep the editor
+      // open so the user's draft isn't lost on a failed save.
+    }
+  };
+
+  if (editing) {
+    return (
+      <div>
+        <div className="caps" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>// descripción · description · markdown</span>
+          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em' }}>
+            ⌘/CTRL+ENTER · ESC
+          </span>
+        </div>
+        <textarea
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              void commit();
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setEditing(false);
+            }
+          }}
+          placeholder="Escribe una descripción… · Write a description… (markdown)"
+          style={{
+            width: '100%',
+            minHeight: 180,
+            marginTop: 6,
+            padding: '12px 14px',
+            border: '2px solid var(--eg-yellow)',
+            background: 'var(--eg-yellow-soft)',
+            fontFamily: 'var(--font-body)',
+            fontSize: 13.5,
+            lineHeight: 1.55,
+            color: 'var(--eg-iron)',
+            resize: 'vertical',
+            boxSizing: 'border-box',
+          }}
+        />
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <button type="button" className="b-btn b-btn--ink" disabled={saving} onClick={() => void commit()}>
+            {saving ? 'Guardando…' : 'Guardar · Save'}
+          </button>
+          <button type="button" className="b-btn b-btn--ghost" disabled={saving} onClick={() => setEditing(false)}>
+            Cancelar · Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <div className="caps">// descripción · description · markdown</div>
+      <div className="caps" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>// descripción · description · markdown</span>
+        <button
+          type="button"
+          className="b-btn b-btn--ghost"
+          style={{ fontSize: 11, padding: '2px 8px' }}
+          onClick={begin}
+          title="Editar descripción · Edit description"
+        >
+          ✎ Editar · Edit
+        </button>
+      </div>
       <div
+        onClick={issue.description ? undefined : begin}
         style={{
           background: 'var(--eg-paper-2)',
           border: '1.5px solid var(--eg-iron)',
@@ -165,6 +259,7 @@ function DetailsTab({ issue }: { issue: IssueView }) {
           fontSize: 13.5,
           lineHeight: 1.55,
           color: 'var(--eg-iron)',
+          cursor: issue.description ? 'default' : 'text',
         }}
       >
         {issue.description ? (
@@ -178,7 +273,7 @@ function DetailsTab({ issue }: { issue: IssueView }) {
           </pre>
         ) : (
           <span style={{ color: 'var(--eg-fg-4)', fontStyle: 'italic' }}>
-            Sin descripción · No description
+            Sin descripción · No description — clic para añadir · click to add
           </span>
         )}
       </div>
@@ -996,6 +1091,8 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
       void queryClient.invalidateQueries({ queryKey: ['board', projectKey] });
       if ('title' in vars) {
         toast({ tone: 'ok', title: 'Ticket actualizado · Issue updated', body: 'Título guardado · Title saved' });
+      } else if ('description' in vars) {
+        toast({ tone: 'ok', title: 'Ticket actualizado · Issue updated', body: 'Descripción guardada · Description saved' });
       } else if ('assigneeId' in vars) {
         const name = updated.assignee?.name ?? 'sin asignar · unassigned';
         toast({ tone: 'ok', title: 'Asignación actualizada · Assignee updated', body: name });
@@ -1259,7 +1356,13 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
               </div>
 
               {/* Tab content */}
-              {tab === 'details'  && <DetailsTab issue={issue} />}
+              {tab === 'details'  && (
+                <DetailsTab
+                  issue={issue}
+                  saving={updateMutation.isPending}
+                  onSave={(description) => updateMutation.mutateAsync({ description })}
+                />
+              )}
               {tab === 'comments' && <CommentsTab issueKey={issue.key} />}
               {tab === 'worklogs' && <WorklogsTab issueKey={issue.key} />}
               {tab === 'cost'     && <CostTab issueKey={issue.key} />}
