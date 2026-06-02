@@ -621,14 +621,12 @@ function RatesTab() {
               </label>
               <select
                 value={form.scope}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    scope: e.currentTarget.value as 'default' | 'client' | 'project',
-                    clientId: '',
-                    projectId: '',
-                  }))
-                }
+                onChange={(e) => {
+                  // Capture synchronously: e.currentTarget is null by the time the
+                  // functional updater runs in React's batched flush.
+                  const value = e.currentTarget.value as 'default' | 'client' | 'project';
+                  setForm((f) => ({ ...f, scope: value, clientId: '', projectId: '' }));
+                }}
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 12,
@@ -652,7 +650,10 @@ function RatesTab() {
               {form.scope === 'client' ? (
                 <select
                   value={form.clientId}
-                  onChange={(e) => setForm((f) => ({ ...f, clientId: e.currentTarget.value }))}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value;
+                    setForm((f) => ({ ...f, clientId: value }));
+                  }}
                   style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: 12,
@@ -672,9 +673,10 @@ function RatesTab() {
               ) : form.scope === 'project' ? (
                 <select
                   value={form.projectId}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, projectId: e.currentTarget.value }))
-                  }
+                  onChange={(e) => {
+                    const value = e.currentTarget.value;
+                    setForm((f) => ({ ...f, projectId: value }));
+                  }}
                   style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: 12,
@@ -1107,9 +1109,10 @@ function ChannelsTab() {
               </label>
               <select
                 value={form.kind}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, kind: e.currentTarget.value as 'email' | 'webhook' }))
-                }
+                onChange={(e) => {
+                  const value = e.currentTarget.value as 'email' | 'webhook';
+                  setForm((f) => ({ ...f, kind: value }));
+                }}
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 12,
@@ -1911,9 +1914,10 @@ function IntakeTab() {
               </label>
               <select
                 value={form.projectId}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, projectId: e.currentTarget.value }))
-                }
+                onChange={(e) => {
+                  const value = e.currentTarget.value;
+                  setForm((f) => ({ ...f, projectId: value }));
+                }}
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 12,
@@ -2318,7 +2322,10 @@ function TeamTab() {
               </label>
               <select
                 value={form.role}
-                onChange={(e) => setForm((f) => ({ ...f, role: e.currentTarget.value as UserRole }))}
+                onChange={(e) => {
+                  const value = e.currentTarget.value as UserRole;
+                  setForm((f) => ({ ...f, role: value }));
+                }}
                 style={SELECT_STYLE}
               >
                 <option value="admin">Admin</option>
@@ -2336,7 +2343,10 @@ function TeamTab() {
                 </label>
                 <select
                   value={form.clientId}
-                  onChange={(e) => setForm((f) => ({ ...f, clientId: e.currentTarget.value }))}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value;
+                    setForm((f) => ({ ...f, clientId: value }));
+                  }}
                   style={{ ...SELECT_STYLE, borderColor: !form.clientId ? 'var(--eg-red)' : 'var(--eg-iron)' }}
                 >
                   <option value="">— seleccionar cliente —</option>
