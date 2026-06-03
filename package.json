@@ -19,7 +19,9 @@
     "format:check": "prettier --check .",
     "db:migrate": "pnpm --filter @gira/db migrate",
     "db:seed": "pnpm --filter @gira/db seed",
-    "db:reset": "pnpm --filter @gira/db reset"
+    "db:reset": "pnpm --filter @gira/db reset",
+    "db:backup": "bash scripts/backup.sh",
+    "db:restore": "bash scripts/restore.sh"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

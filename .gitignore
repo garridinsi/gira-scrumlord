@@ -41,3 +41,6 @@ docs/
 
 # local verification screenshots (delivered, not versioned)
 docs/design/_shots/
+
+# Local DB backups (see RECOVERY.md) — never commit dumps
+backups/
