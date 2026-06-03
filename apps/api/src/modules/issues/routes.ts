@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { type Prisma, prisma } from '@gira/db';
+import { sanitizeMarkdown } from '@gira/domain';
 import {
   createCommentSchema,
   createIssueSchema,
@@ -148,7 +149,8 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
 
     const data: Prisma.IssueUpdateInput = {
       title: input.title,
-      description: input.description,
+      description:
+        input.description !== undefined ? sanitizeMarkdown(input.description) : undefined,
       type: input.type,
       priority: input.priority,
       storyPoints: input.storyPoints,
@@ -299,7 +301,12 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
     // regardless of the submitted value. Only staff may post internal notes.
     const visibility = user.kind === 'client' ? 'client' : input.visibility;
     const comment = await prisma.comment.create({
-      data: { issueId: issue.id, authorId: user.id, body: input.body, visibility },
+      data: {
+        issueId: issue.id,
+        authorId: user.id,
+        body: sanitizeMarkdown(input.body),
+        visibility,
+      },
       include: { author: true },
     });
     return reply.code(201).send(toCommentView(comment));

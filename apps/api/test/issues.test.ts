@@ -200,6 +200,25 @@ describe('issues', () => {
     expect(search.json()[0].title).toContain('explode');
   });
 
+  it('sanitizes raw HTML + dangerous link schemes in descriptions and comments (N4)', async () => {
+    const { cookie, projectKey } = await setup();
+    const created = await create(app, cookie, {
+      projectKey,
+      title: 'XSS attempt',
+      description: 'hi <script>alert(1)</script> [x](javascript:alert(2))',
+    });
+    expect(created.json().description).toBe('hi alert(1) [x](#alert(2))');
+
+    const c = await app.inject({
+      method: 'POST',
+      url: '/issues/GIRA-1/comments',
+      headers: { cookie },
+      payload: { body: '<img src=x onerror=alert(1)> see [evil](javascript:doom())' },
+    });
+    expect(c.statusCode).toBe(201);
+    expect(c.json().body).toBe(' see [evil](#doom())'); // img tag stripped (leading space kept)
+  });
+
   it('adds and lists comments', async () => {
     const { cookie, projectKey } = await setup();
     await create(app, cookie, { projectKey, title: 'Talk to me' });

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { type Prisma, prisma } from '@gira/db';
-import { rankBetween } from '@gira/domain';
+import { rankBetween, sanitizeMarkdown } from '@gira/domain';
 import { recordAudit } from '@gira/sauron';
 import type { CreateIssue } from '@gira/shared';
 import { badRequest, notFound } from '../../lib/http-error.js';
@@ -135,7 +135,7 @@ export async function createIssue(
         projectId: project.id,
         key,
         title: input.title,
-        description: input.description,
+        description: sanitizeMarkdown(input.description),
         type: input.type,
         priority: input.priority,
         statusId,
