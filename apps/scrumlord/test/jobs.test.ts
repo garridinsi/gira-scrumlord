@@ -9,6 +9,7 @@ import { runTimerReap } from '../src/jobs/timer-reap.js';
 import { runSprintAutoclose } from '../src/jobs/sprint-autoclose.js';
 import { runOutboxDispatch } from '../src/jobs/outbox-dispatch.js';
 import { runHousekeeping } from '../src/jobs/housekeeping.js';
+import { runVelocitySnapshot } from '../src/jobs/velocity-snapshot.js';
 
 // ── Shared fixture IDs ───────────────────────────────────────────────────────
 
@@ -359,6 +360,33 @@ describe('runOutboxDispatch', () => {
 
     const row = await prisma.outbox.findFirstOrThrow();
     expect(row.processedAt).toEqual(processedEarlier);
+  });
+});
+
+// ── (c2) velocity-snapshot ───────────────────────────────────────────────────
+
+describe('runVelocitySnapshot', () => {
+  it('recomputes completedPoints for active sprints (committed snapshot untouched)', async () => {
+    const { user, project, doneStatus, todoStatus } = await createBaseFixtures();
+    const sprint = await prisma.sprint.create({
+      data: { projectId: project.id, name: 'Live sprint', state: 'active', committedPoints: 10 },
+    });
+    await prisma.issue.create({
+      data: { projectId: project.id, key: 'ACME-30', title: 'done', statusId: doneStatus.id, reporterId: user.id, sprintId: sprint.id, storyPoints: 5, rank: 'a' },
+    });
+    await prisma.issue.create({
+      data: { projectId: project.id, key: 'ACME-31', title: 'wip', statusId: todoStatus.id, reporterId: user.id, sprintId: sprint.id, storyPoints: 3, rank: 'b' },
+    });
+
+    expect(await runVelocitySnapshot()).toBe(1);
+    const updated = await prisma.sprint.findUniqueOrThrow({ where: { id: sprint.id } });
+    expect(updated.completedPoints).toBe(5); // only the done issue's points
+    expect(updated.committedPoints).toBe(10); // committed snapshot is left alone
+  });
+
+  it('returns 0 when no sprint is active', async () => {
+    await createBaseFixtures();
+    expect(await runVelocitySnapshot()).toBe(0);
   });
 });
 
