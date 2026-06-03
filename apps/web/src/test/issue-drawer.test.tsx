@@ -15,12 +15,13 @@ const h = vi.hoisted(() => ({
   usersList: vi.fn(),
   auditList: vi.fn(),
   commentsCreate: vi.fn(),
+  update: vi.fn(),
 }));
 vi.mock('../api/client', () => ({
   issues: {
     get: (k: string) => h.get(k),
     cost: (k: string) => h.cost(k),
-    update: vi.fn(),
+    update: (k: string, d: unknown) => h.update(k, d),
     move: vi.fn(),
     comments: { list: (k: string) => h.commentsList(k), create: (k: string, b: unknown) => h.commentsCreate(k, b) },
     worklogs: { list: (k: string) => h.worklogsList(k), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
@@ -74,6 +75,8 @@ describe('IssueDrawer', () => {
     h.labelsList.mockReset().mockResolvedValue([]);
     h.usersList.mockReset().mockResolvedValue([]);
     h.auditList.mockReset().mockResolvedValue({ count: 0, entries: [] });
+    h.commentsCreate.mockReset();
+    h.update.mockReset();
   });
 
   it('loads and renders the issue (title + key) in the details tab', async () => {
@@ -127,5 +130,18 @@ describe('IssueDrawer', () => {
     await userEvent.keyboard('{Control>}{Enter}{/Control}');
 
     await waitFor(() => expect(h.commentsCreate).toHaveBeenCalledWith('GIRA-1', { body: 'looking into it' }));
+  });
+
+  it('sets a resolution from the sidebar (D2 UI)', async () => {
+    h.get.mockResolvedValue(issue({ resolution: null }));
+    h.update.mockResolvedValue(issue({ resolution: 'fixed' }));
+    renderWithProviders(<IssueDrawer issueKey="GIRA-1" projectKey="PRJ" onClose={vi.fn()} />);
+    await screen.findByText('My issue title');
+
+    const fixedOption = screen.getByRole('option', { name: /Fixed/ }) as HTMLOptionElement;
+    const select = fixedOption.closest('select')!;
+    await userEvent.selectOptions(select, 'fixed');
+
+    await waitFor(() => expect(h.update).toHaveBeenCalledWith('GIRA-1', { resolution: 'fixed' }));
   });
 });

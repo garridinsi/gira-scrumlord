@@ -785,7 +785,7 @@ function DrawerSidebar({
   issue: IssueView;
   statuses: StatusView[];
   labels: LabelView[];
-  onUpdate: (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null }>) => void;
+  onUpdate: (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null; resolution: string | null }>) => void;
   onAssigneeChange: (assigneeId: string | null) => void;
   toast: ReturnType<typeof useToast>;
 }) {
@@ -894,6 +894,20 @@ function DrawerSidebar({
           ))}
         </select>
         <TypeChip type={issue.type} />
+      </SideField>
+
+      <SideField labelEs="resolución" labelEn="resolution">
+        <select
+          value={issue.resolution ?? ''}
+          onChange={(e) => onUpdate({ resolution: e.target.value || null })}
+          style={{ width: '100%', padding: '4px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+        >
+          <option value="">— sin resolución · none —</option>
+          <option value="fixed">Resuelto · Fixed</option>
+          <option value="wontfix">No se corrige · Won&rsquo;t fix</option>
+          <option value="duplicate">Duplicado · Duplicate</option>
+          <option value="cannot-reproduce">No reproducible · Cannot reproduce</option>
+        </select>
       </SideField>
 
       <SideField labelEs="puntos" labelEn="story points">
@@ -1132,7 +1146,7 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleUpdate = (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null }>) => {
+  const handleUpdate = (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null; resolution: string | null }>) => {
     if (data.statusId) {
       moveMutation.mutate({ statusId: data.statusId });
     } else {
