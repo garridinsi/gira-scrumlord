@@ -22,6 +22,7 @@ import type {
   SlaView,
   IssueEventView,
   AttachmentView,
+  PeriodLockView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -399,6 +400,20 @@ export const attachments = {
   delete: (id: string) => request<void>(`/attachments/${id}`, { method: 'DELETE' }),
   /** Same-origin download URL (cookie sent on navigation; forced as an attachment by the API). */
   url: (id: string) => `${BASE_URL}/attachments/${id}`,
+};
+
+// ---------------------------------------------------------------------------
+// Period locks (admin) — P1 freeze a client's billed month.
+// ---------------------------------------------------------------------------
+
+export const periodLocks = {
+  list: (clientId: string) => request<PeriodLockView[]>(`/clients/${clientId}/period-locks`),
+  create: (clientId: string, monthKey: string) =>
+    request<PeriodLockView>(`/clients/${clientId}/period-locks`, {
+      method: 'POST',
+      ...json({ monthKey }),
+    }),
+  delete: (id: string) => request<void>(`/period-locks/${id}`, { method: 'DELETE' }),
 };
 
 // ---------------------------------------------------------------------------

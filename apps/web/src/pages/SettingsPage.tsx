@@ -20,6 +20,7 @@ import {
   intake,
   users,
   contracts,
+  periodLocks,
   ApiError,
 } from '../api/client';
 import type { ClientRecord, RateRecord, AssignmentRuleRecord } from '../api/client';
@@ -30,6 +31,7 @@ import type {
   CreateChannel,
   CreateIntakeSource,
   ContractView,
+  PeriodLockView,
 } from '@gira/shared';
 import { Subbar } from '../ui/Subbar';
 import { Avatar, Plate } from '../ui/atoms';
@@ -39,7 +41,7 @@ import { useMe } from '../hooks/useAuth';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'clients' | 'contracts' | 'rates' | 'channels' | 'intake' | 'team';
+type Tab = 'clients' | 'contracts' | 'locks' | 'rates' | 'channels' | 'intake' | 'team';
 
 const CURRENCIES = ['EUR', 'USD', 'GBP'] as const;
 
@@ -727,6 +729,142 @@ function ContractsTab() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── Period Locks Tab (P1) ────────────────────────────────────────────────────
+
+function PeriodLocksTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const clientSelectId = useId();
+  const monthInputId = useId();
+  const clientsList = useQuery({ queryKey: ['clients'], queryFn: () => clients.list() });
+  const [clientId, setClientId] = useState('');
+  const [month, setMonth] = useState('');
+
+  const locksQ = useQuery({
+    queryKey: ['period-locks', clientId],
+    queryFn: () => periodLocks.list(clientId),
+    enabled: !!clientId,
+  });
+
+  const lockMut = useMutation({
+    mutationFn: () => periodLocks.create(clientId, month),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['period-locks', clientId] });
+      toast({ tone: 'ok', title: 'Mes bloqueado · Month locked', body: month });
+      setMonth('');
+    },
+    onError: (err) =>
+      toast({
+        tone: 'danger',
+        title: 'Error al bloquear · Lock failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      }),
+  });
+  const unlockMut = useMutation({
+    mutationFn: (id: string) => periodLocks.delete(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['period-locks', clientId] }),
+  });
+
+  const locks: PeriodLockView[] = locksQ.data ?? [];
+
+  return (
+    <div>
+      <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)', marginBottom: 14 }}>
+        // Bloquea un mes facturado: ningún parte de horas con fecha en ese mes podrá
+        crearse/editarse · Freeze a billed month — no worklog dated in it can be changed.
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+          maxWidth: 320,
+          marginBottom: 12,
+        }}
+      >
+        <label htmlFor={clientSelectId} className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+          // cliente · client
+        </label>
+        <select
+          id={clientSelectId}
+          value={clientId}
+          onChange={(e) => {
+            const v = e.currentTarget.value;
+            setClientId(v);
+          }}
+          style={SELECT_STYLE}
+        >
+          <option value="">— seleccionar · select —</option>
+          {(clientsList.data ?? []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {clientId && (
+        <>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <label htmlFor={monthInputId} className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+                // mes · month
+              </label>
+              <input
+                id={monthInputId}
+                type="month"
+                value={month}
+                onChange={(e) => setMonth(e.currentTarget.value)}
+                style={{ ...SELECT_STYLE }}
+              />
+            </div>
+            <button className="b-btn b-btn--ink" disabled={!month} onClick={() => lockMut.mutate()}>
+              Bloquear · Lock
+            </button>
+          </div>
+
+          {locksQ.isLoading && (
+            <div className="gs-state">
+              <span className="gs-loading">cargando · loading</span>
+            </div>
+          )}
+          {!locksQ.isLoading && locks.length === 0 && (
+            <div className="gs-state" style={{ minHeight: 80 }}>
+              sin meses bloqueados · no locked months
+            </div>
+          )}
+          {locks.map((l) => (
+            <div
+              key={l.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                gap: 12,
+                padding: '8px 0',
+                borderBottom: '1px solid var(--eg-rule)',
+                alignItems: 'center',
+              }}
+            >
+              <span className="mono" style={{ fontWeight: 700 }}>
+                {l.monthKey}
+              </span>
+              <button
+                className="b-btn b-btn--ghost"
+                onClick={() => {
+                  if (window.confirm(`¿Desbloquear ${l.monthKey}? · Unlock?`))
+                    unlockMut.mutate(l.id);
+                }}
+              >
+                Desbloquear · Unlock
+              </button>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -3009,6 +3147,7 @@ export function SettingsPage() {
     rawTab === 'intake' ||
     rawTab === 'clients' ||
     rawTab === 'contracts' ||
+    rawTab === 'locks' ||
     rawTab === 'team'
       ? rawTab
       : 'clients';
@@ -3042,6 +3181,13 @@ export function SettingsPage() {
             count: contractsCountQ.data?.length ?? null,
             active: tab === 'contracts',
             onClick: () => setTab('contracts'),
+          },
+          {
+            es: 'Bloqueos',
+            en: 'Locks',
+            count: null,
+            active: tab === 'locks',
+            onClick: () => setTab('locks'),
           },
           {
             es: 'Tarifas',
@@ -3139,6 +3285,7 @@ export function SettingsPage() {
 
         {tab === 'clients' && <ClientsTab />}
         {tab === 'contracts' && <ContractsTab />}
+        {tab === 'locks' && <PeriodLocksTab />}
         {tab === 'rates' && <RatesTab />}
         {tab === 'channels' && <ChannelsTab />}
         {tab === 'intake' && <IntakeTab />}

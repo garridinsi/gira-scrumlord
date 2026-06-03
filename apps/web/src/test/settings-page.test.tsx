@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from './render';
 
@@ -42,6 +42,10 @@ const m = vi.hoisted(() => ({
   contractsCreate: vi.fn(),
   contractsUpdate: vi.fn(),
   contractsDelete: vi.fn(),
+  // period locks (P1)
+  periodLocksList: vi.fn(),
+  periodLocksCreate: vi.fn(),
+  periodLocksDelete: vi.fn(),
 }));
 
 vi.mock('../api/client', () => ({
@@ -89,6 +93,11 @@ vi.mock('../api/client', () => ({
     create: (d: unknown) => m.contractsCreate(d),
     update: (id: string, d: unknown) => m.contractsUpdate(id, d),
     delete: (id: string) => m.contractsDelete(id),
+  },
+  periodLocks: {
+    list: (clientId: string) => m.periodLocksList(clientId),
+    create: (clientId: string, monthKey: string) => m.periodLocksCreate(clientId, monthKey),
+    delete: (id: string) => m.periodLocksDelete(id),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -205,6 +214,9 @@ describe('SettingsPage', () => {
     m.contractsCreate.mockReset();
     m.contractsUpdate.mockReset();
     m.contractsDelete.mockReset();
+    m.periodLocksList.mockReset().mockResolvedValue([]);
+    m.periodLocksCreate.mockReset();
+    m.periodLocksDelete.mockReset();
     confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
@@ -1128,5 +1140,42 @@ describe('SettingsPage', () => {
     // Delete (window.confirm is stubbed true).
     await userEvent.click(screen.getByRole('button', { name: /Borrar · Delete/ }));
     await waitFor(() => expect(m.contractsDelete).toHaveBeenCalledWith('k1'));
+  });
+
+  // ── PeriodLocksTab (P1) ──────────────────────────────────────────────────────
+  it('locks: pick a client, lock a month, list existing, and unlock', async () => {
+    m.clientsList.mockResolvedValue([aClient()]); // c1 / Acme Corp
+    m.periodLocksList.mockResolvedValue([
+      {
+        id: 'l1',
+        clientId: 'c1',
+        monthKey: '2026-02',
+        lockedById: 'u1',
+        note: null,
+        createdAt: '2026-02-01T00:00:00Z',
+      },
+    ]);
+    m.periodLocksCreate.mockResolvedValue({
+      id: 'l2',
+      clientId: 'c1',
+      monthKey: '2026-03',
+      lockedById: 'u1',
+      note: null,
+      createdAt: '2026-03-01T00:00:00Z',
+    });
+    m.periodLocksDelete.mockResolvedValue(undefined);
+    renderTab('locks');
+
+    // Wait for the client option to load before selecting it.
+    await screen.findByRole('option', { name: 'Acme Corp' });
+    await userEvent.selectOptions(screen.getByLabelText(/cliente · client/), 'c1');
+    expect(await screen.findByText('2026-02')).toBeInTheDocument(); // existing lock
+
+    fireEvent.change(screen.getByLabelText(/mes · month/), { target: { value: '2026-03' } });
+    await userEvent.click(screen.getByRole('button', { name: /Bloquear · Lock/ }));
+    await waitFor(() => expect(m.periodLocksCreate).toHaveBeenCalledWith('c1', '2026-03'));
+
+    await userEvent.click(screen.getByRole('button', { name: /Desbloquear · Unlock/ }));
+    await waitFor(() => expect(m.periodLocksDelete).toHaveBeenCalledWith('l1'));
   });
 });
