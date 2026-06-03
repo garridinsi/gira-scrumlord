@@ -3,8 +3,13 @@
 // tested without real SMTP, and so webhooks get the SSRF guard.
 
 import nodemailer from 'nodemailer';
+import { Agent, fetch as undiciFetch } from 'undici';
 import { notifyConfig } from './config.js';
-import { assertResolvedHostSafe } from './ssrf.js';
+import { assertResolvedHostSafe, createSafeWebhookAgent } from './ssrf.js';
+
+// A single pooled dispatcher whose connect-time lookup re-validates the resolved IP,
+// so webhook delivery connects only to public addresses even under DNS rebinding.
+const webhookAgent: Agent = createSafeWebhookAgent();
 
 const transport = notifyConfig.isTest
   ? nodemailer.createTransport({ jsonTransport: true })
@@ -65,17 +70,21 @@ export async function deliver(
         // (SSRF). Cap the hops to avoid loops.
         let url = channel.target;
         for (let hop = 0; hop < 5; hop++) {
+          // Defence in depth: pre-validate the hostname's DNS here, AND pin the actual
+          // connection IP via the agent's connect-time lookup (closes the rebind TOCTOU).
           await assertResolvedHostSafe(url, allowPrivate);
-          const res = await fetch(url, {
+          const res = await undiciFetch(url, {
             method: hop === 0 ? 'POST' : 'GET',
             headers: { 'content-type': 'application/json' },
             body: hop === 0 ? JSON.stringify(payload) : undefined,
             redirect: 'manual',
             signal: controller.signal,
+            dispatcher: allowPrivate ? undefined : webhookAgent,
           });
           if (res.status >= 300 && res.status < 400) {
             const loc = res.headers.get('location');
-            if (!loc) return { ok: false, error: `webhook redirect with no location (${res.status})` };
+            if (!loc)
+              return { ok: false, error: `webhook redirect with no location (${res.status})` };
             url = new URL(loc, url).toString(); // resolve relative; re-validated next loop
             continue;
           }

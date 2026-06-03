@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
-import { assertResolvedHostSafe, assertSafeWebhookUrl, isPrivateHost } from '../src/ssrf.js';
+import {
+  assertResolvedHostSafe,
+  assertSafeWebhookUrl,
+  isPrivateHost,
+  safeWebhookLookup,
+} from '../src/ssrf.js';
 
 describe('ssrf guard', () => {
   it('flags loopback, private, and link-local hosts', () => {
@@ -64,6 +69,25 @@ describe('ssrf guard', () => {
 
     it('short-circuits to allowed when allowPrivate is set', async () => {
       await expect(assertResolvedHostSafe('http://127.0.0.1/x', true)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('safeWebhookLookup (connect-time pin — closes the rebind TOCTOU)', () => {
+    const lookupAsync = (host: string) =>
+      new Promise<{ err: NodeJS.ErrnoException | null; address: unknown }>((resolve) => {
+        safeWebhookLookup(host, { all: true }, (err, address) => resolve({ err, address }));
+      });
+
+    it('errors when the resolved address is private/loopback', async () => {
+      const { err } = await lookupAsync('localhost'); // → 127.0.0.1 / ::1
+      expect(err).toBeTruthy();
+      expect(err?.code).toBe('ESSRFBLOCKED');
+    });
+
+    it('passes a public address straight through', async () => {
+      const { err, address } = await lookupAsync('8.8.8.8');
+      expect(err).toBeNull();
+      expect(JSON.stringify(address)).toContain('8.8.8.8');
     });
   });
 });

@@ -3,6 +3,9 @@
 // but we still refuse loopback/private/link-local hosts by default so a misconfigured
 // (or malicious) channel can't make the server poke internal services.
 
+import { lookup as dnsLookup } from 'node:dns';
+import { Agent } from 'undici';
+
 /** Private/loopback/link-local IPv4 (dotted-quad). */
 function isPrivateV4(h: string): boolean {
   const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
@@ -100,4 +103,49 @@ export async function assertResolvedHostSafe(raw: string, allowPrivate = false):
       throw new Error(`webhook host ${hostname} resolves to a private address (${a.address})`);
     }
   }
+}
+
+/**
+ * DNS lookup that re-applies the private-host check to the ACTUAL resolved address
+ * at connection time. `assertResolvedHostSafe` validates a hostname's DNS, but the
+ * fetch that follows resolves the name AGAIN — a rebinding attacker can answer the
+ * pre-check with a public IP and the real connection with a private one. Wiring this
+ * as the webhook Agent's `connect.lookup` means the IP that's checked IS the IP that's
+ * connected to, closing the TOCTOU (and it re-checks on every redirect hop too).
+ */
+export function safeWebhookLookup(
+  hostname: string,
+  options: import('node:dns').LookupOneOptions | import('node:dns').LookupAllOptions,
+  // undici/net pass the standard dns.lookup callback (single, or array when all:true).
+  callback: (err: NodeJS.ErrnoException | null, address: unknown, family?: number) => void,
+): void {
+  dnsLookup(
+    hostname,
+    options as import('node:dns').LookupAllOptions,
+    (
+      err: NodeJS.ErrnoException | null,
+      address: string | import('node:dns').LookupAddress[],
+      family: number,
+    ) => {
+      if (err) return callback(err, address, family);
+      const list = Array.isArray(address)
+        ? address
+        : [{ address: address as unknown as string, family: family ?? 0 }];
+      for (const a of list) {
+        if (isPrivateHost(a.address)) {
+          const blocked: NodeJS.ErrnoException = Object.assign(
+            new Error(`blocked SSRF: ${hostname} resolves to a private address (${a.address})`),
+            { code: 'ESSRFBLOCKED' },
+          );
+          return callback(blocked, address, family);
+        }
+      }
+      callback(null, address, family);
+    },
+  );
+}
+
+/** Undici dispatcher that pins outbound webhook connections to public addresses. */
+export function createSafeWebhookAgent(): Agent {
+  return new Agent({ connect: { lookup: safeWebhookLookup as never } });
 }

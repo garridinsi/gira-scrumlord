@@ -15,7 +15,8 @@
   "dependencies": {
     "@gira/db": "workspace:*",
     "dotenv": "^16.4.7",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^6.9.16",
+    "undici": "^6.21.0"
   },
   "devDependencies": {
     "@types/nodemailer": "^6.4.17"
