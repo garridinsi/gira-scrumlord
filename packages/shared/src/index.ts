@@ -6,6 +6,7 @@ export * from './auth.js';
 export * from './client.js';
 export * from './contract.js';
 export * from './period-lock.js';
+export * from './sla.js';
 export * from './project.js';
 export * from './issue.js';
 export * from './sprint.js';

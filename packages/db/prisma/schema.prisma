@@ -294,8 +294,26 @@ model Project {
   channels        NotificationChannel[]
   intakeSources   IntakeSource[]
   assignmentRules AssignmentRule[]
+  slaPolicies     SlaPolicy[]
 
   @@index([clientId])
+}
+
+/// B2: an SLA target for a project, optionally scoped to one priority. Resolution at read
+/// time: priority-specific policy → project default (priority null) → the global env
+/// defaults. Targets are in BUSINESS minutes (counted via the B1 business-hours engine).
+model SlaPolicy {
+  id                String   @id @default(cuid())
+  projectId         String
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  priority          String? // a Priority value, or null = the project default
+  responseMinutes   Int
+  resolutionMinutes Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([projectId, priority])
+  @@index([projectId])
 }
 
 model Status {
