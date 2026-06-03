@@ -30,6 +30,7 @@ function makeIssue(key: string): IssueView {
     resolution: null,
     blockedReason: null,
     severity: null,
+    reopenCount: 0,
   };
 }
 

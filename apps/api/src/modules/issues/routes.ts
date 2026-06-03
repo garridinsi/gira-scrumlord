@@ -73,12 +73,14 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
     assertCanAccessProject(user, { clientId: before.project.clientId });
     const input = updateIssueSchema.parse(req.body);
 
-    // Moving across status categories drives closedAt.
+    // Moving across status categories drives closedAt; a done → not-done move is a reopen.
     let closedAt: Date | null | undefined;
+    let reopened = false;
     if (input.statusId && input.statusId !== before.statusId) {
       const status = await prisma.status.findUnique({ where: { id: input.statusId } });
       if (!status || status.projectId !== before.projectId) throw badRequest('invalid statusId');
       closedAt = status.category === 'done' ? (before.closedAt ?? new Date()) : null;
+      reopened = before.status.category === 'done' && status.category !== 'done';
     }
 
     // Every connected entity must belong to this issue's project (and a client
@@ -132,6 +134,7 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
     if ('resolution' in input) data.resolution = input.resolution ?? null;
     if ('blockedReason' in input) data.blockedReason = input.blockedReason ?? null;
     if ('severity' in input) data.severity = input.severity ?? null;
+    if (reopened) data.reopenCount = { increment: 1 };
     if ('dueAt' in input) data.dueAt = input.dueAt ?? null;
     if (input.statusId) data.status = { connect: { id: input.statusId } };
     if (closedAt !== undefined) data.closedAt = closedAt;

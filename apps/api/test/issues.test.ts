@@ -122,6 +122,17 @@ describe('issues', () => {
     expect(unblocked.json().blockedReason).toBeNull();
   });
 
+  it('counts reopens when a done issue moves back to open (D2)', async () => {
+    const { cookie, projectKey, byName } = await setup();
+    await create(app, cookie, { projectKey, title: 'Recurring bug' }); // GIRA-1
+    await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { statusId: byName.Done!.id } });
+    const reopened = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { statusId: byName['In Progress']!.id } });
+    expect(reopened.json().reopenCount).toBe(1);
+    await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { statusId: byName.Done!.id } });
+    const again = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { statusId: byName['To Do']!.id } });
+    expect(again.json().reopenCount).toBe(2);
+  });
+
   it('records bug severity on create and via patch (D3)', async () => {
     const { cookie, projectKey } = await setup();
     const created = await create(app, cookie, { projectKey, title: 'Crash', type: 'bug', severity: 'critical' });

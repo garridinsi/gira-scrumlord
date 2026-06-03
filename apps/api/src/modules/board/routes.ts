@@ -169,8 +169,11 @@ export async function boardRoutes(app: FastifyInstance): Promise<void> {
     }
 
     let closedAt: Date | null | undefined;
+    let reopened = false;
     if (targetStatus) {
       closedAt = targetStatus.category === 'done' ? (issue.closedAt ?? new Date()) : null;
+      // D2: dragging a done card back to an open column is a reopen.
+      reopened = issue.status.category === 'done' && targetStatus.category !== 'done';
     }
 
     // Compute the new rank and write it INSIDE one serializable transaction so
@@ -189,6 +192,7 @@ export async function boardRoutes(app: FastifyInstance): Promise<void> {
       const data: Prisma.IssueUpdateInput = { rank };
       if (input.statusId) data.status = { connect: { id: input.statusId } };
       if (closedAt !== undefined) data.closedAt = closedAt;
+      if (reopened) data.reopenCount = { increment: 1 };
       if ('sprintId' in input) {
         data.sprint = input.sprintId ? { connect: { id: input.sprintId } } : { disconnect: true };
       }

@@ -110,6 +110,7 @@ export interface IssueView {
   resolution: string | null;
   blockedReason: string | null;
   severity: 'critical' | 'major' | 'minor' | 'trivial' | null;
+  reopenCount: number;
 }
 
 export interface CommentView {
