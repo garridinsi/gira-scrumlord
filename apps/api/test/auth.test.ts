@@ -69,6 +69,17 @@ describe('auth', () => {
     expect(res.statusCode).toBe(202);
   });
 
+  it('throttles repeated magic-link requests for the same account (anti email-bomb)', async () => {
+    await makeUser({ email: 'victim@example.test' });
+    expect((await createMagicLink('victim@example.test')).sent).toBe(true);
+    // A second request inside the cooldown window mints no new token…
+    expect((await createMagicLink('victim@example.test')).sent).toBe(false);
+    expect(await prisma.magicLinkToken.count({ where: { email: 'victim@example.test' } })).toBe(1);
+    // …yet the HTTP route still 202s, so it never reveals the throttle or the account.
+    const res = await app.inject({ method: 'POST', url: '/auth/magic-link', payload: { email: 'victim@example.test' } });
+    expect(res.statusCode).toBe(202);
+  });
+
   it('completes a full login → /auth/me → logout cycle', async () => {
     await makeUser({ email: 'rex@example.test', name: 'Rex' });
     const { rawToken } = await createMagicLink('rex@example.test');

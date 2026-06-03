@@ -27,6 +27,11 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
   MAGIC_LINK_TTL_MINUTES: z.coerce.number().int().positive().default(15),
+  // Per-account cooldown (seconds) between minting magic links / email-change tokens
+  // for the same address — caps an IP-rotating attacker from email-bombing a victim,
+  // independent of the IP-keyed rate limit. The endpoints still return 202/202-style
+  // responses, so this leaks nothing about whether the account exists. 0 disables it.
+  MAGIC_LINK_COOLDOWN_SECONDS: z.coerce.number().int().min(0).default(60),
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
   SMTP_SECURE: z

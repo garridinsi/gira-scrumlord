@@ -9,7 +9,7 @@ import { type User, prisma } from '@gira/db';
 import { generateToken, hashToken } from '@gira/domain';
 import { recordAudit } from '@gira/sauron';
 import { config } from '../../config.js';
-import { badRequest, conflict, unauthorized } from '../../lib/http-error.js';
+import { badRequest, conflict, tooManyRequests, unauthorized } from '../../lib/http-error.js';
 
 // A bit longer than the sign-in link: the user has to go read a different inbox.
 const EMAIL_CHANGE_TTL_MINUTES = 30;
@@ -33,6 +33,17 @@ export async function requestEmailChange(
 
   const taken = await prisma.user.findUnique({ where: { email: newEmail }, select: { id: true } });
   if (taken) throw conflict('that email is already in use');
+
+  // Per-account cooldown so a logged-in user can't email-bomb a target address by
+  // re-requesting in a tight loop (each request mails the NEW address).
+  const cooldownMs = config.MAGIC_LINK_COOLDOWN_SECONDS * 1000;
+  if (cooldownMs > 0) {
+    const recent = await prisma.emailChangeToken.findFirst({
+      where: { userId: user.id, createdAt: { gt: new Date(Date.now() - cooldownMs) } },
+      select: { id: true },
+    });
+    if (recent) throw tooManyRequests('please wait a moment before requesting another email-change link');
+  }
 
   // Single outstanding change request per user: drop any prior unconsumed tokens.
   await prisma.emailChangeToken.deleteMany({ where: { userId: user.id, consumedAt: null } });

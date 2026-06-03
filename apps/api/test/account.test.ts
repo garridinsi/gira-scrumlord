@@ -89,6 +89,24 @@ describe('account self-service', () => {
 
   // ── verified email change ──────────────────────────────────────────────────
   describe('email change', () => {
+    it('throttles rapid repeat change requests so a target address can’t be bombed (429)', async () => {
+      const { cookie } = await actingAs({ email: 'me@example.test' });
+      const first = await app.inject({
+        method: 'POST',
+        url: '/auth/email-change/request',
+        headers: { cookie },
+        payload: { newEmail: 'new1@example.test' },
+      });
+      expect(first.statusCode).toBe(202);
+      const second = await app.inject({
+        method: 'POST',
+        url: '/auth/email-change/request',
+        headers: { cookie },
+        payload: { newEmail: 'new2@example.test' },
+      });
+      expect(second.statusCode).toBe(429); // cooldown — no second mail to a target
+    });
+
     it('request rejects the same email and an already-taken email', async () => {
       const { user, cookie } = await actingAs({ email: 'me@example.test' });
       await makeUser({ email: 'taken@example.test' });

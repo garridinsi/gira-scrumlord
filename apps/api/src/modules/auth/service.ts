@@ -36,6 +36,19 @@ export async function createMagicLink(email: string): Promise<MagicLinkResult> {
     }
   }
 
+  // Per-account throttle: suppress minting (and therefore emailing) another link if
+  // one was issued for this address within the cooldown window — an IP-rotating
+  // attacker can't email-bomb a known victim. We've already confirmed the account
+  // exists here, and the route 202s regardless, so this leaks nothing.
+  const cooldownMs = config.MAGIC_LINK_COOLDOWN_SECONDS * 1000;
+  if (cooldownMs > 0) {
+    const recent = await prisma.magicLinkToken.findFirst({
+      where: { email, createdAt: { gt: new Date(Date.now() - cooldownMs) } },
+      select: { id: true },
+    });
+    if (recent) return { sent: false };
+  }
+
   const { raw, hash } = generateToken();
   const expiresAt = new Date(Date.now() + config.MAGIC_LINK_TTL_MINUTES * 60_000);
   await prisma.magicLinkToken.create({ data: { email, tokenHash: hash, expiresAt } });
