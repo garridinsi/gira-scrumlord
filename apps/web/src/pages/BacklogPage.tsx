@@ -11,6 +11,7 @@ import { useToast } from '../ui/Toast';
 import { formatDate, formatMinutes } from '../lib/format';
 import { formatMoney } from '../lib/money';
 import { FilterBar } from '../ui/FilterBar';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useMe } from '../hooks/useAuth';
 import { useProjectTabs } from '../hooks/useProjectTabs';
 
@@ -443,6 +444,7 @@ function BacklogGroup({
 function CreateSprintModal({ projectKey, onClose }: { projectKey: string; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
+  const dialogRef = useFocusTrap<HTMLDivElement>(true, onClose);
   const [name, setName] = useState('');
   const [goal, setGoal] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -473,6 +475,11 @@ function CreateSprintModal({ projectKey, onClose }: { projectKey: string; onClos
   return (
     <div className="gs-scrim" onClick={onClose}>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Nuevo sprint · New sprint"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 480,
@@ -620,6 +627,7 @@ function CreateIssueModal({
 }) {
   const qc = useQueryClient();
   const toast = useToast();
+  const dialogRef = useFocusTrap<HTMLDivElement>(true, onClose);
   const [title, setTitle] = useState('');
 
   const mut = useMutation({
@@ -650,6 +658,11 @@ function CreateIssueModal({
   return (
     <div className="gs-scrim" onClick={onClose}>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Nuevo ticket · New issue"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 440,
