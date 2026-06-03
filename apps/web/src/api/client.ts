@@ -19,6 +19,7 @@ import type {
   SessionView,
   InboxItemView,
   ContractView,
+  SlaView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -382,6 +383,7 @@ export const issues = {
   },
 
   cost: (key: string) => request<CostView>(`/issues/${key}/cost`),
+  sla: (key: string) => request<SlaView>(`/issues/${key}/sla`),
 };
 
 // ---------------------------------------------------------------------------

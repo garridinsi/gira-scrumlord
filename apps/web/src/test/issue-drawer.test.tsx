@@ -8,6 +8,7 @@ import { renderWithProviders } from './render';
 const h = vi.hoisted(() => ({
   get: vi.fn(),
   cost: vi.fn(),
+  sla: vi.fn(),
   commentsList: vi.fn(),
   worklogsList: vi.fn(),
   statusesList: vi.fn(),
@@ -40,6 +41,7 @@ vi.mock('../api/client', () => ({
   issues: {
     get: (k: string) => h.get(k),
     cost: (k: string) => h.cost(k),
+    sla: (k: string) => h.sla(k),
     update: (k: string, d: unknown) => h.update(k, d),
     move: (k: string, d: unknown) => h.move(k, d),
     comments: {
@@ -120,6 +122,12 @@ describe('IssueDrawer', () => {
       currency: 'EUR',
       billingMode: 'hourly',
     });
+    h.sla.mockReset().mockResolvedValue({
+      issueKey: 'GIRA-1',
+      businessTimeZone: 'Europe/Madrid',
+      response: { targetMinutes: 480, elapsedMinutes: 120, met: true, breached: false },
+      resolution: { targetMinutes: 2400, elapsedMinutes: 3000, met: false, breached: true },
+    });
     h.commentsList.mockReset().mockResolvedValue([]);
     h.worklogsList.mockReset().mockResolvedValue([]);
     h.statusesList
@@ -151,6 +159,15 @@ describe('IssueDrawer', () => {
     expect(await screen.findByText('My issue title')).toBeInTheDocument();
     expect(screen.getByText('GIRA-1')).toBeInTheDocument();
     expect(h.get).toHaveBeenCalledWith('GIRA-1');
+  });
+
+  it('shows the SLA breach clock in the sidebar (B2)', async () => {
+    renderDrawer();
+    // Response is met within target (✓); resolution overran its target (breached ⚠).
+    expect(await screen.findByText(/respuesta · response/)).toBeInTheDocument();
+    expect(screen.getByText(/2h \/ 8h/)).toBeInTheDocument();
+    expect(screen.getByText(/50h \/ 40h/)).toBeInTheDocument();
+    expect(h.sla).toHaveBeenCalledWith('GIRA-1');
   });
 
   it('shows the error state when the issue fails to load', async () => {

@@ -1080,6 +1080,54 @@ function AuditMiniTab({ issueId }: { issueId: string }) {
   );
 }
 
+// ── SLA mini-panel (B2) ─────────────────────────────────────────────────────
+
+function fmtBizMins(m: number): string {
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  return h > 0 ? (min ? `${h}h ${min}m` : `${h}h`) : `${min}m`;
+}
+
+function SlaClockRow({
+  es,
+  en,
+  clock,
+}: {
+  es: string;
+  en: string;
+  clock: { elapsedMinutes: number; targetMinutes: number; met: boolean; breached: boolean };
+}) {
+  const color = clock.breached ? 'var(--eg-red)' : clock.met ? 'var(--eg-green)' : 'var(--eg-fg-2)';
+  const mark = clock.breached ? ' ⚠' : clock.met ? ' ✓' : '';
+  return (
+    <div
+      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}
+    >
+      <span className="caps" style={{ fontSize: 9, color: 'var(--eg-fg-3)' }}>
+        {es} · {en}
+      </span>
+      <span className="mono" style={{ fontSize: 11, color }}>
+        {fmtBizMins(clock.elapsedMinutes)} / {fmtBizMins(clock.targetMinutes)}
+        {mark}
+      </span>
+    </div>
+  );
+}
+
+function SlaMini({ issueKey }: { issueKey: string }) {
+  const slaQuery = useQuery({ queryKey: ['sla', issueKey], queryFn: () => issues.sla(issueKey) });
+  if (slaQuery.isLoading || !slaQuery.data) return null;
+  const sla = slaQuery.data;
+  return (
+    <SideField labelEs="SLA" labelEn="SLA · horas hábiles · business hrs">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <SlaClockRow es="respuesta" en="response" clock={sla.response} />
+        <SlaClockRow es="resolución" en="resolution" clock={sla.resolution} />
+      </div>
+    </SideField>
+  );
+}
+
 // ── Sidebar fields ────────────────────────────────────────────────────────────
 
 function DrawerSidebar({
@@ -1411,6 +1459,8 @@ function DrawerSidebar({
           )}
         </SideField>
       )}
+
+      <SlaMini issueKey={issue.key} />
 
       <SideField labelEs="etiquetas" labelEn="labels">
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
