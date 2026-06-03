@@ -5,7 +5,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
-  createTransport: vi.fn(() => ({ sendMail: vi.fn(async () => ({ messageId: 'x' })) })),
+  createTransport: vi.fn((_opts: Record<string, unknown>) => ({
+    sendMail: vi.fn(async () => ({ messageId: 'x' })),
+  })),
 }));
 vi.mock('nodemailer', () => ({ default: { createTransport: h.createTransport } }));
 vi.mock('dotenv', () => ({ config: () => ({ parsed: {} }) }));
