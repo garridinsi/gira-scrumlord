@@ -96,6 +96,36 @@ describe('sprints + backlog + velocity', () => {
     expect((await app.inject({ method: 'POST', url: `/sprints/${b}/start`, headers: { cookie } })).statusCode).toBe(409);
   });
 
+  it('lists, reads, patches, and deletes sprints', async () => {
+    const { user, cookie } = await actingAs({ role: 'member' });
+    const { projectKey } = await seedProject({ reporterId: user.id });
+    const created = (
+      await app.inject({ method: 'POST', url: `/projects/${projectKey}/sprints`, headers: { cookie }, payload: { name: 'S1', goal: 'ship it' } })
+    ).json();
+
+    const list = await app.inject({ method: 'GET', url: `/projects/${projectKey}/sprints`, headers: { cookie } });
+    expect(list.statusCode).toBe(200);
+    expect(list.json().map((s: { id: string }) => s.id)).toContain(created.id);
+    expect(list.json()[0].velocity).toBeTruthy(); // computeVelocity is mapped into the view
+
+    const one = await app.inject({ method: 'GET', url: `/sprints/${created.id}`, headers: { cookie } });
+    expect(one.statusCode).toBe(200);
+    expect(one.json().goal).toBe('ship it');
+
+    const patched = await app.inject({
+      method: 'PATCH',
+      url: `/sprints/${created.id}`,
+      headers: { cookie },
+      payload: { name: 'S1 renamed', goal: 'new goal' },
+    });
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().name).toBe('S1 renamed');
+
+    const del = await app.inject({ method: 'DELETE', url: `/sprints/${created.id}`, headers: { cookie } });
+    expect(del.statusCode).toBe(204);
+    expect((await app.inject({ method: 'GET', url: `/sprints/${created.id}`, headers: { cookie } })).statusCode).toBe(404);
+  });
+
   it('returns unfinished issues to the backlog when a sprint closes', async () => {
     const { user, cookie } = await actingAs({ role: 'member' });
     const { projectKey, byName } = await seedProject({ reporterId: user.id });
