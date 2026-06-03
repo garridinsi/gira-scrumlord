@@ -122,10 +122,29 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users    User[]
-  projects Project[]
-  rate     Rate?
-  invoices Invoice[]
+  users     User[]
+  projects  Project[]
+  rate      Rate?
+  invoices  Invoice[]
+  contracts Contract[]
+}
+
+/// R1: a client engagement contract / SOW — anchors retainer billing and SLA coverage.
+model Contract {
+  id            String    @id @default(cuid())
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  name          String
+  retainerCents Int? // flat monthly retainer (integer cents); null = pure T&M
+  includedHours Int? // hours included in the retainer before overage
+  startDate     DateTime?
+  endDate       DateTime?
+  status        String    @default("active") // active | ended
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([clientId])
 }
 
 model User {

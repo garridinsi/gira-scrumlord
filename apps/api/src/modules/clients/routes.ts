@@ -59,10 +59,11 @@ export async function clientRoutes(app: FastifyInstance): Promise<void> {
     // orphan portal users into a null clientId, nor detach projects out of tenant scope,
     // nor destroy non-fiscal annexes + their TicketBAI links). Pre-check each so the admin
     // gets a clear message instead of a raw FK violation — the FK is the DB backstop.
-    const [userCount, projectCount, invoiceCount] = await Promise.all([
+    const [userCount, projectCount, invoiceCount, contractCount] = await Promise.all([
       prisma.user.count({ where: { clientId: id } }),
       prisma.project.count({ where: { clientId: id } }),
       prisma.invoice.count({ where: { clientId: id } }),
+      prisma.contract.count({ where: { clientId: id } }),
     ]);
     if (userCount > 0) {
       throw conflict(
@@ -77,6 +78,11 @@ export async function clientRoutes(app: FastifyInstance): Promise<void> {
     if (invoiceCount > 0) {
       throw conflict(
         `this client still has ${invoiceCount} billing annex(es) — these are financial records and must be kept; the client cannot be deleted`,
+      );
+    }
+    if (contractCount > 0) {
+      throw conflict(
+        `this client still has ${contractCount} contract(s) — end or remove them before deleting the client`,
       );
     }
     await prisma.$transaction(async (tx) => {
