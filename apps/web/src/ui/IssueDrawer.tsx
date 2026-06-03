@@ -801,7 +801,7 @@ function DrawerSidebar({
   issue: IssueView;
   statuses: StatusView[];
   labels: LabelView[];
-  onUpdate: (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null; resolution: string | null; blockedReason: string | null }>) => void;
+  onUpdate: (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null; resolution: string | null; blockedReason: string | null; severity: string | null }>) => void;
   onAssigneeChange: (assigneeId: string | null) => void;
   toast: ReturnType<typeof useToast>;
 }) {
@@ -923,6 +923,20 @@ function DrawerSidebar({
           <option value="wontfix">No se corrige · Won&rsquo;t fix</option>
           <option value="duplicate">Duplicado · Duplicate</option>
           <option value="cannot-reproduce">No reproducible · Cannot reproduce</option>
+        </select>
+      </SideField>
+
+      <SideField labelEs="severidad" labelEn="severity">
+        <select
+          value={issue.severity ?? ''}
+          onChange={(e) => onUpdate({ severity: e.target.value || null })}
+          style={{ width: '100%', padding: '4px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+        >
+          <option value="">— sin severidad · none —</option>
+          <option value="critical">Crítica · Critical</option>
+          <option value="major">Mayor · Major</option>
+          <option value="minor">Menor · Minor</option>
+          <option value="trivial">Trivial</option>
         </select>
       </SideField>
 
@@ -1178,7 +1192,7 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleUpdate = (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null; resolution: string | null; blockedReason: string | null }>) => {
+  const handleUpdate = (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null; resolution: string | null; blockedReason: string | null; severity: string | null }>) => {
     if (data.statusId) {
       moveMutation.mutate({ statusId: data.statusId });
     } else {

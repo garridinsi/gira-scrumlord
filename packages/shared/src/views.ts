@@ -109,6 +109,7 @@ export interface IssueView {
   closedAt: string | null;
   resolution: string | null;
   blockedReason: string | null;
+  severity: 'critical' | 'major' | 'minor' | 'trivial' | null;
 }
 
 export interface CommentView {

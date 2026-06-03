@@ -187,5 +187,6 @@ export function toIssueView(i: IssueWithRelations, projectKey?: string): IssueVi
     closedAt: i.closedAt ? i.closedAt.toISOString() : null,
     resolution: i.resolution ?? null,
     blockedReason: i.blockedReason ?? null,
+    severity: (i.severity ?? null) as 'critical' | 'major' | 'minor' | 'trivial' | null,
   };
 }

@@ -29,6 +29,7 @@ function makeIssue(key: string): IssueView {
     closedAt: null,
     resolution: null,
     blockedReason: null,
+    severity: null,
   };
 }
 

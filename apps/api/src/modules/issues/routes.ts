@@ -131,6 +131,7 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
     };
     if ('resolution' in input) data.resolution = input.resolution ?? null;
     if ('blockedReason' in input) data.blockedReason = input.blockedReason ?? null;
+    if ('severity' in input) data.severity = input.severity ?? null;
     if ('dueAt' in input) data.dueAt = input.dueAt ?? null;
     if (input.statusId) data.status = { connect: { id: input.statusId } };
     if (closedAt !== undefined) data.closedAt = closedAt;

@@ -82,6 +82,19 @@ export function IssueCard({
 
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <PriorityChip priority={issue.priority} />
+          {issue.severity && (
+            <span
+              className="chip"
+              title={`severidad · severity: ${issue.severity}`}
+              style={{
+                background: issue.severity === 'critical' ? 'var(--eg-red)' : issue.severity === 'major' ? 'var(--eg-yellow)' : 'var(--eg-paper-3)',
+                color: issue.severity === 'critical' ? 'var(--eg-paper)' : 'var(--eg-iron)',
+                borderColor: 'var(--eg-iron)',
+              }}
+            >
+              SEV · {issue.severity.toUpperCase()}
+            </span>
+          )}
           {issue.blockedReason && (
             <span
               className="chip"

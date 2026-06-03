@@ -122,6 +122,18 @@ describe('issues', () => {
     expect(unblocked.json().blockedReason).toBeNull();
   });
 
+  it('records bug severity on create and via patch (D3)', async () => {
+    const { cookie, projectKey } = await setup();
+    const created = await create(app, cookie, { projectKey, title: 'Crash', type: 'bug', severity: 'critical' });
+    expect(created.json().severity).toBe('critical');
+    const patched = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { severity: 'minor' } });
+    expect(patched.json().severity).toBe('minor');
+    const cleared = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { severity: null } });
+    expect(cleared.json().severity).toBeNull();
+    // an invalid severity is rejected by the enum
+    expect((await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { severity: 'sev0' } })).statusCode).toBe(400);
+  });
+
   it('hides internal comments from client/portal viewers; clients can’t post internal (N1)', async () => {
     const client = await prisma.client.create({ data: { name: 'AcmeN1', slug: 'acmen1' } });
     const staff = await actingAs({ role: 'member' });

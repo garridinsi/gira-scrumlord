@@ -113,6 +113,7 @@ export async function createIssue(
         fixedPriceCents: input.fixedPriceCents ?? null,
         externalRef: opts?.externalRef ?? null,
         intakeSourceId: opts?.intakeSourceId ?? null,
+        severity: input.severity ?? null,
         labels: input.labelIds?.length
           ? { connect: input.labelIds.map((id) => ({ id })) }
           : undefined,

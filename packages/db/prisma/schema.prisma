@@ -340,6 +340,7 @@ model Issue {
   closedAt        DateTime?
   resolution      String? // D2: how it was resolved — fixed / wontfix / duplicate / cannot-reproduce
   blockedReason   String? // D1: non-null marks the issue Blocked (the reason); null = not blocked
+  severity        String? // D3: bug severity (distinct from priority) — critical / major / minor / trivial
 
   labels       Label[]        @relation("IssueLabels")
   comments     Comment[]

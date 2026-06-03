@@ -60,6 +60,11 @@ describe('IssueCard', () => {
     expect(screen.getByText(/BLOCKED/)).toBeInTheDocument();
   });
 
+  it('shows a severity badge when set (D3)', () => {
+    render(<IssueCard issue={makeIssue({ severity: 'critical' } as Partial<IssueView>)} />);
+    expect(screen.getByText(/SEV · CRITICAL/)).toBeInTheDocument();
+  });
+
   it('renders emergency styling without crashing and fires onClick', async () => {
     const onClick = vi.fn();
     render(<IssueCard issue={makeIssue({ priority: 'emergency' })} onClick={onClick} />);

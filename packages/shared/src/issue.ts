@@ -5,6 +5,10 @@ import { projectKey } from './project.js';
 
 const cuid = z.string().cuid();
 
+// D3: bug severity, distinct from business priority.
+export const issueSeverity = z.enum(['critical', 'major', 'minor', 'trivial']);
+export type IssueSeverity = z.infer<typeof issueSeverity>;
+
 export const createIssueSchema = z
   .object({
     projectKey,
@@ -22,6 +26,7 @@ export const createIssueSchema = z
     labelIds: z.array(cuid).max(20).optional(),
     billingMode: billingMode.default('hourly'),
     fixedPriceCents: z.number().int().min(0).nullish(),
+    severity: issueSeverity.nullish(),
   })
   .refine((v) => v.billingMode !== 'fixed' || v.fixedPriceCents != null, {
     message: 'fixedPriceCents is required when billingMode is fixed',
@@ -46,6 +51,7 @@ export const updateIssueSchema = z.object({
   fixedPriceCents: z.number().int().min(0).nullish(),
   resolution: z.string().trim().max(2000).nullish(), // D2: how the issue was resolved
   blockedReason: z.string().trim().max(2000).nullish(), // D1: non-null marks the issue Blocked
+  severity: issueSeverity.nullish(), // D3: bug severity
 });
 export type UpdateIssue = z.infer<typeof updateIssueSchema>;
 
