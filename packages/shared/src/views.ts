@@ -107,6 +107,7 @@ export interface IssueView {
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;
+  resolution: string | null;
 }
 
 export interface CommentView {

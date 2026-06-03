@@ -124,6 +124,18 @@ describe('issues', () => {
     expect(add.json().body).toBe('from the client');
   });
 
+  it('records and clears an issue resolution (D2)', async () => {
+    const { cookie, projectKey } = await setup();
+    await create(app, cookie, { projectKey, title: 'Bug' }); // GIRA-1
+    const res = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { resolution: 'fixed' } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().resolution).toBe('fixed');
+    expect((await app.inject({ method: 'GET', url: '/issues/GIRA-1', headers: { cookie } })).json().resolution).toBe('fixed');
+    // null clears it
+    const cleared = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { resolution: null } });
+    expect(cleared.json().resolution).toBeNull();
+  });
+
   it('forbids a client from reading another client’s issue', async () => {
     const { cookie, projectKey } = await setup();
     await create(app, cookie, { projectKey, title: 'Secret' });

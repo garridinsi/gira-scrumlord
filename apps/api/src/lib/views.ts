@@ -184,5 +184,6 @@ export function toIssueView(i: IssueWithRelations, projectKey?: string): IssueVi
     createdAt: i.createdAt.toISOString(),
     updatedAt: i.updatedAt.toISOString(),
     closedAt: i.closedAt ? i.closedAt.toISOString() : null,
+    resolution: i.resolution ?? null,
   };
 }

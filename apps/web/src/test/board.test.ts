@@ -27,6 +27,7 @@ function makeIssue(key: string): IssueView {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     closedAt: null,
+    resolution: null,
   };
 }
 

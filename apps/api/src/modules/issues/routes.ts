@@ -129,6 +129,7 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
       billingMode: input.billingMode,
       fixedPriceCents: input.fixedPriceCents,
     };
+    if ('resolution' in input) data.resolution = input.resolution ?? null;
     if ('dueAt' in input) data.dueAt = input.dueAt ?? null;
     if (input.statusId) data.status = { connect: { id: input.statusId } };
     if (closedAt !== undefined) data.closedAt = closedAt;
