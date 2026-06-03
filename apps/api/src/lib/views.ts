@@ -189,5 +189,6 @@ export function toIssueView(i: IssueWithRelations, projectKey?: string): IssueVi
     blockedReason: i.blockedReason ?? null,
     severity: (i.severity ?? null) as 'critical' | 'major' | 'minor' | 'trivial' | null,
     reopenCount: i.reopenCount ?? 0,
+    moscow: (i.moscow ?? null) as 'must' | 'should' | 'could' | 'wont' | null,
   };
 }

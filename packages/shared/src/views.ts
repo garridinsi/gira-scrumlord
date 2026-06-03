@@ -111,6 +111,7 @@ export interface IssueView {
   blockedReason: string | null;
   severity: 'critical' | 'major' | 'minor' | 'trivial' | null;
   reopenCount: number;
+  moscow: 'must' | 'should' | 'could' | 'wont' | null;
 }
 
 export interface CommentView {

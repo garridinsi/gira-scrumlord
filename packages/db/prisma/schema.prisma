@@ -342,6 +342,7 @@ model Issue {
   blockedReason   String? // D1: non-null marks the issue Blocked (the reason); null = not blocked
   severity        String? // D3: bug severity (distinct from priority) — critical / major / minor / trivial
   reopenCount     Int         @default(0) // D2: times reopened (done → not-done) — escaped-defect signal
+  moscow          String? // D7: MoSCoW prioritization — must / should / could / wont
 
   labels       Label[]        @relation("IssueLabels")
   comments     Comment[]

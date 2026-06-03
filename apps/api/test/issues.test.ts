@@ -133,6 +133,15 @@ describe('issues', () => {
     expect(again.json().reopenCount).toBe(2);
   });
 
+  it('records MoSCoW prioritization on create + patch (D7)', async () => {
+    const { cookie, projectKey } = await setup();
+    const created = await create(app, cookie, { projectKey, title: 'Feature', moscow: 'must' });
+    expect(created.json().moscow).toBe('must');
+    const patched = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { moscow: 'could' } });
+    expect(patched.json().moscow).toBe('could');
+    expect((await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { moscow: 'nonsense' } })).statusCode).toBe(400);
+  });
+
   it('records bug severity on create and via patch (D3)', async () => {
     const { cookie, projectKey } = await setup();
     const created = await create(app, cookie, { projectKey, title: 'Crash', type: 'bug', severity: 'critical' });

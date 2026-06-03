@@ -114,6 +114,7 @@ export async function createIssue(
         externalRef: opts?.externalRef ?? null,
         intakeSourceId: opts?.intakeSourceId ?? null,
         severity: input.severity ?? null,
+        moscow: input.moscow ?? null,
         labels: input.labelIds?.length
           ? { connect: input.labelIds.map((id) => ({ id })) }
           : undefined,

@@ -9,6 +9,10 @@ const cuid = z.string().cuid();
 export const issueSeverity = z.enum(['critical', 'major', 'minor', 'trivial']);
 export type IssueSeverity = z.infer<typeof issueSeverity>;
 
+// D7: MoSCoW prioritization for backlog grooming.
+export const issueMoscow = z.enum(['must', 'should', 'could', 'wont']);
+export type IssueMoscow = z.infer<typeof issueMoscow>;
+
 export const createIssueSchema = z
   .object({
     projectKey,
@@ -27,6 +31,7 @@ export const createIssueSchema = z
     billingMode: billingMode.default('hourly'),
     fixedPriceCents: z.number().int().min(0).nullish(),
     severity: issueSeverity.nullish(),
+    moscow: issueMoscow.nullish(),
   })
   .refine((v) => v.billingMode !== 'fixed' || v.fixedPriceCents != null, {
     message: 'fixedPriceCents is required when billingMode is fixed',
@@ -52,6 +57,7 @@ export const updateIssueSchema = z.object({
   resolution: z.string().trim().max(2000).nullish(), // D2: how the issue was resolved
   blockedReason: z.string().trim().max(2000).nullish(), // D1: non-null marks the issue Blocked
   severity: issueSeverity.nullish(), // D3: bug severity
+  moscow: issueMoscow.nullish(), // D7: MoSCoW prioritization
 });
 export type UpdateIssue = z.infer<typeof updateIssueSchema>;
 
