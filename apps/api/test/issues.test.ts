@@ -2,7 +2,7 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
-import { actingAs } from './helpers/auth.js';
+import { actingAs, makeUser } from './helpers/auth.js';
 import { prisma, resetDb } from './helpers/db.js';
 import { seedProject } from './helpers/fixtures.js';
 
@@ -86,6 +86,42 @@ describe('issues', () => {
     const list = await app.inject({ method: 'GET', url: '/issues/GIRA-1/comments', headers: { cookie } });
     expect(list.json()).toHaveLength(1);
     expect(list.json()[0].body).toBe('first!');
+  });
+
+  it('PATCH validation + disconnect branches, emergency escalation emit, and audited DELETE', async () => {
+    const { cookie, projectKey } = await setup();
+    const dev = await makeUser({ name: 'Dev', role: 'member' });
+    await create(app, cookie, { projectKey, title: 'X', assigneeId: dev.id, storyPoints: 3 }); // GIRA-1
+
+    // invalid statusId / parentId are rejected (the validation branches).
+    const fakeId = 'claaaaaaaaaaaaaaaaaaaaaaaa';
+    expect((await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { statusId: fakeId } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { parentId: fakeId } })).statusCode).toBe(400);
+
+    // disconnect the assignee (the null → disconnect branch).
+    const cleared = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { assigneeId: null } });
+    expect(cleared.statusCode).toBe(200);
+    expect(cleared.json().assignee).toBeNull();
+
+    // escalating priority to emergency emits the paging event.
+    await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { priority: 'emergency' } });
+    expect(await prisma.outbox.count({ where: { type: 'issue.emergency' } })).toBe(1);
+
+    // DELETE removes the issue and records an audit row.
+    expect((await app.inject({ method: 'DELETE', url: '/issues/GIRA-1', headers: { cookie } })).statusCode).toBe(204);
+    expect((await prisma.auditLog.findMany({ where: { action: 'issue.delete' } })).length).toBe(1);
+  });
+
+  it('lets a client comment on their own project’s issue', async () => {
+    const client = await prisma.client.create({ data: { name: 'Acme', slug: 'acme' } });
+    const staff = await actingAs({ role: 'member' });
+    await app.inject({ method: 'POST', url: '/projects', headers: { cookie: staff.cookie }, payload: { key: 'CLP', name: 'Client Project', clientId: client.id } });
+    await create(app, staff.cookie, { projectKey: 'CLP', title: 'Portal issue' });
+
+    const portal = await actingAs({ kind: 'client', role: 'viewer', clientId: client.id });
+    const add = await app.inject({ method: 'POST', url: '/issues/CLP-1/comments', headers: { cookie: portal.cookie }, payload: { body: 'from the client' } });
+    expect(add.statusCode).toBe(201);
+    expect(add.json().body).toBe('from the client');
   });
 
   it('forbids a client from reading another client’s issue', async () => {

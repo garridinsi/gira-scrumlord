@@ -242,6 +242,17 @@ describe('clients + projects + isolation', () => {
     expect((await app.inject({ method: 'DELETE', url: '/labels/cl00000000000000000000000', headers: { cookie } })).statusCode).toBe(404);
   });
 
+  it('refuses to delete a status that still has issues (FK → in_use 409)', async () => {
+    const { cookie } = await actingAs({ role: 'member' });
+    await app.inject({ method: 'POST', url: '/projects', headers: { cookie }, payload: { key: 'FKP', name: 'FK Project' } });
+    const statuses = (await app.inject({ method: 'GET', url: '/projects/FKP/statuses', headers: { cookie } })).json();
+    const backlog = statuses.find((s: { name: string }) => s.name === 'Backlog');
+    await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey: 'FKP', title: 'lives in Backlog' } });
+
+    const del = await app.inject({ method: 'DELETE', url: `/statuses/${backlog.id}`, headers: { cookie } });
+    expect(del.statusCode).toBe(409); // raw FK P2003 → clean in_use, not a 500
+  });
+
   it('client (viewer) cannot create a project', async () => {
     const client = await prisma.client.create({ data: { name: 'C', slug: 'c' } });
     const { cookie } = await actingAs({ kind: 'client', role: 'viewer', clientId: client.id });
