@@ -639,6 +639,7 @@ model Notification {
   attempts   Int                  @default(0)
   error      String?
   sentAt     DateTime?
+  readAt     DateTime? // E1: when the recipient read it in their in-app inbox (userId rows)
   incidentId String?
   incident   Incident?            @relation(fields: [incidentId], references: [id], onDelete: SetNull)
   createdAt  DateTime             @default(now())
@@ -646,6 +647,8 @@ model Notification {
   @@index([channelId])
   @@index([status])
   @@index([outboxId])
+  // Inbox query: a user's personal notifications, newest first.
+  @@index([userId, createdAt])
 }
 
 /// Opened when an issue reaches `emergency`. The pager nudges open incidents
