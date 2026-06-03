@@ -9,6 +9,7 @@ const h = vi.hoisted(() => ({
   get: vi.fn(),
   cost: vi.fn(),
   sla: vi.fn(),
+  events: vi.fn(),
   commentsList: vi.fn(),
   worklogsList: vi.fn(),
   statusesList: vi.fn(),
@@ -42,6 +43,7 @@ vi.mock('../api/client', () => ({
     get: (k: string) => h.get(k),
     cost: (k: string) => h.cost(k),
     sla: (k: string) => h.sla(k),
+    events: (k: string) => h.events(k),
     update: (k: string, d: unknown) => h.update(k, d),
     move: (k: string, d: unknown) => h.move(k, d),
     comments: {
@@ -128,6 +130,7 @@ describe('IssueDrawer', () => {
       response: { targetMinutes: 480, elapsedMinutes: 120, met: true, breached: false },
       resolution: { targetMinutes: 2400, elapsedMinutes: 3000, met: false, breached: true },
     });
+    h.events.mockReset().mockResolvedValue([]);
     h.commentsList.mockReset().mockResolvedValue([]);
     h.worklogsList.mockReset().mockResolvedValue([]);
     h.statusesList
@@ -168,6 +171,46 @@ describe('IssueDrawer', () => {
     expect(screen.getByText(/2h \/ 8h/)).toBeInTheDocument();
     expect(screen.getByText(/50h \/ 40h/)).toBeInTheDocument();
     expect(h.sla).toHaveBeenCalledWith('GIRA-1');
+  });
+
+  it('shows the transition ledger timeline in the sidebar (A1)', async () => {
+    h.events.mockResolvedValue([
+      {
+        id: 'e1',
+        issueId: 'i1',
+        kind: 'created',
+        fromStatusId: null,
+        toStatusId: 's1',
+        statusCategory: 'todo',
+        actorId: 'u1',
+        createdAt: '2026-06-01T09:00:00Z',
+      },
+      {
+        id: 'e2',
+        issueId: 'i1',
+        kind: 'status_changed',
+        fromStatusId: 's1',
+        toStatusId: 's2',
+        statusCategory: 'done',
+        actorId: 'u1',
+        createdAt: '2026-06-02T09:00:00Z',
+      },
+      {
+        id: 'e3',
+        issueId: 'i1',
+        kind: 'reopened',
+        fromStatusId: 's2',
+        toStatusId: 's1',
+        statusCategory: 'todo',
+        actorId: 'u1',
+        createdAt: '2026-06-03T09:00:00Z',
+      },
+    ]);
+    renderDrawer();
+    expect(await screen.findByText(/creada · created → todo/)).toBeInTheDocument();
+    expect(screen.getByText(/movida · moved → done/)).toBeInTheDocument();
+    expect(screen.getByText(/reabierta · reopened → todo/)).toBeInTheDocument();
+    expect(h.events).toHaveBeenCalledWith('GIRA-1');
   });
 
   it('shows the error state when the issue fails to load', async () => {

@@ -1128,6 +1128,46 @@ function SlaMini({ issueKey }: { issueKey: string }) {
   );
 }
 
+// ── Transition ledger / timeline (A1) ────────────────────────────────────────
+
+function LedgerMini({ issueKey }: { issueKey: string }) {
+  const eventsQuery = useQuery({
+    queryKey: ['events', issueKey],
+    queryFn: () => issues.events(issueKey),
+  });
+  const events = eventsQuery.data;
+  if (eventsQuery.isLoading || !events || events.length === 0) return null;
+  const kindLabel = (k: string) =>
+    k === 'created'
+      ? 'creada · created'
+      : k === 'reopened'
+        ? 'reabierta · reopened'
+        : 'movida · moved';
+  return (
+    <SideField labelEs="historial" labelEn="timeline">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {events.map((e) => (
+          <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            <span
+              className="mono"
+              style={{
+                fontSize: 11,
+                color: e.kind === 'reopened' ? 'var(--eg-red)' : 'var(--eg-fg-2)',
+              }}
+            >
+              {kindLabel(e.kind)}
+              {e.statusCategory ? ` → ${e.statusCategory}` : ''}
+            </span>
+            <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)' }}>
+              {formatRelativeTime(e.createdAt)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </SideField>
+  );
+}
+
 // ── Sidebar fields ────────────────────────────────────────────────────────────
 
 function DrawerSidebar({
@@ -1461,6 +1501,8 @@ function DrawerSidebar({
       )}
 
       <SlaMini issueKey={issue.key} />
+
+      <LedgerMini issueKey={issue.key} />
 
       <SideField labelEs="etiquetas" labelEn="labels">
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
