@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { incidents, projects } from '../../api/client';
 import { useMe, useLogout } from '../../hooks/useAuth';
 import { Avatar, EyeGlyph, Glyph } from '../../ui/atoms';
+import { NotificationBell } from '../../ui/NotificationBell';
 
 export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
   const navigate = useNavigate();
@@ -180,6 +181,7 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
           <span className="topbar__btntext">Avisos · Notify</span>
           {notifyCount > 0 && <span className="num">{notifyCount}</span>}
         </button>
+        <NotificationBell />
         <div className="topbar__acctwrap" style={{ position: 'relative' }}>
           <button
             type="button"

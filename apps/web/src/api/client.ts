@@ -17,6 +17,7 @@ import type {
   VelocityView,
   ProjectMonthlyView,
   SessionView,
+  InboxItemView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -525,6 +526,17 @@ export interface AuditEntry {
   after: unknown;
   at: string;
 }
+
+// ---------------------------------------------------------------------------
+// E1 in-app inbox — the caller's personal notifications.
+// ---------------------------------------------------------------------------
+
+export const inbox = {
+  list: (unread?: boolean) => request<InboxItemView[]>(`/inbox${unread ? '?unread=true' : ''}`),
+  unreadCount: () => request<{ unread: number }>('/inbox/unread-count'),
+  markRead: (id: string) => request<InboxItemView>(`/inbox/${id}/read`, { method: 'POST' }),
+  markAllRead: () => request<{ marked: number }>('/inbox/read-all', { method: 'POST' }),
+};
 
 export const audit = {
   list: (params?: { entityType?: string; entityId?: string; action?: string; limit?: number }) => {
