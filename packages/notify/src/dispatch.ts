@@ -35,7 +35,48 @@ const asString = (v: unknown): string | null => (typeof v === 'string' ? v : nul
  * when an issue lands on them; the reporter + assignee hear when its status moves.
  * The actor who made the change is never emailed about their own action.
  */
-export async function deliverPersonal(event: DomainEvent): Promise<number> {
+async function sendPersonal(
+  outboxId: string | null | undefined,
+  recipient: { id: string; email: string },
+  subject: string,
+  body: string,
+  event: DomainEvent,
+): Promise<number> {
+  // Idempotent under re-dispatch: skip if this user was already successfully notified for
+  // this outbox event. A failed/never-sent delivery is retried (at-least-once for paging,
+  // without duplicating successes).
+  if (outboxId) {
+    const already = await prisma.notification.findFirst({
+      where: { outboxId, userId: recipient.id, status: 'sent' },
+      select: { id: true },
+    });
+    if (already) return 0;
+  }
+  const notification = await prisma.notification.create({
+    data: {
+      type: event.type,
+      channelId: null,
+      userId: recipient.id,
+      outboxId: outboxId ?? null,
+      payload: event.payload as Prisma.InputJsonValue,
+      status: 'pending',
+      attempts: 1,
+    },
+  });
+  const r = await sendUserEmail(recipient.email, subject, body);
+  await prisma.notification.update({
+    where: { id: notification.id },
+    data: r.ok
+      ? { status: 'sent', sentAt: new Date() }
+      : { status: 'failed', error: r.error?.slice(0, 500) },
+  });
+  return r.ok ? 1 : 0;
+}
+
+export async function deliverPersonal(
+  event: DomainEvent,
+  outboxId?: string | null,
+): Promise<number> {
   const actorId = asString(event.payload.actorId);
 
   if (event.type === 'issue.assigned') {
@@ -48,12 +89,13 @@ export async function deliverPersonal(event: DomainEvent): Promise<number> {
     if (!u?.isActive) return 0;
     const key = asString(event.payload.issueKey) ?? 'an issue';
     const title = asString(event.payload.title) ?? '';
-    const r = await sendUserEmail(
-      u.email,
+    return sendPersonal(
+      outboxId,
+      { id: assigneeId, email: u.email },
       `Te asignaron · Assigned to you: ${key}`,
       `${key} — ${title}\n\nSe te ha asignado esta incidencia · You've been assigned this issue.`,
+      event,
     );
-    return r.ok ? 1 : 0;
   }
 
   if (event.type === 'issue.status_changed') {
@@ -71,20 +113,22 @@ export async function deliverPersonal(event: DomainEvent): Promise<number> {
       },
     });
     if (!issue) return 0;
-    const recipients = new Set<string>();
+    // userId → email, so reporter==assignee is naturally deduped by id.
+    const recipients = new Map<string, string>();
     if (issue.reporter?.isActive && issue.reporterId !== actorId)
-      recipients.add(issue.reporter.email);
+      recipients.set(issue.reporterId, issue.reporter.email);
     if (issue.assignee?.isActive && issue.assignee.id !== actorId)
-      recipients.add(issue.assignee.email);
+      recipients.set(issue.assignee.id, issue.assignee.email);
     const title = asString(event.payload.title) ?? issue.title;
     let sent = 0;
-    for (const email of recipients) {
-      const r = await sendUserEmail(
-        email,
+    for (const [id, email] of recipients) {
+      sent += await sendPersonal(
+        outboxId,
+        { id, email },
         `${key} → ${issue.status.name}`,
         `${key} — ${title}\n\nEstado actualizado a · Status changed to "${issue.status.name}".`,
+        event,
       );
-      if (r.ok) sent += 1;
     }
     return sent;
   }
@@ -100,7 +144,7 @@ export async function ensureIncident(issueKey: string) {
   return open ?? prisma.incident.create({ data: { issueId: issue.id } });
 }
 
-export async function dispatchEvent(event: DomainEvent) {
+export async function dispatchEvent(event: DomainEvent, outboxId?: string | null) {
   const projectKey =
     typeof event.payload.projectKey === 'string' ? event.payload.projectKey : undefined;
   const channels = await resolveChannels(event.type, projectKey);
@@ -113,10 +157,23 @@ export async function dispatchEvent(event: DomainEvent) {
 
   let delivered = 0;
   for (const ch of channels) {
+    // Idempotent under re-dispatch: a channel already delivered 'sent' for this outbox
+    // event is not sent again (so a post-send throw + retry can't double-notify).
+    if (outboxId) {
+      const already = await prisma.notification.findFirst({
+        where: { outboxId, channelId: ch.id, status: 'sent' },
+        select: { id: true },
+      });
+      if (already) {
+        delivered += 1;
+        continue;
+      }
+    }
     const notification = await prisma.notification.create({
       data: {
         type: event.type,
         channelId: ch.id,
+        outboxId: outboxId ?? null,
         payload: event.payload as Prisma.InputJsonValue,
         incidentId,
         status: 'pending',
@@ -140,7 +197,7 @@ export async function dispatchEvent(event: DomainEvent) {
     });
   }
 
-  const userEmails = await deliverPersonal(event);
+  const userEmails = await deliverPersonal(event, outboxId);
   return { channelsMatched: channels.length, delivered, incidentId, userEmails };
 }
 
@@ -148,7 +205,9 @@ export async function dispatchEvent(event: DomainEvent) {
  * Drain unprocessed Outbox events. An event is marked processed ONLY after a
  * successful dispatch — an unexpected throw (e.g. a DB blip mid-delivery) leaves
  * processedAt null so the next run retries it, instead of silently losing it
- * (which, for emergency paging, would mean a missed page).
+ * (which, for emergency paging, would mean a missed page). The event id is threaded
+ * into dispatchEvent so that retry is idempotent: deliveries already recorded 'sent'
+ * for this event are not repeated.
  */
 export async function dispatchOutboxBatch(limit = 100): Promise<number> {
   const events = await prisma.outbox.findMany({
@@ -159,7 +218,10 @@ export async function dispatchOutboxBatch(limit = 100): Promise<number> {
   let processed = 0;
   for (const e of events) {
     try {
-      await dispatchEvent({ type: e.type, payload: (e.payload as Record<string, unknown>) ?? {} });
+      await dispatchEvent(
+        { type: e.type, payload: (e.payload as Record<string, unknown>) ?? {} },
+        e.id,
+      );
     } catch {
       // Leave it unprocessed for retry. Per-channel delivery failures are already
       // captured on the Notification row inside dispatchEvent and do NOT throw.

@@ -607,21 +607,28 @@ model NotificationChannel {
 
 /// A delivery record (audit + retry).
 model Notification {
-  id         String              @id @default(cuid())
+  id         String               @id @default(cuid())
   type       String
-  channelId  String
-  channel    NotificationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  // Nullable: a channel delivery references the channel; a personal (per-user) delivery
+  // has no channel and sets userId instead.
+  channelId  String?
+  channel    NotificationChannel? @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId     String? // recipient user for a personal delivery
+  // The source Outbox event. Used to make re-dispatch idempotent: a delivery already
+  // recorded 'sent' for this (outboxId, channelId|userId) is never sent again on retry.
+  outboxId   String?
   payload    Json
-  status     NotificationStatus  @default(pending)
-  attempts   Int                 @default(0)
+  status     NotificationStatus   @default(pending)
+  attempts   Int                  @default(0)
   error      String?
   sentAt     DateTime?
   incidentId String?
-  incident   Incident?           @relation(fields: [incidentId], references: [id], onDelete: SetNull)
-  createdAt  DateTime            @default(now())
+  incident   Incident?            @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  createdAt  DateTime             @default(now())
 
   @@index([channelId])
   @@index([status])
+  @@index([outboxId])
 }
 
 /// Opened when an issue reaches `emergency`. The pager nudges open incidents

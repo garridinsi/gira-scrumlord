@@ -164,5 +164,41 @@ describe('dispatch', () => {
         ).userEmails,
       ).toBe(0);
     });
+
+    it('re-dispatching the same outbox event does not double-deliver (idempotent)', async () => {
+      const { issue } = await makeIssue('T-11', 'T11');
+      const assignee = await prisma.user.create({
+        data: { email: 'dev2@example.test', name: 'Dev2' },
+      });
+      await prisma.issue.update({ where: { id: issue.id }, data: { assigneeId: assignee.id } });
+      // A channel ALSO subscribed to the event, so both delivery paths are exercised.
+      await prisma.notificationChannel.create({
+        data: {
+          name: 'assign hook',
+          kind: 'email',
+          target: 'ops@example.test',
+          scope: 'global',
+          events: ['issue.assigned'],
+        },
+      });
+      const payload = { issueKey: 'T-11', assigneeId: assignee.id, title: 'X', actorId: 'staff' };
+      const outboxId = 'outbox-test-1';
+
+      const first = await dispatchEvent({ type: 'issue.assigned', payload }, outboxId);
+      expect(first.delivered).toBe(1); // channel
+      expect(first.userEmails).toBe(1); // personal to the assignee
+      expect(await prisma.notification.count()).toBe(2);
+
+      // The exact same outbox event is re-run (simulating a post-send throw + retry):
+      // nothing is sent again and no new Notification rows are created.
+      const second = await dispatchEvent({ type: 'issue.assigned', payload }, outboxId);
+      expect(second.userEmails).toBe(0);
+      expect(await prisma.notification.count()).toBe(2);
+
+      // Without an outboxId (e.g. an ad-hoc test-send) there is no dedup — it delivers.
+      const adhoc = await dispatchEvent({ type: 'issue.assigned', payload });
+      expect(adhoc.userEmails).toBe(1);
+      expect(await prisma.notification.count()).toBe(4); // +1 channel +1 personal
+    });
   });
 });
