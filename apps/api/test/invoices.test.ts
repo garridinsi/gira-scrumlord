@@ -645,4 +645,93 @@ describe('invoicing (M5)', () => {
     });
     expect(ok.statusCode).toBe(201);
   });
+
+  // ── B3: flat-retainer billing ────────────────────────────────────────────────
+  const contract = (clientId: string, over: Record<string, unknown> = {}) =>
+    prisma.contract.create({
+      data: {
+        clientId,
+        name: 'Retainer',
+        retainerCents: 500_000,
+        includedHours: 10,
+        status: 'active',
+        ...over,
+      },
+    });
+  const logAt = (cookie: string, key: string, minutes: number, loggedAt: string) =>
+    app.inject({
+      method: 'POST',
+      url: `/issues/${key}/worklogs`,
+      headers: { cookie },
+      payload: { minutes, billable: true, loggedAt },
+    });
+  const MARCH = { periodStart: '2026-03-01', periodEnd: '2026-03-31' };
+
+  it('bills a flat retainer line and covers hours within the included cap', async () => {
+    const { client, staff } = await setup();
+    await contract(client.id, { retainerCents: 500_000, includedHours: 10 });
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
+    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z'); // 5h ≤ 10h included
+    const inv = (await generate(staff.cookie, client.id, MARCH)).json();
+    expect(inv.subtotalCents).toBe(500_000);
+    expect(
+      inv.lines.some(
+        (l: { issueKey: string; amountCents: number }) =>
+          l.issueKey === 'RETAINER' && l.amountCents === 500_000,
+      ),
+    ).toBe(true);
+    expect(inv.lines.some((l: { issueKey: string }) => l.issueKey === 'OVERAGE')).toBe(false);
+  });
+
+  it('bills overage beyond the included hours at the client/default rate', async () => {
+    const { client, staff } = await setup();
+    await contract(client.id, { retainerCents: 500_000, includedHours: 2 });
+    await setRate(staff.cookie, 6000); // €60/h default → overage rate
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
+    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z'); // 5h; 2h incl → 3h overage
+    const inv = (await generate(staff.cookie, client.id, MARCH)).json();
+    const overage = inv.lines.find((l: { issueKey: string }) => l.issueKey === 'OVERAGE');
+    expect(overage).toMatchObject({ minutes: 180, hourlyCents: 6000, amountCents: 18_000 });
+    expect(inv.subtotalCents).toBe(500_000 + 18_000);
+  });
+
+  it('covers all hours when includedHours is null (pure flat retainer)', async () => {
+    const { client, staff } = await setup();
+    await contract(client.id, { retainerCents: 300_000, includedHours: null });
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
+    await logAt(staff.cookie, 'ACME-1', 1200, '2026-03-15T12:00:00.000Z'); // 20h, all covered
+    const inv = (await generate(staff.cookie, client.id, MARCH)).json();
+    expect(inv.subtotalCents).toBe(300_000);
+    expect(inv.lines).toHaveLength(1);
+    expect(inv.lines[0].issueKey).toBe('RETAINER');
+  });
+
+  it('bills the retainer even for a zero-hours month', async () => {
+    const { client, staff } = await setup();
+    await contract(client.id, { retainerCents: 250_000, includedHours: 10 });
+    const gen = await generate(staff.cookie, client.id, MARCH); // no worklogs at all
+    expect(gen.statusCode).toBe(201);
+    expect(gen.json().subtotalCents).toBe(250_000);
+    expect(gen.json().lines.map((l: { issueKey: string }) => l.issueKey)).toEqual(['RETAINER']);
+  });
+
+  it('refuses retainer overage when no client/default rate is set', async () => {
+    const { client, staff } = await setup();
+    await contract(client.id, { retainerCents: 100_000, includedHours: 1 });
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
+    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z'); // overage, but no rate
+    const gen = await generate(staff.cookie, client.id, MARCH);
+    expect(gen.statusCode).toBe(400);
+    expect(gen.json().error).toMatch(/overage|rate/i);
+  });
+
+  it('leaves non-retainer clients on the pure T&M path (no retainer line)', async () => {
+    const { client, staff } = await setup(); // no contract
+    await setRate(staff.cookie, 6000);
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
+    await logAt(staff.cookie, 'ACME-1', 120, '2026-03-15T12:00:00.000Z');
+    const inv = (await generate(staff.cookie, client.id, MARCH)).json();
+    expect(inv.lines.some((l: { issueKey: string }) => l.issueKey === 'RETAINER')).toBe(false);
+    expect(inv.subtotalCents).toBe(12_000); // 2h @ €60
+  });
 });

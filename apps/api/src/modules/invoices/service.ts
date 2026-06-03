@@ -9,6 +9,7 @@ import type { GenerateInvoice, InvoiceListItemView, InvoiceView } from '@gira/sh
 import { recordAudit } from '@gira/sauron';
 import { config } from '../../config.js';
 import { badRequest, notFound } from '../../lib/http-error.js';
+import { monthKey } from '../../lib/period.js';
 import { runSerializable } from '../../lib/tx.js';
 
 const toResolved = (r: Rate | null | undefined): ResolvedRate | null =>
@@ -160,7 +161,26 @@ export async function generateInvoice(
       select: { id: true, minutes: true, issueId: true },
     });
 
-    if (worklogs.length === 0) {
+    // B3: a client on an active retainer contract covering this period bills a flat
+    // retainer line; logged hours are covered up to includedHours and the excess bills
+    // T&M at the client/default rate. Needs a period (a retainer is billed per month).
+    const retainer =
+      input.periodStart != null
+        ? ((
+            await tx.contract.findMany({
+              where: { clientId, status: 'active', retainerCents: { not: null } },
+              orderBy: { createdAt: 'desc' },
+            })
+          ).find(
+            (c) =>
+              (c.startDate == null || c.startDate <= input.periodStart!) &&
+              (c.endDate == null || c.endDate >= input.periodStart!),
+          ) ?? null)
+        : null;
+
+    // A retainer bills its flat fee even for a zero-hours month; only the pure-T&M path
+    // requires there to be billable work.
+    if (worklogs.length === 0 && !retainer) {
       throw badRequest('no billable, un-invoiced work found for this client and period');
     }
 
@@ -220,6 +240,7 @@ export async function generateInvoice(
     const unpriced: string[] = [];
     const mismatched: string[] = [];
     let subtotal = 0;
+    let retainerHourlyMinutes = 0; // B3: hourly minutes pooled under the retainer
     for (const issue of issues.sort((a, b) => a.key.localeCompare(b.key))) {
       const minutes = byIssue.get(issue.id)?.minutes ?? 0;
 
@@ -241,6 +262,13 @@ export async function generateInvoice(
           hourlyCents: null,
           amountCents: amount,
         });
+        continue;
+      }
+
+      // B3: under a retainer, hourly work is covered (pooled), not billed per issue;
+      // the overage (beyond includedHours) is billed once at the client rate below.
+      if (retainer) {
+        retainerHourlyMinutes += minutes;
         continue;
       }
 
@@ -288,6 +316,50 @@ export async function generateInvoice(
       throw badRequest(
         `rate currency mismatch for ${mismatched.join(', ')} — rates must be in ${client.currency}`,
       );
+    }
+
+    // B3: prepend the flat retainer line, then bill any overage beyond the included hours.
+    if (retainer) {
+      const label = monthKey(input.periodStart!, config.BILLING_TIMEZONE);
+      lineData.unshift({
+        issueKey: 'RETAINER',
+        description: `Cuota fija · retainer (${label})`,
+        minutes: 0,
+        hourlyCents: null,
+        amountCents: retainer.retainerCents!,
+      });
+      subtotal += retainer.retainerCents!;
+
+      // null includedHours = the retainer covers all logged time (no overage); a number
+      // is the entitlement cap, beyond which hours bill T&M at the client/default rate.
+      const includedMinutes = retainer.includedHours == null ? null : retainer.includedHours * 60;
+      if (includedMinutes != null && retainerHourlyMinutes > includedMinutes) {
+        const overageMinutes = retainerHourlyMinutes - includedMinutes;
+        const resolved = toResolved(clientRate) ?? toResolved(defaultRate);
+        if (!resolved) {
+          throw badRequest(
+            'retainer overage hours have no client or default rate — set one before invoicing',
+          );
+        }
+        if (resolved.currency !== client.currency) {
+          throw badRequest(
+            `retainer overage rate currency mismatch — rates must be in ${client.currency}`,
+          );
+        }
+        const amount = accruedCents({
+          billingMode: 'hourly',
+          billableMinutes: overageMinutes,
+          hourlyCents: resolved.hourlyCents,
+        });
+        subtotal += amount;
+        lineData.push({
+          issueKey: 'OVERAGE',
+          description: `Horas extra · overage (${(overageMinutes / 60).toFixed(2)}h sobre ${retainer.includedHours}h incl.)`,
+          minutes: overageMinutes,
+          hourlyCents: resolved.hourlyCents,
+          amountCents: amount,
+        });
+      }
     }
 
     // ANX = non-fiscal billing annex (the fiscal invoice is issued via TicketBAI).
