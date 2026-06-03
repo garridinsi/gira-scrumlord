@@ -117,8 +117,16 @@ export async function sprintRoutes(app: FastifyInstance): Promise<void> {
       select: { id: true },
     });
     if (alreadyActive) throw conflict('this project already has an active sprint');
-    const v = await computeVelocity(id);
     const updated = await prisma.$transaction(async (tx) => {
+      // Snapshot committed points INSIDE the tx so a concurrent issue change can't
+      // drift the number between the read and the write.
+      const issues = await tx.issue.findMany({
+        where: { sprintId: id },
+        include: { status: { select: { category: true } } },
+      });
+      const v = velocity(
+        issues.map((i) => ({ storyPoints: i.storyPoints, statusCategory: i.status.category })),
+      );
       const s = await tx.sprint.update({
         where: { id },
         data: {

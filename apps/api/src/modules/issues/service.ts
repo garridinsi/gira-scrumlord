@@ -43,6 +43,35 @@ export async function createIssue(
       statusId = first.id;
     }
 
+    // Every connected entity must belong to this issue's project (and a client
+    // assignee to this project's client). PATCH already enforces this; create must
+    // too, or a forged POST could graft another client's sprint/parent/labels/assignee.
+    if (input.assigneeId) {
+      const a = await tx.user.findUnique({
+        where: { id: input.assigneeId },
+        select: { isActive: true, kind: true, clientId: true },
+      });
+      if (!a || !a.isActive) throw badRequest('invalid assigneeId');
+      if (a.kind === 'client' && a.clientId !== project.clientId) throw badRequest('invalid assigneeId');
+    }
+    if (input.sprintId) {
+      const s = await tx.sprint.findUnique({ where: { id: input.sprintId }, select: { projectId: true } });
+      if (!s || s.projectId !== project.id) throw badRequest('invalid sprintId');
+    }
+    if (input.parentId) {
+      const p = await tx.issue.findUnique({ where: { id: input.parentId }, select: { projectId: true } });
+      if (!p || p.projectId !== project.id) throw badRequest('invalid parentId');
+    }
+    if (input.labelIds?.length) {
+      const labels = await tx.label.findMany({
+        where: { id: { in: input.labelIds } },
+        select: { projectId: true },
+      });
+      if (labels.length !== input.labelIds.length || labels.some((l) => l.projectId !== project.id)) {
+        throw badRequest('invalid labelIds');
+      }
+    }
+
     // Atomic key: bump the project's counter inside the transaction.
     const counted = await tx.project.update({
       where: { id: project.id },

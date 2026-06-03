@@ -110,6 +110,15 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
       if (a.kind === 'client' && a.clientId !== before.project.clientId) throw badRequest('invalid assigneeId');
     }
 
+    // A fixed-price issue must carry a price. createIssue enforces this; mirror it
+    // here over the MERGED state so a PATCH can't leave the issue fixed-with-null
+    // (which only blows up later at invoice time).
+    const effectiveMode = input.billingMode ?? before.billingMode;
+    const effectivePrice = 'fixedPriceCents' in input ? input.fixedPriceCents : before.fixedPriceCents;
+    if (effectiveMode === 'fixed' && effectivePrice == null) {
+      throw badRequest('fixedPriceCents is required when billingMode is fixed');
+    }
+
     const data: Prisma.IssueUpdateInput = {
       title: input.title,
       description: input.description,

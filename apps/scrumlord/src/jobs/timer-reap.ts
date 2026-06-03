@@ -8,11 +8,13 @@ const REAP_AFTER_MS = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
 const MAX_MINUTES = 720; // 12 hours in minutes — hard cap for billing safety
 
 /**
- * Find all timers whose startedAt is older than 12 hours ago.
- * For each:
- *   1. Compute elapsed minutes, capped at 720.
- *   2. Create a Worklog (billable=true, note="auto-stopped by scrumlord").
- *   3. Delete the Timer.
+ * Find all timers whose startedAt is older than 12 hours ago. For each, in one
+ * transaction: delete the Timer first, then create the capped Worklog.
+ *
+ * Delete-first is the idempotency guard: if a concurrent API stop already claimed
+ * this timer, the delete throws (record not found), the transaction rolls back,
+ * and NO duplicate worklog is written — so the same elapsed time can't be billed
+ * twice. Per-timer try/catch keeps one already-stopped timer from aborting the batch.
  *
  * Returns the number of timers reaped.
  */
@@ -42,26 +44,32 @@ export async function runTimerReap(now = new Date()): Promise<number> {
     const elapsedMinutes = Math.floor(elapsedMs / 60_000);
     const minutes = Math.min(elapsedMinutes, MAX_MINUTES);
 
-    await prisma.$transaction([
-      prisma.worklog.create({
-        data: {
-          issueId: timer.issueId,
-          userId: timer.userId,
-          minutes,
-          billable: true,
-          note: 'auto-stopped by scrumlord',
-          startedAt: timer.startedAt,
-        },
-      }),
-      prisma.timer.delete({
-        where: { id: timer.id },
-      }),
-    ]);
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Delete-first: a concurrent API stop that already removed this timer makes
+        // the delete throw, rolling the whole tx back (no double worklog).
+        await tx.timer.delete({ where: { id: timer.id } });
+        await tx.worklog.create({
+          data: {
+            issueId: timer.issueId,
+            userId: timer.userId,
+            minutes,
+            billable: true,
+            note: 'auto-stopped by scrumlord',
+            startedAt: timer.startedAt,
+          },
+        });
+      });
 
-    console.log(
-      `[timer-reap] Timer ${timer.id} reaped — userId=${timer.userId} minutes=${minutes} (capped=${minutes === MAX_MINUTES})`,
-    );
-    reaped++;
+      console.log(
+        `[timer-reap] Timer ${timer.id} reaped — userId=${timer.userId} minutes=${minutes} (capped=${minutes === MAX_MINUTES})`,
+      );
+      reaped++;
+    } catch (err) {
+      // Per-timer isolation: an already-stopped timer (or any single failure)
+      // must not abort the rest of the batch.
+      console.error('[timer-reap] timer skipped', { timerId: timer.id, err });
+    }
   }
 
   return reaped;

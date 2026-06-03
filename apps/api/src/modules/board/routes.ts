@@ -194,6 +194,23 @@ export async function boardRoutes(app: FastifyInstance): Promise<void> {
       }
 
       const u = await tx.issue.update({ where: { key }, data, include: issueInclude });
+      // A drag that changes status must emit the same event the PATCH path does,
+      // else dragging a card to Done never notifies the watchers/reporter.
+      if (targetStatus) {
+        await tx.outbox.create({
+          data: {
+            type: 'issue.status_changed',
+            payload: {
+              issueKey: u.key,
+              projectKey: issue.project.key,
+              title: u.title,
+              fromStatusId: issue.statusId,
+              toStatusId: u.statusId,
+              actorId: user.id,
+            },
+          },
+        });
+      }
       await recordAudit(tx, {
         actorId: user.id,
         action: 'issue.move',

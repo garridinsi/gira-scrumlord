@@ -128,6 +128,28 @@ describe('runTimerReap', () => {
     expect(wl.userId).toBe(user.id);
   });
 
+  it('is idempotent across runs — a reaped timer is never billed twice', async () => {
+    const { user, project, inProgressStatus } = await createBaseFixtures();
+    const issue = await prisma.issue.create({
+      data: {
+        projectId: project.id,
+        key: 'ACME-3',
+        title: 'Idempotent reap',
+        statusId: inProgressStatus.id,
+        reporterId: user.id,
+        rank: 'zzz',
+      },
+    });
+    await prisma.timer.create({
+      data: { issueId: issue.id, userId: user.id, startedAt: new Date(Date.now() - 14 * 60 * 60 * 1000) },
+    });
+
+    expect(await runTimerReap(new Date())).toBe(1);
+    // Second pass finds the timer already gone (delete-first) — nothing to reap, no 2nd worklog.
+    expect(await runTimerReap(new Date())).toBe(0);
+    expect(await prisma.worklog.count({ where: { issueId: issue.id } })).toBe(1);
+  });
+
   it('does not reap a timer that is less than 12h old', async () => {
     const { user, project, inProgressStatus } = await createBaseFixtures();
 
@@ -233,6 +255,27 @@ describe('runSprintAutoclose', () => {
     expect(updated.state).toBe('closed');
     // done points: 5 + 8 = 13
     expect(updated.completedPoints).toBe(13);
+  });
+
+  it('returns unfinished issues to the backlog (detaches non-done) on autoclose', async () => {
+    const { user, project, doneStatus, todoStatus } = await createBaseFixtures();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const sprint = await prisma.sprint.create({
+      data: { projectId: project.id, name: 'Detach test', state: 'active', endDate: yesterday, committedPoints: 8 },
+    });
+    const doneIssue = await prisma.issue.create({
+      data: { projectId: project.id, key: 'ACME-20', title: 'shipped', statusId: doneStatus.id, reporterId: user.id, sprintId: sprint.id, storyPoints: 5, rank: 'aaa' },
+    });
+    const openIssue = await prisma.issue.create({
+      data: { projectId: project.id, key: 'ACME-21', title: 'carryover', statusId: todoStatus.id, reporterId: user.id, sprintId: sprint.id, storyPoints: 3, rank: 'bbb' },
+    });
+
+    expect(await runSprintAutoclose(new Date())).toBe(1);
+
+    // The done issue stays on the (now closed) sprint as part of its record; the
+    // unfinished one returns to the backlog instead of being orphaned on a closed sprint.
+    expect((await prisma.issue.findUniqueOrThrow({ where: { id: doneIssue.id } })).sprintId).toBe(sprint.id);
+    expect((await prisma.issue.findUniqueOrThrow({ where: { id: openIssue.id } })).sprintId).toBeNull();
   });
 
   it('does not close an active sprint whose endDate is in the future', async () => {

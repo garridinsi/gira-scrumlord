@@ -116,6 +116,37 @@ describe('issues', () => {
     expect((await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { labelIds: [foreignLabel] } })).statusCode).toBe(400);
   });
 
+  it('rejects grafting another project’s sprint/label onto an issue (POST create)', async () => {
+    const { user, cookie, projectKey } = await setup();
+    const other = await seedProject({ reporterId: user.id, key: 'OTHR' });
+    const foreignSprint = (
+      await app.inject({ method: 'POST', url: `/projects/${other.projectKey}/sprints`, headers: { cookie }, payload: { name: 'X' } })
+    ).json().id;
+    const foreignLabel = (
+      await app.inject({ method: 'POST', url: `/projects/${other.projectKey}/labels`, headers: { cookie }, payload: { name: 'foreign' } })
+    ).json().id;
+
+    // createIssue must mirror PATCH's cross-project guards, else a forged POST grafts.
+    expect((await create(app, cookie, { projectKey, title: 'graft', sprintId: foreignSprint })).statusCode).toBe(400);
+    expect((await create(app, cookie, { projectKey, title: 'graft', labelIds: [foreignLabel] })).statusCode).toBe(400);
+  });
+
+  it('requires a price for fixed-price billing (create schema + patch over merged state)', async () => {
+    const { cookie, projectKey } = await setup();
+    // create: fixed with no price is rejected by the create schema refine
+    expect((await create(app, cookie, { projectKey, title: 'fixed?', billingMode: 'fixed' })).statusCode).toBe(400);
+    // create hourly, then PATCH to fixed without a price → rejected over the merged state
+    await create(app, cookie, { projectKey, title: 'hourly' }); // GIRA-1
+    const bad = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { billingMode: 'fixed' } });
+    expect(bad.statusCode).toBe(400);
+    // PATCH to fixed WITH a price persists
+    const ok = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { billingMode: 'fixed', fixedPriceCents: 5000 } });
+    expect(ok.statusCode).toBe(200);
+    const row = await prisma.issue.findUnique({ where: { key: 'GIRA-1' } });
+    expect(row!.billingMode).toBe('fixed');
+    expect(row!.fixedPriceCents).toBe(5000);
+  });
+
   it('round-trips a due date and emits a status-changed event on column moves', async () => {
     const { cookie, projectKey, byName } = await setup();
     const due = '2026-07-01T00:00:00.000Z';

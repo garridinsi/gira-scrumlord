@@ -116,6 +116,24 @@ describe('board + move', () => {
     expect(move.statusCode).toBe(400); // invalid sprintId — not this project's sprint
   });
 
+  it('emits issue.status_changed when a drag changes status, but not on a pure reorder', async () => {
+    const { cookie, byName } = await setup();
+    await app.inject({
+      method: 'POST',
+      url: '/issues/GIRA-1/move',
+      headers: { cookie },
+      payload: { statusId: byName.Done!.id },
+    });
+    const event = await prisma.outbox.findFirst({ where: { type: 'issue.status_changed' } });
+    expect(event).not.toBeNull();
+    expect((event!.payload as { issueKey: string }).issueKey).toBe('GIRA-1');
+
+    // A pure reorder within a column changes no status → no event.
+    await prisma.outbox.deleteMany({});
+    await app.inject({ method: 'POST', url: '/issues/GIRA-2/move', headers: { cookie }, payload: { afterId: 'GIRA-3' } });
+    expect(await prisma.outbox.count({ where: { type: 'issue.status_changed' } })).toBe(0);
+  });
+
   it('moves across columns and sets closedAt when entering Done', async () => {
     const { cookie, projectKey, byName } = await setup();
     await app.inject({
