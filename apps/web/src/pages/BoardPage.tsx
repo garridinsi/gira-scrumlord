@@ -702,6 +702,7 @@ function BoardColumn({
   onCardClick,
   onNewIssue,
   onKeyMove,
+  onKeyReorder,
 }: {
   status: StatusView;
   columnIssues: IssueView[];
@@ -716,6 +717,11 @@ function BoardColumn({
   onCardClick: (key: string) => void;
   onNewIssue: (statusId: string) => void;
   onKeyMove: (issueKey: string, dir: -1 | 1) => void;
+  onKeyReorder: (
+    issueKey: string,
+    beforeId: string | undefined,
+    afterId: string | undefined,
+  ) => void;
 }) {
   const wipLimit = WIP_LIMITS[status.name];
 
@@ -763,6 +769,16 @@ function BoardColumn({
               if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
                 e.preventDefault();
                 onKeyMove(issue.key, e.key === 'ArrowRight' ? 1 : -1);
+              } else if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                // Within-column reorder: compute the new neighbours (card above/below the
+                // target slot) and reorder via the same move API the drag path uses.
+                e.preventDefault();
+                const idx = columnIssues.findIndex((i) => i.key === issue.key);
+                if (e.key === 'ArrowUp' && idx > 0) {
+                  onKeyReorder(issue.key, columnIssues[idx - 2]?.key, columnIssues[idx - 1]!.key);
+                } else if (e.key === 'ArrowDown' && idx < columnIssues.length - 1) {
+                  onKeyReorder(issue.key, columnIssues[idx + 1]!.key, columnIssues[idx + 2]?.key);
+                }
               } else if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 onCardClick(issue.key);
@@ -917,6 +933,15 @@ export function BoardPage() {
       setAnnounce(`${issueKey} movido a · moved to ${target.name}`);
     },
     [boardQuery.data, moveMutation],
+  );
+
+  // G1: within-column reorder via Alt+Up/Down — same move API as drag, just neighbours.
+  const reorderInColumn = useCallback(
+    (issueKey: string, beforeId: string | undefined, afterId: string | undefined) => {
+      moveMutation.mutate({ issueKey, data: { beforeId, afterId } });
+      setAnnounce(`${issueKey} reordenada · reordered`);
+    },
+    [moveMutation],
   );
 
   // Handlers
@@ -1162,6 +1187,7 @@ export function BoardPage() {
                     setShowCreate(true);
                   }}
                   onKeyMove={moveToColumn}
+                  onKeyReorder={reorderInColumn}
                 />
 
                 {/* Hazard divider between columns */}

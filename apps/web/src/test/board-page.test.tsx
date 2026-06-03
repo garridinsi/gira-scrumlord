@@ -352,6 +352,35 @@ describe('BoardPage', () => {
     expect(await screen.findByText(/GIRA-1 movido a · moved to Done/)).toBeInTheDocument();
   });
 
+  it('reorders within a column with Alt+ArrowUp (G1)', async () => {
+    board.mockResolvedValue({
+      projectKey: 'PRJ',
+      columns: [
+        {
+          status: { id: 's1', name: 'To Do', category: 'todo', order: 0 },
+          issues: [
+            issue({ key: 'GIRA-1', title: 'A' }),
+            issue({ key: 'GIRA-2', title: 'B' }),
+            issue({ key: 'GIRA-3', title: 'C' }),
+          ],
+        },
+        { status: { id: 's2', name: 'Done', category: 'done', order: 4 }, issues: [] },
+      ],
+    });
+    issueMove.mockResolvedValue({ key: 'GIRA-2' });
+    renderAt();
+    const card = await screen.findByRole('button', { name: /GIRA-2: B/ });
+    card.focus();
+    await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}');
+    // GIRA-2 moves above GIRA-1 → lands with GIRA-1 below it (afterId), nothing above.
+    await waitFor(() =>
+      expect(issueMove).toHaveBeenCalledWith(
+        'GIRA-2',
+        expect.objectContaining({ afterId: 'GIRA-1' }),
+      ),
+    );
+  });
+
   it('does not move a card past the last column', async () => {
     board.mockResolvedValue({
       projectKey: 'PRJ',
