@@ -101,4 +101,15 @@ describe('IssueDrawer', () => {
     await userEvent.click(screen.getByText('Registros'));
     await waitFor(() => expect(h.worklogsList).toHaveBeenCalledWith('GIRA-1'));
   });
+
+  it('exposes an ARIA tablist and an accessible (keyboard) close button', async () => {
+    h.get.mockResolvedValue(issue({}));
+    const onClose = vi.fn();
+    renderWithProviders(<IssueDrawer issueKey="GIRA-1" projectKey="PRJ" onClose={onClose} />);
+    await screen.findByText('My issue title');
+
+    expect(screen.getAllByRole('tab').length).toBeGreaterThanOrEqual(3); // G3: tabs are an ARIA tablist
+    await userEvent.click(screen.getByRole('button', { name: /Cerrar · Close/ })); // G3: real button, not a span
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

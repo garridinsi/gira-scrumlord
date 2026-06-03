@@ -1215,8 +1215,16 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
               !! EMERGENCIA
             </Plate>
           )}
-          <span style={{ marginLeft: emergency ? 0 : 'auto', display: 'flex', gap: 10, cursor: 'pointer' }}>
-            <span title="Cerrar · Close" onClick={onClose} style={{ opacity: 0.8 }}>✕</span>
+          <span style={{ marginLeft: emergency ? 0 : 'auto', display: 'flex', gap: 10 }}>
+            <button
+              type="button"
+              aria-label="Cerrar · Close"
+              title="Cerrar · Close"
+              onClick={onClose}
+              style={{ background: 'none', border: 0, cursor: 'pointer', opacity: 0.8, color: 'inherit', font: 'inherit', padding: 0 }}
+            >
+              ✕
+            </button>
           </span>
         </div>
 
@@ -1299,7 +1307,11 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
               )}
 
               {/* Tab bar */}
-              <div style={{ display: 'flex', borderBottom: '2px solid var(--eg-iron)', marginBottom: 16, flexShrink: 0 }}>
+              <div
+                role="tablist"
+                aria-label="Secciones de la incidencia · Issue sections"
+                style={{ display: 'flex', borderBottom: '2px solid var(--eg-iron)', marginBottom: 16, flexShrink: 0 }}
+              >
                 {DRAWER_TABS.map((t) => {
                   const count = tabCountFor(t.id);
                   const active = tab === t.id;
@@ -1307,6 +1319,11 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
                     <button
                       key={t.id}
                       type="button"
+                      role="tab"
+                      id={`drawer-tab-${t.id}`}
+                      aria-selected={active}
+                      aria-controls={`drawer-panel-${t.id}`}
+                      tabIndex={active ? 0 : -1}
                       onClick={() => setTab(t.id)}
                       style={{
                         padding: '8px 14px',
@@ -1356,17 +1373,19 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
               </div>
 
               {/* Tab content */}
-              {tab === 'details'  && (
-                <DetailsTab
-                  issue={issue}
-                  saving={updateMutation.isPending}
-                  onSave={(description) => updateMutation.mutateAsync({ description })}
-                />
-              )}
-              {tab === 'comments' && <CommentsTab issueKey={issue.key} />}
-              {tab === 'worklogs' && <WorklogsTab issueKey={issue.key} />}
-              {tab === 'cost'     && <CostTab issueKey={issue.key} />}
-              {tab === 'audit'    && <AuditMiniTab issueId={issue.id} />}
+              <div role="tabpanel" id={`drawer-panel-${tab}`} aria-labelledby={`drawer-tab-${tab}`}>
+                {tab === 'details'  && (
+                  <DetailsTab
+                    issue={issue}
+                    saving={updateMutation.isPending}
+                    onSave={(description) => updateMutation.mutateAsync({ description })}
+                  />
+                )}
+                {tab === 'comments' && <CommentsTab issueKey={issue.key} />}
+                {tab === 'worklogs' && <WorklogsTab issueKey={issue.key} />}
+                {tab === 'cost'     && <CostTab issueKey={issue.key} />}
+                {tab === 'audit'    && <AuditMiniTab issueId={issue.id} />}
+              </div>
             </div>
 
             {/* Sidebar */}
