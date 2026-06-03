@@ -12,7 +12,16 @@ import type {
   LabelView,
 } from '@gira/shared';
 import type { CreateUser, UpdateUser, CreateAssignmentRule } from '@gira/shared';
-import { clients, rates, projects, channels, intake, users, ApiError } from '../api/client';
+import {
+  clients,
+  rates,
+  projects,
+  channels,
+  intake,
+  users,
+  contracts,
+  ApiError,
+} from '../api/client';
 import type { ClientRecord, RateRecord, AssignmentRuleRecord } from '../api/client';
 import type {
   CreateClient,
@@ -20,6 +29,7 @@ import type {
   UpsertRate,
   CreateChannel,
   CreateIntakeSource,
+  ContractView,
 } from '@gira/shared';
 import { Subbar } from '../ui/Subbar';
 import { Avatar, Plate } from '../ui/atoms';
@@ -29,7 +39,7 @@ import { useMe } from '../hooks/useAuth';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'clients' | 'rates' | 'channels' | 'intake' | 'team';
+type Tab = 'clients' | 'contracts' | 'rates' | 'channels' | 'intake' | 'team';
 
 const CURRENCIES = ['EUR', 'USD', 'GBP'] as const;
 
@@ -495,6 +505,228 @@ function ClientsTab() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Contracts Tab (R1) ───────────────────────────────────────────────────────
+
+function ContractsTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const list = useQuery({ queryKey: ['contracts'], queryFn: () => contracts.list() });
+  const clientsList = useQuery({ queryKey: ['clients'], queryFn: () => clients.list() });
+  const clientSelectId = useId();
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ clientId: '', name: '', retainer: '', includedHours: '' });
+
+  const clientName = (id: string) => clientsList.data?.find((c) => c.id === id)?.name ?? id;
+  const euros = (cents: number | null) =>
+    cents == null ? '—' : `€${(cents / 100).toLocaleString('es-ES')}`;
+
+  const createMut = useMutation({
+    mutationFn: () =>
+      contracts.create({
+        clientId: form.clientId,
+        name: form.name.trim(),
+        retainerCents: form.retainer ? Math.round(parseFloat(form.retainer) * 100) : null,
+        includedHours: form.includedHours ? parseInt(form.includedHours, 10) : null,
+        status: 'active',
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['contracts'] });
+      toast({ tone: 'ok', title: 'Contrato creado · Contract created', body: form.name });
+      setCreating(false);
+      setForm({ clientId: '', name: '', retainer: '', includedHours: '' });
+    },
+    onError: (err) =>
+      toast({
+        tone: 'danger',
+        title: 'Error al crear · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      }),
+  });
+
+  const statusMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'active' | 'ended' }) =>
+      contracts.update(id, { status }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['contracts'] }),
+    onError: (err) =>
+      toast({
+        tone: 'danger',
+        title: 'Error',
+        body: err instanceof ApiError ? err.message : 'Error',
+      }),
+  });
+
+  const delMut = useMutation({
+    mutationFn: (id: string) => contracts.delete(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['contracts'] }),
+    onError: (err) =>
+      toast({
+        tone: 'danger',
+        title: 'Error',
+        body: err instanceof ApiError ? err.message : 'Error',
+      }),
+  });
+
+  if (list.isLoading)
+    return (
+      <div className="gs-state">
+        <span className="gs-loading">cargando contratos · loading contracts</span>
+      </div>
+    );
+  if (list.isError)
+    return (
+      <div className="gs-state">
+        <span className="mono" style={{ color: 'var(--eg-red)' }}>
+          // error al cargar contratos · failed to load
+        </span>
+      </div>
+    );
+
+  const rows: ContractView[] = list.data ?? [];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button className="b-btn b-btn--ink" onClick={() => setCreating((v) => !v)}>
+          + Contrato · Contract
+        </button>
+      </div>
+
+      {creating && (
+        <div
+          style={{
+            border: '1.5px solid var(--eg-iron)',
+            padding: 14,
+            marginBottom: 16,
+            display: 'grid',
+            gap: 10,
+          }}
+        >
+          <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)' }}>
+            // NUEVO CONTRATO · NEW CONTRACT
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <label htmlFor={clientSelectId} className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+              // cliente · client
+            </label>
+            <select
+              id={clientSelectId}
+              value={form.clientId}
+              onChange={(e) => {
+                const v = e.currentTarget.value;
+                setForm((f) => ({ ...f, clientId: v }));
+              }}
+              style={SELECT_STYLE}
+            >
+              <option value="">— seleccionar · select —</option>
+              {(clientsList.data ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Field
+            label="nombre · name"
+            value={form.name}
+            onChange={(v) => setForm((f) => ({ ...f, name: v }))}
+            placeholder="Retainer 2026"
+          />
+          <Field
+            label="cuota fija € · retainer (opcional)"
+            type="number"
+            value={form.retainer}
+            onChange={(v) => setForm((f) => ({ ...f, retainer: v }))}
+            placeholder="5000"
+          />
+          <Field
+            label="horas incluidas · included hours (opcional)"
+            type="number"
+            value={form.includedHours}
+            onChange={(v) => setForm((f) => ({ ...f, includedHours: v }))}
+            placeholder="40"
+          />
+          <button
+            className="b-btn b-btn--ink"
+            disabled={!form.clientId || !form.name.trim()}
+            onClick={() => createMut.mutate()}
+          >
+            + Crear Contrato · Create
+          </button>
+          {createMut.isError && (
+            <span className="mono" style={{ color: 'var(--eg-red)', fontSize: 11 }}>
+              // error · check fields
+            </span>
+          )}
+        </div>
+      )}
+
+      {rows.length === 0 && (
+        <div className="gs-state" style={{ minHeight: 80 }}>
+          sin contratos · no contracts yet
+        </div>
+      )}
+      {rows.map((c) => (
+        <div
+          key={c.id}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto',
+            gap: 12,
+            padding: '10px 0',
+            borderBottom: '1px solid var(--eg-rule)',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 700 }}>
+              {c.name}{' '}
+              <span
+                className="caps"
+                style={{
+                  fontSize: 10,
+                  color: c.status === 'active' ? 'var(--eg-green)' : 'var(--eg-fg-3)',
+                }}
+              >
+                · {c.status}
+              </span>
+            </div>
+            <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)' }}>
+              {clientName(c.clientId)} · retainer {euros(c.retainerCents)} ·{' '}
+              {c.includedHours ?? '∞'}h incl.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {c.status === 'active' ? (
+              <button
+                className="b-btn b-btn--ghost"
+                onClick={() => statusMut.mutate({ id: c.id, status: 'ended' })}
+              >
+                Finalizar · End
+              </button>
+            ) : (
+              <button
+                className="b-btn b-btn--ghost"
+                onClick={() => statusMut.mutate({ id: c.id, status: 'active' })}
+              >
+                Reactivar · Reopen
+              </button>
+            )}
+            <button
+              className="b-btn b-btn--ghost"
+              onClick={() => {
+                if (window.confirm(`¿Borrar contrato ${c.name}? · Delete contract?`))
+                  delMut.mutate(c.id);
+              }}
+            >
+              Borrar · Delete
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -2776,6 +3008,7 @@ export function SettingsPage() {
     rawTab === 'channels' ||
     rawTab === 'intake' ||
     rawTab === 'clients' ||
+    rawTab === 'contracts' ||
     rawTab === 'team'
       ? rawTab
       : 'clients';
@@ -2786,6 +3019,7 @@ export function SettingsPage() {
 
   // Count queries for badge numbers
   const clientsQ = useQuery({ queryKey: ['clients'], queryFn: () => clients.list() });
+  const contractsCountQ = useQuery({ queryKey: ['contracts'], queryFn: () => contracts.list() });
   const ratesQ = useQuery({ queryKey: ['rates'], queryFn: () => rates.list() });
   const channelsQ = useQuery({ queryKey: ['channels'], queryFn: () => channels.list() });
   const intakeQ = useQuery({ queryKey: ['intake-sources'], queryFn: () => intake.sources.list() });
@@ -2801,6 +3035,13 @@ export function SettingsPage() {
             count: clientsQ.data?.length ?? null,
             active: tab === 'clients',
             onClick: () => setTab('clients'),
+          },
+          {
+            es: 'Contratos',
+            en: 'Contracts',
+            count: contractsCountQ.data?.length ?? null,
+            active: tab === 'contracts',
+            onClick: () => setTab('contracts'),
           },
           {
             es: 'Tarifas',
@@ -2897,6 +3138,7 @@ export function SettingsPage() {
         </div>
 
         {tab === 'clients' && <ClientsTab />}
+        {tab === 'contracts' && <ContractsTab />}
         {tab === 'rates' && <RatesTab />}
         {tab === 'channels' && <ChannelsTab />}
         {tab === 'intake' && <IntakeTab />}

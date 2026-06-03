@@ -18,6 +18,7 @@ import type {
   ProjectMonthlyView,
   SessionView,
   InboxItemView,
+  ContractView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -33,6 +34,8 @@ import type {
   UpdateWorklog,
   CreateClient,
   UpdateClient,
+  CreateContract,
+  UpdateContract,
   CreateProject,
   UpdateProject,
   CreateStatus,
@@ -526,6 +529,20 @@ export interface AuditEntry {
   after: unknown;
   at: string;
 }
+
+// ---------------------------------------------------------------------------
+// Contracts (admin) — R1 client contracts / SOWs (drive retainer billing).
+// ---------------------------------------------------------------------------
+
+export const contracts = {
+  list: (clientId?: string) =>
+    request<ContractView[]>(`/contracts${clientId ? `?clientId=${clientId}` : ''}`),
+  create: (d: CreateContract) =>
+    request<ContractView>('/contracts', { method: 'POST', ...json(d) }),
+  update: (id: string, d: UpdateContract) =>
+    request<ContractView>(`/contracts/${id}`, { method: 'PATCH', ...json(d) }),
+  delete: (id: string) => request<void>(`/contracts/${id}`, { method: 'DELETE' }),
+};
 
 // ---------------------------------------------------------------------------
 // E1 in-app inbox — the caller's personal notifications.

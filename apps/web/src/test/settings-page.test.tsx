@@ -37,6 +37,11 @@ const m = vi.hoisted(() => ({
   usersCreate: vi.fn(),
   usersUpdate: vi.fn(),
   usersInvite: vi.fn(),
+  // contracts (R1)
+  contractsList: vi.fn(),
+  contractsCreate: vi.fn(),
+  contractsUpdate: vi.fn(),
+  contractsDelete: vi.fn(),
 }));
 
 vi.mock('../api/client', () => ({
@@ -78,6 +83,12 @@ vi.mock('../api/client', () => ({
     create: (d: unknown) => m.usersCreate(d),
     update: (id: string, d: unknown) => m.usersUpdate(id, d),
     invite: (id: string) => m.usersInvite(id),
+  },
+  contracts: {
+    list: (clientId?: string) => m.contractsList(clientId),
+    create: (d: unknown) => m.contractsCreate(d),
+    update: (id: string, d: unknown) => m.contractsUpdate(id, d),
+    delete: (id: string) => m.contractsDelete(id),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -190,6 +201,10 @@ describe('SettingsPage', () => {
     m.usersCreate.mockReset();
     m.usersUpdate.mockReset();
     m.usersInvite.mockReset();
+    m.contractsList.mockReset().mockResolvedValue([]);
+    m.contractsCreate.mockReset();
+    m.contractsUpdate.mockReset();
+    m.contractsDelete.mockReset();
     confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
@@ -1053,5 +1068,65 @@ describe('SettingsPage', () => {
     await waitFor(() =>
       expect(screen.queryByText('// INVITAR PERSONA · ADD PERSON')).not.toBeInTheDocument(),
     );
+  });
+
+  // ── ContractsTab (R1) ──────────────────────────────────────────────────────────
+  const aContract = (over: Partial<Record<string, unknown>> = {}) => ({
+    id: 'k1',
+    clientId: 'c1',
+    name: 'Retainer 2026',
+    retainerCents: 500_000,
+    includedHours: 40,
+    startDate: null,
+    endDate: null,
+    status: 'active',
+    notes: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    ...over,
+  });
+
+  it('lists contracts and shows the empty state', async () => {
+    m.contractsList.mockResolvedValue([]);
+    renderTab('contracts');
+    expect(await screen.findByText(/sin contratos · no contracts yet/)).toBeInTheDocument();
+  });
+
+  it('creates, ends, and deletes a contract', async () => {
+    m.clientsList.mockResolvedValue([aClient()]); // c1 / Acme Corp
+    m.contractsList.mockResolvedValue([aContract()]);
+    m.contractsCreate.mockResolvedValue(aContract({ id: 'k2', name: 'New SOW' }));
+    m.contractsUpdate.mockResolvedValue(aContract({ status: 'ended' }));
+    m.contractsDelete.mockResolvedValue(undefined);
+    renderTab('contracts');
+
+    // Existing contract row renders (name + client).
+    expect(await screen.findByText('Retainer 2026')).toBeInTheDocument();
+    expect(
+      screen.getByText((t) => t.includes('Acme Corp') && t.includes('40h incl.')),
+    ).toBeInTheDocument();
+
+    // Create: open the form, fill it (labels are real htmlFor associations), submit.
+    await userEvent.click(screen.getByRole('button', { name: '+ Contrato · Contract' }));
+    await userEvent.selectOptions(screen.getByLabelText(/cliente · client/), 'c1');
+    await userEvent.type(screen.getByLabelText(/nombre · name/), 'New SOW');
+    await userEvent.type(screen.getByLabelText(/cuota fija/), '5000');
+    await userEvent.type(screen.getByLabelText(/horas incluidas/), '40');
+    await userEvent.click(screen.getByRole('button', { name: /Crear Contrato/ }));
+    await waitFor(() => expect(m.contractsCreate).toHaveBeenCalled());
+    expect(m.contractsCreate.mock.calls[0]![0]).toMatchObject({
+      clientId: 'c1',
+      name: 'New SOW',
+      retainerCents: 500_000,
+      includedHours: 40,
+      status: 'active',
+    });
+
+    // End the active contract.
+    await userEvent.click(screen.getByRole('button', { name: /Finalizar · End/ }));
+    await waitFor(() => expect(m.contractsUpdate).toHaveBeenCalledWith('k1', { status: 'ended' }));
+
+    // Delete (window.confirm is stubbed true).
+    await userEvent.click(screen.getByRole('button', { name: /Borrar · Delete/ }));
+    await waitFor(() => expect(m.contractsDelete).toHaveBeenCalledWith('k1'));
   });
 });
