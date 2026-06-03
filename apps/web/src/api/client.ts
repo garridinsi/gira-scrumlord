@@ -23,6 +23,7 @@ import type {
   IssueEventView,
   AttachmentView,
   PeriodLockView,
+  KbArticleView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -41,6 +42,8 @@ import type {
   CreateContract,
   UpdateContract,
   CreateAttachment,
+  CreateKbArticle,
+  UpdateKbArticle,
   CreateProject,
   UpdateProject,
   CreateStatus,
@@ -414,6 +417,19 @@ export const periodLocks = {
       ...json({ monthKey }),
     }),
   delete: (id: string) => request<void>(`/period-locks/${id}`, { method: 'DELETE' }),
+};
+
+// ---------------------------------------------------------------------------
+// Runbook / KB (staff) — Q1 internal knowledge base.
+// ---------------------------------------------------------------------------
+
+export const kb = {
+  list: (clientId?: string) =>
+    request<KbArticleView[]>(`/kb${clientId ? `?clientId=${clientId}` : ''}`),
+  create: (d: CreateKbArticle) => request<KbArticleView>('/kb', { method: 'POST', ...json(d) }),
+  update: (id: string, d: UpdateKbArticle) =>
+    request<KbArticleView>(`/kb/${id}`, { method: 'PATCH', ...json(d) }),
+  delete: (id: string) => request<void>(`/kb/${id}`, { method: 'DELETE' }),
 };
 
 // ---------------------------------------------------------------------------

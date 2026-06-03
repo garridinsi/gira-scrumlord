@@ -46,6 +46,11 @@ const m = vi.hoisted(() => ({
   periodLocksList: vi.fn(),
   periodLocksCreate: vi.fn(),
   periodLocksDelete: vi.fn(),
+  // runbook/KB (Q1)
+  kbList: vi.fn(),
+  kbCreate: vi.fn(),
+  kbUpdate: vi.fn(),
+  kbDelete: vi.fn(),
 }));
 
 vi.mock('../api/client', () => ({
@@ -98,6 +103,12 @@ vi.mock('../api/client', () => ({
     list: (clientId: string) => m.periodLocksList(clientId),
     create: (clientId: string, monthKey: string) => m.periodLocksCreate(clientId, monthKey),
     delete: (id: string) => m.periodLocksDelete(id),
+  },
+  kb: {
+    list: (clientId?: string) => m.kbList(clientId),
+    create: (d: unknown) => m.kbCreate(d),
+    update: (id: string, d: unknown) => m.kbUpdate(id, d),
+    delete: (id: string) => m.kbDelete(id),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -217,6 +228,10 @@ describe('SettingsPage', () => {
     m.periodLocksList.mockReset().mockResolvedValue([]);
     m.periodLocksCreate.mockReset();
     m.periodLocksDelete.mockReset();
+    m.kbList.mockReset().mockResolvedValue([]);
+    m.kbCreate.mockReset();
+    m.kbUpdate.mockReset();
+    m.kbDelete.mockReset();
     confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
@@ -1177,5 +1192,66 @@ describe('SettingsPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Desbloquear · Unlock/ }));
     await waitFor(() => expect(m.periodLocksDelete).toHaveBeenCalledWith('l1'));
+  });
+
+  // ── RunbookTab (Q1) ──────────────────────────────────────────────────────────
+  it('runbook: lists, creates, edits, and deletes an article', async () => {
+    m.kbList.mockResolvedValue([
+      {
+        id: 'kb1',
+        clientId: null,
+        title: 'On-call',
+        body: 'stay calm',
+        createdById: 'u1',
+        createdAt: '2026-06-01T00:00:00Z',
+        updatedAt: '2026-06-01T00:00:00Z',
+      },
+    ]);
+    m.kbCreate.mockResolvedValue({
+      id: 'kb2',
+      clientId: null,
+      title: 'New',
+      body: 'b',
+      createdById: 'u1',
+      createdAt: '2026-06-02T00:00:00Z',
+      updatedAt: '2026-06-02T00:00:00Z',
+    });
+    m.kbUpdate.mockResolvedValue({
+      id: 'kb1',
+      clientId: null,
+      title: 'On-call',
+      body: 'updated',
+      createdById: 'u1',
+      createdAt: '2026-06-01T00:00:00Z',
+      updatedAt: '2026-06-03T00:00:00Z',
+    });
+    m.kbDelete.mockResolvedValue(undefined);
+    renderTab('runbook');
+
+    expect(await screen.findByText('On-call')).toBeInTheDocument();
+    expect(screen.getByText('stay calm')).toBeInTheDocument();
+
+    // Create
+    await userEvent.click(screen.getByRole('button', { name: '+ Artículo · Article' }));
+    await userEvent.type(screen.getByLabelText(/título · title/), 'Deploy steps');
+    await userEvent.type(screen.getByLabelText(/contenido · body/), 'pull then up');
+    await userEvent.click(screen.getByRole('button', { name: /Crear · Create/ }));
+    await waitFor(() => expect(m.kbCreate).toHaveBeenCalled());
+    expect(m.kbCreate.mock.calls[0]![0]).toMatchObject({
+      title: 'Deploy steps',
+      body: 'pull then up',
+    });
+
+    // Edit the existing article's body
+    await userEvent.click(screen.getByRole('button', { name: /Editar · Edit/ }));
+    const editArea = screen.getByLabelText(/editar On-call/);
+    await userEvent.clear(editArea);
+    await userEvent.type(editArea, 'now updated');
+    await userEvent.click(screen.getByRole('button', { name: /Guardar · Save/ }));
+    await waitFor(() => expect(m.kbUpdate).toHaveBeenCalledWith('kb1', { body: 'now updated' }));
+
+    // Delete
+    await userEvent.click(screen.getByRole('button', { name: /Borrar · Delete/ }));
+    await waitFor(() => expect(m.kbDelete).toHaveBeenCalledWith('kb1'));
   });
 });

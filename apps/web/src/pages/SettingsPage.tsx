@@ -21,6 +21,7 @@ import {
   users,
   contracts,
   periodLocks,
+  kb,
   ApiError,
 } from '../api/client';
 import type { ClientRecord, RateRecord, AssignmentRuleRecord } from '../api/client';
@@ -32,6 +33,7 @@ import type {
   CreateIntakeSource,
   ContractView,
   PeriodLockView,
+  KbArticleView,
 } from '@gira/shared';
 import { Subbar } from '../ui/Subbar';
 import { Avatar, Plate } from '../ui/atoms';
@@ -41,7 +43,7 @@ import { useMe } from '../hooks/useAuth';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'clients' | 'contracts' | 'locks' | 'rates' | 'channels' | 'intake' | 'team';
+type Tab = 'clients' | 'contracts' | 'locks' | 'rates' | 'channels' | 'intake' | 'team' | 'runbook';
 
 const CURRENCIES = ['EUR', 'USD', 'GBP'] as const;
 
@@ -865,6 +867,205 @@ function PeriodLocksTab() {
           ))}
         </>
       )}
+    </div>
+  );
+}
+
+// ── Runbook / KB Tab (Q1) ────────────────────────────────────────────────────
+
+function RunbookTab() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const list = useQuery({ queryKey: ['kb'], queryFn: () => kb.list() });
+  const [creating, setCreating] = useState(false);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState('');
+
+  const createMut = useMutation({
+    mutationFn: () => kb.create({ title: title.trim(), body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['kb'] });
+      toast({ tone: 'ok', title: 'Artículo creado · Article created', body: title });
+      setCreating(false);
+      setTitle('');
+      setBody('');
+    },
+    onError: (err) =>
+      toast({
+        tone: 'danger',
+        title: 'Error al crear · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      }),
+  });
+  const saveMut = useMutation({
+    mutationFn: ({ id, body: b }: { id: string; body: string }) => kb.update(id, { body: b }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['kb'] });
+      setEditId(null);
+    },
+    onError: (err) =>
+      toast({
+        tone: 'danger',
+        title: 'Error',
+        body: err instanceof ApiError ? err.message : 'Error',
+      }),
+  });
+  const delMut = useMutation({
+    mutationFn: (id: string) => kb.delete(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['kb'] }),
+  });
+
+  if (list.isLoading)
+    return (
+      <div className="gs-state">
+        <span className="gs-loading">cargando runbook · loading</span>
+      </div>
+    );
+  if (list.isError)
+    return (
+      <div className="gs-state">
+        <span className="mono" style={{ color: 'var(--eg-red)' }}>
+          // error al cargar · failed to load
+        </span>
+      </div>
+    );
+
+  const rows: KbArticleView[] = list.data ?? [];
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <button className="b-btn b-btn--ink" onClick={() => setCreating((v) => !v)}>
+          + Artículo · Article
+        </button>
+      </div>
+
+      {creating && (
+        <div
+          style={{
+            border: '1.5px solid var(--eg-iron)',
+            padding: 14,
+            marginBottom: 16,
+            display: 'grid',
+            gap: 10,
+          }}
+        >
+          <Field
+            label="título · title"
+            value={title}
+            onChange={setTitle}
+            placeholder="On-call runbook"
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+              // contenido · body (markdown)
+            </span>
+            <textarea
+              aria-label="contenido · body"
+              value={body}
+              onChange={(e) => setBody(e.currentTarget.value)}
+              rows={6}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                padding: 8,
+                border: '1.5px solid var(--eg-iron)',
+                background: 'var(--eg-paper)',
+              }}
+            />
+          </div>
+          <button
+            className="b-btn b-btn--ink"
+            disabled={!title.trim()}
+            onClick={() => createMut.mutate()}
+          >
+            + Crear · Create
+          </button>
+        </div>
+      )}
+
+      {rows.length === 0 && (
+        <div className="gs-state" style={{ minHeight: 80 }}>
+          sin artículos · no articles yet
+        </div>
+      )}
+      {rows.map((a) => (
+        <div key={a.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--eg-rule)' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <span style={{ fontWeight: 700 }}>
+              {a.title}{' '}
+              <span className="caps" style={{ fontSize: 9, color: 'var(--eg-fg-3)' }}>
+                · {a.clientId ? 'cliente · client' : 'global'}
+              </span>
+            </span>
+            <span style={{ display: 'flex', gap: 6 }}>
+              <button
+                className="b-btn b-btn--ghost"
+                onClick={() => {
+                  setEditId(editId === a.id ? null : a.id);
+                  setEditBody(a.body);
+                }}
+              >
+                {editId === a.id ? 'Cerrar · Close' : 'Editar · Edit'}
+              </button>
+              <button
+                className="b-btn b-btn--ghost"
+                onClick={() => {
+                  if (window.confirm(`¿Borrar ${a.title}? · Delete?`)) delMut.mutate(a.id);
+                }}
+              >
+                Borrar · Delete
+              </button>
+            </span>
+          </div>
+          {editId === a.id ? (
+            <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+              <textarea
+                aria-label={`editar ${a.title}`}
+                value={editBody}
+                onChange={(e) => setEditBody(e.currentTarget.value)}
+                rows={6}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  padding: 8,
+                  border: '1.5px solid var(--eg-iron)',
+                  background: 'var(--eg-paper)',
+                }}
+              />
+              <button
+                className="b-btn b-btn--ink"
+                onClick={() => saveMut.mutate({ id: a.id, body: editBody })}
+              >
+                Guardar · Save
+              </button>
+            </div>
+          ) : (
+            a.body && (
+              <pre
+                className="mono"
+                style={{
+                  fontSize: 12,
+                  color: 'var(--eg-fg-2)',
+                  whiteSpace: 'pre-wrap',
+                  margin: '6px 0 0',
+                }}
+              >
+                {a.body}
+              </pre>
+            )
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -3148,6 +3349,7 @@ export function SettingsPage() {
     rawTab === 'clients' ||
     rawTab === 'contracts' ||
     rawTab === 'locks' ||
+    rawTab === 'runbook' ||
     rawTab === 'team'
       ? rawTab
       : 'clients';
@@ -3216,6 +3418,13 @@ export function SettingsPage() {
             count: usersQ.data?.length ?? null,
             active: tab === 'team',
             onClick: () => setTab('team'),
+          },
+          {
+            es: 'Runbook',
+            en: 'Runbook',
+            count: null,
+            active: tab === 'runbook',
+            onClick: () => setTab('runbook'),
           },
         ]}
         right={tab === 'clients' ? undefined : tab === 'rates' ? undefined : undefined}
@@ -3290,6 +3499,7 @@ export function SettingsPage() {
         {tab === 'channels' && <ChannelsTab />}
         {tab === 'intake' && <IntakeTab />}
         {tab === 'team' && <TeamTab />}
+        {tab === 'runbook' && <RunbookTab />}
       </div>
     </div>
   );
