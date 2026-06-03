@@ -25,5 +25,14 @@ export default defineConfig({
     poolOptions: { forks: { singleFork: true } },
     hookTimeout: 60_000,
     testTimeout: 30_000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'json-summary', 'html'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.ts'],
+      // server.ts is the bare listen() entrypoint (not exercised by app.inject); type
+      // decls aren't executable targets.
+      exclude: ['src/server.ts', 'src/**/*.d.ts'],
+    },
   },
 });
