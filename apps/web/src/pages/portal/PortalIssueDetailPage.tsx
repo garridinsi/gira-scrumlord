@@ -44,7 +44,7 @@ export function PortalIssueDetailPage() {
   });
 
   const addComment = useMutation({
-    mutationFn: (body: string) => issues.comments.create(issueKey, { body }),
+    mutationFn: (body: string) => issues.comments.create(issueKey, { body, visibility: 'client' }),
     onSuccess: () => {
       setCommentBody('');
       void queryClient.invalidateQueries({ queryKey: ['issue', issueKey, 'comments'] });

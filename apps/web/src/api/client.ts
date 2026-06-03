@@ -320,6 +320,7 @@ export interface CommentRecord {
   author: UserView;
   body: string;
   createdAt: string;
+  visibility: 'client' | 'internal';
 }
 
 export interface WorklogRecord {

@@ -210,9 +210,11 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
   app.get('/issues/:key/comments', { preHandler: requireAuth }, async (req) => {
     const { key } = req.params as { key: string };
     const issue = await loadIssueOr404(key);
-    assertCanAccessProject(currentUser(req), { clientId: issue.project.clientId });
+    const user = currentUser(req);
+    assertCanAccessProject(user, { clientId: issue.project.clientId });
+    // N1 GUARD: a client/portal viewer NEVER receives internal comments. Staff see all.
     const comments = await prisma.comment.findMany({
-      where: { issueId: issue.id },
+      where: { issueId: issue.id, ...(user.kind === 'client' ? { visibility: 'client' } : {}) },
       include: { author: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -226,8 +228,11 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
     // Anyone with access (including clients) may comment.
     assertCanAccessProject(user, { clientId: issue.project.clientId });
     const input = createCommentSchema.parse(req.body);
+    // A client author can NEVER create an internal note — force 'client' server-side
+    // regardless of the submitted value. Only staff may post internal notes.
+    const visibility = user.kind === 'client' ? 'client' : input.visibility;
     const comment = await prisma.comment.create({
-      data: { issueId: issue.id, authorId: user.id, body: input.body },
+      data: { issueId: issue.id, authorId: user.id, body: input.body, visibility },
       include: { author: true },
     });
     return reply.code(201).send(toCommentView(comment));

@@ -82,6 +82,7 @@ export function toCommentView(c: Comment & { author?: User | null }): CommentVie
     body: c.body,
     author: c.author ? toPublicUserView(c.author) : null,
     createdAt: c.createdAt.toISOString(),
+    visibility: c.visibility === 'internal' ? 'internal' : 'client',
   };
 }
 

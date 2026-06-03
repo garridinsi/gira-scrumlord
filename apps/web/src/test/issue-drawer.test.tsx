@@ -129,7 +129,21 @@ describe('IssueDrawer', () => {
     // Submit via Ctrl/Cmd+Enter (the textarea's keydown handler).
     await userEvent.keyboard('{Control>}{Enter}{/Control}');
 
-    await waitFor(() => expect(h.commentsCreate).toHaveBeenCalledWith('GIRA-1', { body: 'looking into it' }));
+    await waitFor(() => expect(h.commentsCreate).toHaveBeenCalledWith('GIRA-1', { body: 'looking into it', visibility: 'client' }));
+  });
+
+  it('posts an internal note when the internal toggle is checked (N1)', async () => {
+    h.get.mockResolvedValue(issue({}));
+    h.commentsCreate.mockResolvedValue({ id: 'c2', body: 'staff note', visibility: 'internal' });
+    renderWithProviders(<IssueDrawer issueKey="GIRA-1" projectKey="PRJ" onClose={vi.fn()} />);
+    await screen.findByText('My issue title');
+
+    await userEvent.click(screen.getByText('Comentarios'));
+    await userEvent.click(await screen.findByRole('checkbox', { name: /internal note/i }));
+    await userEvent.type(screen.getByPlaceholderText(/Type a reply/i), 'staff note');
+    await userEvent.keyboard('{Control>}{Enter}{/Control}');
+
+    await waitFor(() => expect(h.commentsCreate).toHaveBeenCalledWith('GIRA-1', { body: 'staff note', visibility: 'internal' }));
   });
 
   it('sets a resolution from the sidebar (D2 UI)', async () => {

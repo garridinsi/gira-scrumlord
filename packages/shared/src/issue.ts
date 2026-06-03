@@ -75,7 +75,13 @@ export const issueFilterSchema = z.object({
 });
 export type IssueFilter = z.infer<typeof issueFilterSchema>;
 
+export const commentVisibility = z.enum(['client', 'internal']);
+export type CommentVisibility = z.infer<typeof commentVisibility>;
+
 export const createCommentSchema = z.object({
   body: z.string().trim().min(1).max(20_000),
+  // N1: staff may post an internal (staff-only) note; clients are forced to 'client'
+  // server-side regardless of what they send.
+  visibility: commentVisibility.default('client'),
 });
 export type CreateComment = z.infer<typeof createCommentSchema>;

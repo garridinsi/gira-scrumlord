@@ -363,6 +363,10 @@ model Comment {
   authorId  String
   author    User     @relation(fields: [authorId], references: [id])
   body      String // Markdown
+  // N1: 'client' = visible in the client portal; 'internal' = staff-only. Default
+  // 'client' so existing comments stay visible; the list endpoint hides 'internal'
+  // from any client/portal viewer (the load-bearing guard).
+  visibility String  @default("client")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

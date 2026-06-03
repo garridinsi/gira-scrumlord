@@ -122,6 +122,28 @@ describe('issues', () => {
     expect(unblocked.json().blockedReason).toBeNull();
   });
 
+  it('hides internal comments from client/portal viewers; clients can’t post internal (N1)', async () => {
+    const client = await prisma.client.create({ data: { name: 'AcmeN1', slug: 'acmen1' } });
+    const staff = await actingAs({ role: 'member' });
+    await app.inject({ method: 'POST', url: '/projects', headers: { cookie: staff.cookie }, payload: { key: 'NVP', name: 'Visibility', clientId: client.id } });
+    await create(app, staff.cookie, { projectKey: 'NVP', title: 'Issue' }); // NVP-1
+
+    await app.inject({ method: 'POST', url: '/issues/NVP-1/comments', headers: { cookie: staff.cookie }, payload: { body: 'visible to client' } });
+    await app.inject({ method: 'POST', url: '/issues/NVP-1/comments', headers: { cookie: staff.cookie }, payload: { body: 'STAFF ONLY note', visibility: 'internal' } });
+
+    expect((await app.inject({ method: 'GET', url: '/issues/NVP-1/comments', headers: { cookie: staff.cookie } })).json()).toHaveLength(2);
+
+    const portal = await actingAs({ kind: 'client', role: 'viewer', clientId: client.id });
+    const clientList = await app.inject({ method: 'GET', url: '/issues/NVP-1/comments', headers: { cookie: portal.cookie } });
+    expect(clientList.json()).toHaveLength(1);
+    expect(clientList.json()[0].body).toBe('visible to client');
+    expect(clientList.json().some((c: { body: string }) => c.body.includes('STAFF ONLY'))).toBe(false);
+
+    // A client author can NEVER create an internal note — forced to 'client'.
+    const posted = await app.inject({ method: 'POST', url: '/issues/NVP-1/comments', headers: { cookie: portal.cookie }, payload: { body: 'from client', visibility: 'internal' } });
+    expect(posted.json().visibility).toBe('client');
+  });
+
   it('lets a client comment on their own project’s issue', async () => {
     const client = await prisma.client.create({ data: { name: 'Acme', slug: 'acme' } });
     const staff = await actingAs({ role: 'member' });

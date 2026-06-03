@@ -287,6 +287,7 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [body, setBody] = useState('');
+  const [internal, setInternal] = useState(false); // N1: staff-only internal note toggle
 
   const commentsQuery = useQuery({
     queryKey: ['comments', issueKey],
@@ -294,7 +295,7 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
   });
 
   const createComment = useMutation({
-    mutationFn: (b: string) => issues.comments.create(issueKey, { body: b }),
+    mutationFn: (b: string) => issues.comments.create(issueKey, { body: b, visibility: internal ? 'internal' : 'client' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['comments', issueKey] });
       setBody('');
@@ -335,7 +336,18 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
           <Avatar user={c.author} lg />
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontWeight: 600, color: 'var(--eg-iron)' }}>{c.author.name}</span>
+              <span style={{ fontWeight: 600, color: 'var(--eg-iron)' }}>
+                {c.author.name}
+                {c.visibility === 'internal' && (
+                  <span
+                    className="mono"
+                    title="Solo visible para el equipo · Staff-only"
+                    style={{ marginLeft: 8, fontSize: 9, padding: '1px 5px', background: 'var(--eg-iron)', color: 'var(--eg-yellow)', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                  >
+                    interna · internal
+                  </span>
+                )}
+              </span>
               <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}>
                 {formatRelativeTime(c.createdAt)}
               </span>
@@ -372,7 +384,11 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
             resize: 'vertical',
           }}
         />
-        <div style={{ padding: '6px 10px', borderTop: '1px solid var(--eg-iron)', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ padding: '6px 10px', borderTop: '1px solid var(--eg-iron)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+          <label className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} />
+            nota interna · internal note
+          </label>
           <button
             type="button"
             className="b-btn b-btn--ink"

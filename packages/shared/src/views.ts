@@ -116,6 +116,7 @@ export interface CommentView {
   body: string;
   author: PublicUserView | null;
   createdAt: string;
+  visibility: 'client' | 'internal';
 }
 
 // ── Client portal (M2) ───────────────────────────────────────────────────
