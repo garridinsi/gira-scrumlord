@@ -135,7 +135,8 @@ function BacklogRow({
           }}
           title={`Vencimiento · Due: ${formatDate(issue.dueAt!)}`}
         >
-          {isOverdue ? '!!' : ''}{formatDate(issue.dueAt!)}
+          {isOverdue ? '!!' : ''}
+          {formatDate(issue.dueAt!)}
         </span>
       ) : (
         <span />
@@ -213,7 +214,11 @@ function SprintGroup({
       toast({ tone: 'ok', title: 'Sprint iniciado · Sprint started', body: sprint.name });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al iniciar sprint · Start failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al iniciar sprint · Start failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -225,7 +230,11 @@ function SprintGroup({
       toast({ tone: 'ok', title: 'Sprint cerrado · Sprint closed', body: sprint.name });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al cerrar sprint · Close failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al cerrar sprint · Close failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -255,10 +264,7 @@ function SprintGroup({
       >
         <Plate tone={plateColor === 'yellow' ? undefined : 'yellow'}>{plateLabel}</Plate>
         <div>
-          <div
-            className="disp"
-            style={{ fontSize: 18, color: 'var(--eg-iron)', lineHeight: 1 }}
-          >
+          <div className="disp" style={{ fontSize: 18, color: 'var(--eg-iron)', lineHeight: 1 }}>
             {sprint.name}
           </div>
           <div
@@ -281,19 +287,24 @@ function SprintGroup({
         <div style={{ display: 'flex', gap: 6 }}>
           {isActive ? (
             <>
-              <button className="b-btn b-btn--yellow" onClick={() => closeMut.mutate()} disabled={closeMut.isPending}>
+              <button
+                className="b-btn b-btn--yellow"
+                onClick={() => closeMut.mutate()}
+                disabled={closeMut.isPending}
+              >
                 Cerrar sprint
               </button>
             </>
           ) : (
-            <button className="b-btn b-btn--ink" onClick={() => startMut.mutate()} disabled={startMut.isPending}>
+            <button
+              className="b-btn b-btn--ink"
+              onClick={() => startMut.mutate()}
+              disabled={startMut.isPending}
+            >
               ▶ Iniciar sprint
             </button>
           )}
-          <button
-            onClick={() => setOpen(!open)}
-            className="b-btn b-btn--ghost"
-          >
+          <button onClick={() => setOpen(!open)} className="b-btn b-btn--ghost">
             {open ? '▾' : '▸'}
           </button>
         </div>
@@ -429,13 +440,7 @@ function BacklogGroup({
 }
 
 // ── Create Sprint modal (lightweight inline form) ────────────────────────────
-function CreateSprintModal({
-  projectKey,
-  onClose,
-}: {
-  projectKey: string;
-  onClose: () => void;
-}) {
+function CreateSprintModal({ projectKey, onClose }: { projectKey: string; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
   const [name, setName] = useState('');
@@ -457,7 +462,11 @@ function CreateSprintModal({
       onClose();
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al crear sprint · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al crear sprint · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -481,13 +490,19 @@ function CreateSprintModal({
           style={{ background: 'var(--eg-iron)', color: 'var(--eg-yellow)', padding: '10px 14px' }}
         >
           <span>// NUEVO SPRINT · NEW SPRINT</span>
-          <button className="b-btn b-btn--ghost" style={{ color: 'var(--eg-yellow)' }} onClick={onClose}>
+          <button
+            className="b-btn b-btn--ghost"
+            style={{ color: 'var(--eg-yellow)' }}
+            onClick={onClose}
+          >
             ✕
           </button>
         </div>
         <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <div className="caps" style={{ marginBottom: 4 }}>Nombre · Name</div>
+            <div className="caps" style={{ marginBottom: 4 }}>
+              Nombre · Name
+            </div>
             <input
               autoFocus
               value={name}
@@ -506,7 +521,9 @@ function CreateSprintModal({
             />
           </div>
           <div>
-            <div className="caps" style={{ marginBottom: 4 }}>Objetivo · Goal</div>
+            <div className="caps" style={{ marginBottom: 4 }}>
+              Objetivo · Goal
+            </div>
             <input
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
@@ -525,7 +542,9 @@ function CreateSprintModal({
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <div className="caps" style={{ marginBottom: 4 }}>Inicio · Start</div>
+              <div className="caps" style={{ marginBottom: 4 }}>
+                Inicio · Start
+              </div>
               <input
                 type="date"
                 value={startDate}
@@ -543,7 +562,9 @@ function CreateSprintModal({
               />
             </div>
             <div>
-              <div className="caps" style={{ marginBottom: 4 }}>Fin · End</div>
+              <div className="caps" style={{ marginBottom: 4 }}>
+                Fin · End
+              </div>
               <input
                 type="date"
                 value={endDate}
@@ -618,7 +639,11 @@ function CreateIssueModal({
       onClose();
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al crear · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al crear · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -641,13 +666,19 @@ function CreateIssueModal({
           style={{ background: 'var(--eg-iron)', color: 'var(--eg-yellow)', padding: '10px 14px' }}
         >
           <span>// NUEVO TICKET · NEW ISSUE · {projectKey}</span>
-          <button className="b-btn b-btn--ghost" style={{ color: 'var(--eg-yellow)' }} onClick={onClose}>
+          <button
+            className="b-btn b-btn--ghost"
+            style={{ color: 'var(--eg-yellow)' }}
+            onClick={onClose}
+          >
             ✕
           </button>
         </div>
         <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <div className="caps" style={{ marginBottom: 4 }}>Título · Title</div>
+            <div className="caps" style={{ marginBottom: 4 }}>
+              Título · Title
+            </div>
             <input
               autoFocus
               value={title}
@@ -731,13 +762,21 @@ export function BacklogPage() {
       void qc.invalidateQueries({ queryKey: ['backlog', key] });
       const sprintName = (sprintsQ.data ?? []).find((s) => s.id === vars.sprintId)?.name;
       if (sprintName) {
-        toast({ tone: 'ok', title: 'Sprint asignado · Sprint assigned', body: `${vars.issueKey} → ${sprintName}` });
+        toast({
+          tone: 'ok',
+          title: 'Sprint asignado · Sprint assigned',
+          body: `${vars.issueKey} → ${sprintName}`,
+        });
       } else {
         toast({ tone: 'ok', title: 'Sprint eliminado · Sprint removed', body: vars.issueKey });
       }
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al asignar sprint · Assign failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al asignar sprint · Assign failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -755,8 +794,8 @@ export function BacklogPage() {
   const filtered = filterResults
     ? filterResults
     : q
-    ? allIssues.filter((i) => i.title.toLowerCase().includes(q))
-    : allIssues;
+      ? allIssues.filter((i) => i.title.toLowerCase().includes(q))
+      : allIssues;
 
   // Separate by sprint membership
   const allSprints = sprintsQ.data ?? [];
@@ -764,8 +803,7 @@ export function BacklogPage() {
   const futureSprints = allSprints.filter((s) => s.state === 'future');
 
   // Issues assigned to a sprint
-  const issuesInSprint = (sprintId: string) =>
-    filtered.filter((i) => i.sprintId === sprintId);
+  const issuesInSprint = (sprintId: string) => filtered.filter((i) => i.sprintId === sprintId);
 
   // Unassigned to any sprint (true backlog)
   const unassigned = filtered.filter((i) => !i.sprintId);
@@ -819,11 +857,7 @@ export function BacklogPage() {
       />
 
       <h1 className="sr-only">Pendientes · Backlog · {key}</h1>
-      <FilterBar
-        projectKey={key}
-        myId={me.data?.id ?? null}
-        onResults={handleFilterResults}
-      />
+      <FilterBar projectKey={key} myId={me.data?.id ?? null} onResults={handleFilterResults} />
 
       <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px' }}>
         {/* Active sprint */}

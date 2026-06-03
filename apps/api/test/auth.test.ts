@@ -76,7 +76,11 @@ describe('auth', () => {
     expect((await createMagicLink('victim@example.test')).sent).toBe(false);
     expect(await prisma.magicLinkToken.count({ where: { email: 'victim@example.test' } })).toBe(1);
     // …yet the HTTP route still 202s, so it never reveals the throttle or the account.
-    const res = await app.inject({ method: 'POST', url: '/auth/magic-link', payload: { email: 'victim@example.test' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/magic-link',
+      payload: { email: 'victim@example.test' },
+    });
     expect(res.statusCode).toBe(202);
   });
 
@@ -111,16 +115,28 @@ describe('auth', () => {
       where: { email: 'rex@example.test' },
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
-    const cb = await app.inject({ method: 'POST', url: '/auth/callback', payload: { token: rawToken } });
+    const cb = await app.inject({
+      method: 'POST',
+      url: '/auth/callback',
+      payload: { token: rawToken },
+    });
     expect(cb.statusCode).toBe(401);
   });
 
   it('rejects a reused token', async () => {
     await makeUser({ email: 'rex@example.test' });
     const { rawToken } = await createMagicLink('rex@example.test');
-    const first = await app.inject({ method: 'POST', url: '/auth/callback', payload: { token: rawToken } });
+    const first = await app.inject({
+      method: 'POST',
+      url: '/auth/callback',
+      payload: { token: rawToken },
+    });
     expect(first.statusCode).toBe(200);
-    const second = await app.inject({ method: 'POST', url: '/auth/callback', payload: { token: rawToken } });
+    const second = await app.inject({
+      method: 'POST',
+      url: '/auth/callback',
+      payload: { token: rawToken },
+    });
     expect(second.statusCode).toBe(401);
   });
 

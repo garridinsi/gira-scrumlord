@@ -24,7 +24,12 @@ describe('notifications + incidents API', () => {
       method: 'POST',
       url: '/channels',
       headers: { cookie },
-      payload: { name: 'oncall', kind: 'email', target: 'oncall@example.test', events: ['issue.emergency'] },
+      payload: {
+        name: 'oncall',
+        kind: 'email',
+        target: 'oncall@example.test',
+        events: ['issue.emergency'],
+      },
     });
     expect(ok.statusCode).toBe(201);
     expect(ok.json().kind).toBe('email');
@@ -44,9 +49,18 @@ describe('notifications + incidents API', () => {
       method: 'POST',
       url: '/channels',
       headers: { cookie },
-      payload: { name: 'oncall', kind: 'email', target: 'oncall@example.test', events: ['issue.emergency'] },
+      payload: {
+        name: 'oncall',
+        kind: 'email',
+        target: 'oncall@example.test',
+        events: ['issue.emergency'],
+      },
     });
-    const res = await app.inject({ method: 'POST', url: `/channels/${ch.json().id}/test`, headers: { cookie } });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/channels/${ch.json().id}/test`,
+      headers: { cookie },
+    });
     expect(res.statusCode).toBe(200);
     expect(res.json().ok).toBe(true);
   });
@@ -77,22 +91,38 @@ describe('notifications + incidents API', () => {
       data: { issueId: created.json().id, status: 'open' },
     });
 
-    const list = await app.inject({ method: 'GET', url: '/incidents?status=open', headers: { cookie } });
+    const list = await app.inject({
+      method: 'GET',
+      url: '/incidents?status=open',
+      headers: { cookie },
+    });
     expect(list.json()).toHaveLength(1);
     expect(list.json()[0].issueKey).toBe('GIRA-1');
 
-    const ack = await app.inject({ method: 'POST', url: `/incidents/${incident.id}/ack`, headers: { cookie } });
+    const ack = await app.inject({
+      method: 'POST',
+      url: `/incidents/${incident.id}/ack`,
+      headers: { cookie },
+    });
     expect(ack.statusCode).toBe(200);
     expect(ack.json().status).toBe('acked');
 
-    const resolve = await app.inject({ method: 'POST', url: `/incidents/${incident.id}/resolve`, headers: { cookie } });
+    const resolve = await app.inject({
+      method: 'POST',
+      url: `/incidents/${incident.id}/resolve`,
+      headers: { cookie },
+    });
     expect(resolve.statusCode).toBe(200);
     expect(resolve.json().status).toBe('resolved');
   });
 
   it('refuses an SSRF-prone webhook target at write time', async () => {
     const { cookie } = await actingAs({ role: 'member' });
-    for (const target of ['http://169.254.169.254/latest/meta-data', 'http://localhost:6660/audit', 'http://127.0.0.1/']) {
+    for (const target of [
+      'http://169.254.169.254/latest/meta-data',
+      'http://localhost:6660/audit',
+      'http://127.0.0.1/',
+    ]) {
       const res = await app.inject({
         method: 'POST',
         url: '/channels',
@@ -109,7 +139,12 @@ describe('notifications + incidents API', () => {
     const project = await prisma.project.findUnique({ where: { key: projectKey } });
 
     const ch = (
-      await app.inject({ method: 'POST', url: '/channels', headers: { cookie }, payload: { name: 'oncall', kind: 'email', target: 'a@b.test', events: ['issue.emergency'] } })
+      await app.inject({
+        method: 'POST',
+        url: '/channels',
+        headers: { cookie },
+        payload: { name: 'oncall', kind: 'email', target: 'a@b.test', events: ['issue.emergency'] },
+      })
     ).json();
 
     // list
@@ -121,7 +156,14 @@ describe('notifications + incidents API', () => {
       method: 'POST',
       url: '/channels',
       headers: { cookie },
-      payload: { name: 'proj', kind: 'email', target: 'p@x.test', scope: 'project', projectId: project!.id, events: ['issue.status_changed'] },
+      payload: {
+        name: 'proj',
+        kind: 'email',
+        target: 'p@x.test',
+        scope: 'project',
+        projectId: project!.id,
+        events: ['issue.status_changed'],
+      },
     });
     expect(scoped.statusCode).toBe(201);
     // …and rejects an unknown project (well-formed cuid that doesn't exist → 404).
@@ -141,26 +183,59 @@ describe('notifications + incidents API', () => {
     expect(badProj.statusCode).toBe(404);
 
     // patch (name) then delete (audited); a second delete 404s.
-    expect((await app.inject({ method: 'PATCH', url: `/channels/${ch.id}`, headers: { cookie }, payload: { name: 'renamed' } })).statusCode).toBe(200);
-    expect((await app.inject({ method: 'DELETE', url: `/channels/${ch.id}`, headers: { cookie } })).statusCode).toBe(204);
-    expect((await app.inject({ method: 'DELETE', url: `/channels/${ch.id}`, headers: { cookie } })).statusCode).toBe(404);
+    expect(
+      (
+        await app.inject({
+          method: 'PATCH',
+          url: `/channels/${ch.id}`,
+          headers: { cookie },
+          payload: { name: 'renamed' },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (await app.inject({ method: 'DELETE', url: `/channels/${ch.id}`, headers: { cookie } }))
+        .statusCode,
+    ).toBe(204);
+    expect(
+      (await app.inject({ method: 'DELETE', url: `/channels/${ch.id}`, headers: { cookie } }))
+        .statusCode,
+    ).toBe(404);
 
     // missing ids 404 across the verbs.
-    expect((await app.inject({ method: 'POST', url: '/channels/nope/test', headers: { cookie } })).statusCode).toBe(404);
-    expect((await app.inject({ method: 'POST', url: '/incidents/nope/ack', headers: { cookie } })).statusCode).toBe(404);
-    expect((await app.inject({ method: 'POST', url: '/incidents/nope/resolve', headers: { cookie } })).statusCode).toBe(404);
+    expect(
+      (await app.inject({ method: 'POST', url: '/channels/nope/test', headers: { cookie } }))
+        .statusCode,
+    ).toBe(404);
+    expect(
+      (await app.inject({ method: 'POST', url: '/incidents/nope/ack', headers: { cookie } }))
+        .statusCode,
+    ).toBe(404);
+    expect(
+      (await app.inject({ method: 'POST', url: '/incidents/nope/resolve', headers: { cookie } }))
+        .statusCode,
+    ).toBe(404);
   });
 
   it('scopes the incident list to the client’s own projects', async () => {
     const { user, cookie } = await actingAs({ role: 'member' });
     const { projectKey } = await seedProject({ reporterId: user.id });
-    const created = await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey, title: 'DOWN', priority: 'emergency' } });
+    const created = await app.inject({
+      method: 'POST',
+      url: '/issues',
+      headers: { cookie },
+      payload: { projectKey, title: 'DOWN', priority: 'emergency' },
+    });
     await prisma.incident.create({ data: { issueId: created.json().id, status: 'open' } });
 
     // A client of an unrelated client sees no incidents (the client-scoped where-branch).
     const other = await prisma.client.create({ data: { name: 'Other', slug: 'other' } });
     const outsider = await actingAs({ kind: 'client', role: 'viewer', clientId: other.id });
-    const list = await app.inject({ method: 'GET', url: '/incidents', headers: { cookie: outsider.cookie } });
+    const list = await app.inject({
+      method: 'GET',
+      url: '/incidents',
+      headers: { cookie: outsider.cookie },
+    });
     expect(list.statusCode).toBe(200);
     expect(list.json()).toHaveLength(0);
   });

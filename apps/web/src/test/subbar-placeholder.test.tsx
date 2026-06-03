@@ -10,10 +10,7 @@ describe('Subbar', () => {
     const onClick = vi.fn();
     const { container } = render(
       <Subbar
-        tabs={[
-          { es: 'Tablero', en: 'Board', count: 3, active: true, onClick },
-          { label: 'Plain' },
-        ]}
+        tabs={[{ es: 'Tablero', en: 'Board', count: 3, active: true, onClick }, { label: 'Plain' }]}
       />,
     );
     expect(screen.getByText('Tablero')).toBeInTheDocument();

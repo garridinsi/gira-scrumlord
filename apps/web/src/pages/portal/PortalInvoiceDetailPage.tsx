@@ -52,8 +52,7 @@ export function PortalInvoiceDetailPage() {
   }
 
   if (invoiceQ.isError || !invoiceQ.data) {
-    const is404 =
-      invoiceQ.error instanceof ApiError && invoiceQ.error.status === 404;
+    const is404 = invoiceQ.error instanceof ApiError && invoiceQ.error.status === 404;
     return (
       <div className="cp-detail">
         {backLink}

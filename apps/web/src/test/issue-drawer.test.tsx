@@ -23,10 +23,21 @@ vi.mock('../api/client', () => ({
     cost: (k: string) => h.cost(k),
     update: (k: string, d: unknown) => h.update(k, d),
     move: vi.fn(),
-    comments: { list: (k: string) => h.commentsList(k), create: (k: string, b: unknown) => h.commentsCreate(k, b) },
-    worklogs: { list: (k: string) => h.worklogsList(k), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    comments: {
+      list: (k: string) => h.commentsList(k),
+      create: (k: string, b: unknown) => h.commentsCreate(k, b),
+    },
+    worklogs: {
+      list: (k: string) => h.worklogsList(k),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
   },
-  projects: { statuses: { list: (k: string) => h.statusesList(k) }, labels: { list: (k: string) => h.labelsList(k) } },
+  projects: {
+    statuses: { list: (k: string) => h.statusesList(k) },
+    labels: { list: (k: string) => h.labelsList(k) },
+  },
   users: { list: () => h.usersList() },
   audit: { list: () => h.auditList() },
   ApiError: class ApiError extends Error {},
@@ -68,10 +79,19 @@ const issue = (over: Partial<IssueView>): IssueView =>
 describe('IssueDrawer', () => {
   beforeEach(() => {
     h.get.mockReset();
-    h.cost.mockReset().mockResolvedValue({ minutes: 60, billableMinutes: 60, hourlyCents: 6000, accruedCents: 6000, currency: 'EUR', billingMode: 'hourly' });
+    h.cost.mockReset().mockResolvedValue({
+      minutes: 60,
+      billableMinutes: 60,
+      hourlyCents: 6000,
+      accruedCents: 6000,
+      currency: 'EUR',
+      billingMode: 'hourly',
+    });
     h.commentsList.mockReset().mockResolvedValue([]);
     h.worklogsList.mockReset().mockResolvedValue([]);
-    h.statusesList.mockReset().mockResolvedValue([{ id: 's1', name: 'Backlog', category: 'todo', order: 0 }]);
+    h.statusesList
+      .mockReset()
+      .mockResolvedValue([{ id: 's1', name: 'Backlog', category: 'todo', order: 0 }]);
     h.labelsList.mockReset().mockResolvedValue([]);
     h.usersList.mockReset().mockResolvedValue([]);
     h.auditList.mockReset().mockResolvedValue({ count: 0, entries: [] });
@@ -129,7 +149,12 @@ describe('IssueDrawer', () => {
     // Submit via Ctrl/Cmd+Enter (the textarea's keydown handler).
     await userEvent.keyboard('{Control>}{Enter}{/Control}');
 
-    await waitFor(() => expect(h.commentsCreate).toHaveBeenCalledWith('GIRA-1', { body: 'looking into it', visibility: 'client' }));
+    await waitFor(() =>
+      expect(h.commentsCreate).toHaveBeenCalledWith('GIRA-1', {
+        body: 'looking into it',
+        visibility: 'client',
+      }),
+    );
   });
 
   it('posts an internal note when the internal toggle is checked (N1)', async () => {
@@ -143,7 +168,12 @@ describe('IssueDrawer', () => {
     await userEvent.type(screen.getByPlaceholderText(/Type a reply/i), 'staff note');
     await userEvent.keyboard('{Control>}{Enter}{/Control}');
 
-    await waitFor(() => expect(h.commentsCreate).toHaveBeenCalledWith('GIRA-1', { body: 'staff note', visibility: 'internal' }));
+    await waitFor(() =>
+      expect(h.commentsCreate).toHaveBeenCalledWith('GIRA-1', {
+        body: 'staff note',
+        visibility: 'internal',
+      }),
+    );
   });
 
   it('sets a resolution from the sidebar (D2 UI)', async () => {

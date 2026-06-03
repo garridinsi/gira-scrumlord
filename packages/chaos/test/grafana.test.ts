@@ -44,7 +44,9 @@ describe('grafana', () => {
 
   it('flags resolved alerts', () => {
     const [intake] = parseGrafana({
-      alerts: [{ status: 'resolved', fingerprint: 'x', labels: { alertname: 'A', severity: 'critical' } }],
+      alerts: [
+        { status: 'resolved', fingerprint: 'x', labels: { alertname: 'A', severity: 'critical' } },
+      ],
     });
     expect(intake!.resolved).toBe(true);
   });

@@ -20,8 +20,22 @@ function makeInvoice(overrides: Partial<InvoiceView> = {}): InvoiceView {
     externalInvoiceRef: null,
     notes: null,
     lines: [
-      { id: 'l1', issueKey: 'GIRA-1', description: 'Build the sled', minutes: 120, hourlyCents: 6000, amountCents: 12000 },
-      { id: 'l2', issueKey: 'GIRA-2', description: 'Fixed task', minutes: 0, hourlyCents: null, amountCents: 6000 },
+      {
+        id: 'l1',
+        issueKey: 'GIRA-1',
+        description: 'Build the sled',
+        minutes: 120,
+        hourlyCents: 6000,
+        amountCents: 12000,
+      },
+      {
+        id: 'l2',
+        issueKey: 'GIRA-2',
+        description: 'Fixed task',
+        minutes: 0,
+        hourlyCents: null,
+        amountCents: 6000,
+      },
     ],
     ...overrides,
   } as unknown as InvoiceView;
@@ -39,12 +53,22 @@ describe('InvoiceReceipt', () => {
   it('renders the void and paid status variants', () => {
     const { rerender } = render(<InvoiceReceipt invoice={makeInvoice({ status: 'void' })} />);
     expect(screen.getByText(/Void|Anulada/)).toBeInTheDocument();
-    rerender(<InvoiceReceipt invoice={makeInvoice({ status: 'paid', paidAt: '2026-06-05T00:00:00Z' })} />);
+    rerender(
+      <InvoiceReceipt invoice={makeInvoice({ status: 'paid', paidAt: '2026-06-05T00:00:00Z' })} />,
+    );
     expect(screen.getByText(/Paid|Pagada/)).toBeInTheDocument();
   });
 
   it('renders a draft with notes and an external fiscal reference', () => {
-    render(<InvoiceReceipt invoice={makeInvoice({ status: 'draft', notes: 'gracias!', externalInvoiceRef: 'TBAI-123' })} />);
+    render(
+      <InvoiceReceipt
+        invoice={makeInvoice({
+          status: 'draft',
+          notes: 'gracias!',
+          externalInvoiceRef: 'TBAI-123',
+        })}
+      />,
+    );
     expect(screen.getByText(/Draft|Borrador/)).toBeInTheDocument();
     expect(screen.getByText(/gracias!/)).toBeInTheDocument();
     expect(screen.getByText(/TBAI-123/)).toBeInTheDocument();

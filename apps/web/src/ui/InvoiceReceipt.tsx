@@ -282,14 +282,28 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
               }}
             >
               <span style={{ color: 'var(--eg-fg-3)' }}>
-                <span style={{ color: 'var(--eg-fg-4)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                <span
+                  style={{
+                    color: 'var(--eg-fg-4)',
+                    fontSize: 10,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                  }}
+                >
                   creada ·{' '}
                 </span>
                 {formatDate(invoice.createdAt)}
               </span>
               {invoice.issuedAt && (
                 <span style={{ color: 'var(--eg-fg-3)' }}>
-                  <span style={{ color: 'var(--eg-fg-4)', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  <span
+                    style={{
+                      color: 'var(--eg-fg-4)',
+                      fontSize: 10,
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
                     emitida ·{' '}
                   </span>
                   {formatDate(invoice.issuedAt)}
@@ -297,7 +311,9 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
               )}
               {invoice.paidAt && (
                 <span style={{ color: 'var(--eg-green)' }}>
-                  <span style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  <span
+                    style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                  >
                     pagada ·{' '}
                   </span>
                   {formatDate(invoice.paidAt)}

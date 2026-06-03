@@ -26,7 +26,10 @@ describe('PortalInvoicesPage', () => {
   beforeEach(() => invoices.mockReset());
 
   it('lists annexes with their number and status badge', async () => {
-    invoices.mockResolvedValue([inv({}), inv({ id: 'i2', number: 'ANX-2026-0002', status: 'paid' })]);
+    invoices.mockResolvedValue([
+      inv({}),
+      inv({ id: 'i2', number: 'ANX-2026-0002', status: 'paid' }),
+    ]);
     renderWithProviders(<PortalInvoicesPage />);
     expect(await screen.findByText('ANX-2026-0001')).toBeInTheDocument();
     expect(screen.getByText('ANX-2026-0002')).toBeInTheDocument();

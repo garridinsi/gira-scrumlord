@@ -3,11 +3,24 @@
 import { useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ChannelView, IntakeSourceView, UserView, UserKind, UserRole, LabelView } from '@gira/shared';
+import type {
+  ChannelView,
+  IntakeSourceView,
+  UserView,
+  UserKind,
+  UserRole,
+  LabelView,
+} from '@gira/shared';
 import type { CreateUser, UpdateUser, CreateAssignmentRule } from '@gira/shared';
 import { clients, rates, projects, channels, intake, users, ApiError } from '../api/client';
 import type { ClientRecord, RateRecord, AssignmentRuleRecord } from '../api/client';
-import type { CreateClient, UpdateClient, UpsertRate, CreateChannel, CreateIntakeSource } from '@gira/shared';
+import type {
+  CreateClient,
+  UpdateClient,
+  UpsertRate,
+  CreateChannel,
+  CreateIntakeSource,
+} from '@gira/shared';
 import { Subbar } from '../ui/Subbar';
 import { Avatar, Plate } from '../ui/atoms';
 import { formatRatePerHour } from '../lib/money';
@@ -31,8 +44,7 @@ function ScopePlate({ scope }: { scope: string }) {
         : scope === 'client'
           ? 'var(--eg-gold)'
           : 'var(--eg-paper-3)';
-  const color =
-    scope === 'issue' ? 'var(--eg-paper)' : 'var(--eg-iron)';
+  const color = scope === 'issue' ? 'var(--eg-paper)' : 'var(--eg-iron)';
   return (
     <span
       className="plate"
@@ -82,13 +94,7 @@ function Field({
   );
 }
 
-function CurrencySelect({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
+function CurrencySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
@@ -178,20 +184,27 @@ function ClientsTab() {
       toast({ tone: 'ok', title: 'Cliente creado · Client created', body: client.name });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al crear cliente · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al crear cliente · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateClient }) =>
-      clients.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateClient }) => clients.update(id, data),
     onSuccess: (client) => {
       void qc.invalidateQueries({ queryKey: ['clients'] });
       setEditId(null);
       toast({ tone: 'ok', title: 'Cliente actualizado · Client updated', body: client.name });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al actualizar · Update failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al actualizar · Update failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -202,7 +215,11 @@ function ClientsTab() {
       toast({ tone: 'ok', title: 'Cliente eliminado · Client deleted' });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al eliminar · Delete failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al eliminar · Delete failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -290,7 +307,10 @@ function ClientsTab() {
             }}
           >
             {createMut.isError && (
-              <span className="mono" style={{ color: 'var(--eg-red)', fontSize: 11, alignSelf: 'center' }}>
+              <span
+                className="mono"
+                style={{ color: 'var(--eg-red)', fontSize: 11, alignSelf: 'center' }}
+              >
                 // error al crear · create failed
               </span>
             )}
@@ -306,20 +326,33 @@ function ClientsTab() {
       )}
 
       {/* Clients table */}
-      <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}>
+      <section
+        className="gs-tablewrap"
+        style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}
+      >
         <div
           className="tag-head"
-          style={{ background: 'var(--eg-yellow)', padding: '8px 14px', borderColor: 'var(--eg-iron)' }}
+          style={{
+            background: 'var(--eg-yellow)',
+            padding: '8px 14px',
+            borderColor: 'var(--eg-iron)',
+          }}
         >
-          <span>
-            // CLIENTES · CLIENTS · {data.length}
-          </span>
+          <span>// CLIENTES · CLIENTS · {data.length}</span>
           <span>SÓLO LECTURA PARA USUARIOS CLIENTE · AISLAMIENTO ESTRICTO POR FILA</span>
         </div>
 
         {data.length === 0 && (
           <div className="gs-state" style={{ minHeight: 80 }}>
-            <span className="mono" style={{ color: 'var(--eg-fg-3)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            <span
+              className="mono"
+              style={{
+                color: 'var(--eg-fg-3)',
+                fontSize: 11,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+              }}
+            >
               // sin clientes · no clients yet
             </span>
           </div>
@@ -416,7 +449,10 @@ function ClientsTab() {
                     SLUG · {c.slug}
                   </div>
                   {c.notes && (
-                    <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', marginTop: 2 }}>
+                    <div
+                      className="mono"
+                      style={{ fontSize: 10, color: 'var(--eg-fg-3)', marginTop: 2 }}
+                    >
                       {c.notes}
                     </div>
                   )}
@@ -492,10 +528,18 @@ function RatesTab() {
       setEditId(null);
       setForm({ scope: 'default', clientId: '', projectId: '', hourlyCents: '', currency: 'EUR' });
       const action = editId ? 'Tarifa actualizada · Rate updated' : 'Tarifa creada · Rate created';
-      toast({ tone: 'ok', title: action, body: `${vars.scope} · ${formatRatePerHour(Math.round(parseFloat(form.hourlyCents) * 100), form.currency)}` });
+      toast({
+        tone: 'ok',
+        title: action,
+        body: `${vars.scope} · ${formatRatePerHour(Math.round(parseFloat(form.hourlyCents) * 100), form.currency)}`,
+      });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error con la tarifa · Rate failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error con la tarifa · Rate failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -506,7 +550,11 @@ function RatesTab() {
       toast({ tone: 'ok', title: 'Tarifa eliminada · Rate deleted' });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al eliminar tarifa · Delete failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al eliminar tarifa · Delete failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -536,8 +584,7 @@ function RatesTab() {
 
   function rateTarget(r: RateRecord): string {
     if (r.scope === 'client' && r.clientId) return clientMap[r.clientId]?.name ?? r.clientId;
-    if (r.scope === 'project' && r.projectId)
-      return projectMap[r.projectId]?.key ?? r.projectId;
+    if (r.scope === 'project' && r.projectId) return projectMap[r.projectId]?.key ?? r.projectId;
     if (r.scope === 'issue' && r.issueId) return r.issueId;
     return '—';
   }
@@ -590,9 +637,7 @@ function RatesTab() {
               padding: '8px 14px',
             }}
           >
-            <span>
-              // {editId ? 'EDITAR TARIFA · EDIT RATE' : 'NUEVA TARIFA · NEW RATE'}
-            </span>
+            <span>// {editId ? 'EDITAR TARIFA · EDIT RATE' : 'NUEVA TARIFA · NEW RATE'}</span>
             <button
               className="b-btn b-btn--ghost"
               style={{ fontSize: 11, color: 'var(--eg-paper)' }}
@@ -754,7 +799,14 @@ function RatesTab() {
       )}
 
       {/* Rates table */}
-      <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)', ['--gs-tw-min' as string]: '760px' }}>
+      <section
+        className="gs-tablewrap"
+        style={{
+          border: '2px solid var(--eg-iron)',
+          background: 'var(--eg-paper)',
+          ['--gs-tw-min' as string]: '760px',
+        }}
+      >
         <div
           className="tag-head"
           style={{
@@ -765,7 +817,8 @@ function RatesTab() {
           }}
         >
           <span>
-            // TARIFAS · RATES · {data.length} · cadena de resolución · issue → project → client → default
+            // TARIFAS · RATES · {data.length} · cadena de resolución · issue → project → client →
+            default
           </span>
           <span>EL ÁMBITO PRIORITARIO DESCIENDE · PRIMER MATCH GANA</span>
         </div>
@@ -796,7 +849,15 @@ function RatesTab() {
 
         {sorted.length === 0 && (
           <div className="gs-state" style={{ minHeight: 80 }}>
-            <span className="mono" style={{ color: 'var(--eg-fg-3)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            <span
+              className="mono"
+              style={{
+                color: 'var(--eg-fg-3)',
+                fontSize: 11,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+              }}
+            >
               // sin tarifas · no rates yet
             </span>
           </div>
@@ -825,10 +886,7 @@ function RatesTab() {
               {rateTarget(r)}
             </span>
             <span style={{ color: 'var(--eg-fg-2)', fontSize: 12 }}>{rateApplies(r)}</span>
-            <span
-              className="disp"
-              style={{ fontSize: 20, color: 'var(--eg-iron)' }}
-            >
+            <span className="disp" style={{ fontSize: 20, color: 'var(--eg-iron)' }}>
               {Math.floor(r.hourlyCents / 100)}
               <span style={{ fontSize: 12, color: 'var(--eg-fg-3)' }}>
                 ,{String(r.hourlyCents % 100).padStart(2, '0')}
@@ -852,7 +910,11 @@ function RatesTab() {
                 className="b-btn b-btn--ghost"
                 style={{ fontSize: 11, padding: '4px 6px', color: 'var(--eg-red)' }}
                 onClick={() => {
-                  if (confirm(`¿Borrar tarifa ${r.scope} ${formatRatePerHour(r.hourlyCents, r.currency)}?`))
+                  if (
+                    confirm(
+                      `¿Borrar tarifa ${r.scope} ${formatRatePerHour(r.hourlyCents, r.currency)}?`,
+                    )
+                  )
                     deleteMut.mutate(r.id);
                 }}
               >
@@ -869,17 +931,46 @@ function RatesTab() {
           <span>// CADENA DE RESOLUCIÓN · RESOLUTION CHAIN</span>
           <span>PRIMER MATCH GANA · NUNCA FLOATS</span>
         </div>
-        <div className="gs-reschain" style={{ padding: 18, display: 'flex', gap: 0, alignItems: 'stretch' }}>
+        <div
+          className="gs-reschain"
+          style={{ padding: 18, display: 'flex', gap: 0, alignItems: 'stretch' }}
+        >
           {(() => {
             const count = (sc: string) => data.filter((r) => r.scope === sc).length;
             const def = data.find((r) => r.scope === 'default');
             const chain = [
-              { scope: 'issue', label: 'Issue', desc: count('issue') ? `${count('issue')} configurada(s) · set` : 'sin override · none', active: count('issue') > 0 },
-              { scope: 'project', label: 'Proyecto', desc: count('project') ? `${count('project')} proyecto(s)` : 'sin override · none', active: count('project') > 0 },
-              { scope: 'client', label: 'Cliente', desc: count('client') ? `${count('client')} cliente(s)` : 'sin fallback · none', active: count('client') > 0 },
-              { scope: 'default', label: 'Global', desc: def ? formatRatePerHour(def.hourlyCents, def.currency) : 'sin fallback · unset', active: !!def },
+              {
+                scope: 'issue',
+                label: 'Issue',
+                desc: count('issue')
+                  ? `${count('issue')} configurada(s) · set`
+                  : 'sin override · none',
+                active: count('issue') > 0,
+              },
+              {
+                scope: 'project',
+                label: 'Proyecto',
+                desc: count('project') ? `${count('project')} proyecto(s)` : 'sin override · none',
+                active: count('project') > 0,
+              },
+              {
+                scope: 'client',
+                label: 'Cliente',
+                desc: count('client') ? `${count('client')} cliente(s)` : 'sin fallback · none',
+                active: count('client') > 0,
+              },
+              {
+                scope: 'default',
+                label: 'Global',
+                desc: def
+                  ? formatRatePerHour(def.hourlyCents, def.currency)
+                  : 'sin fallback · unset',
+                active: !!def,
+              },
             ];
-            return chain.map((s, i, arr) => <ResolutionChainItem key={s.scope} s={s} i={i} total={arr.length} />);
+            return chain.map((s, i, arr) => (
+              <ResolutionChainItem key={s.scope} s={s} i={i} total={arr.length} />
+            ));
           })()}
         </div>
         <div
@@ -889,7 +980,15 @@ function RatesTab() {
             background: 'var(--eg-paper-2)',
           }}
         >
-          <code style={{ background: 'transparent', border: 0, padding: 0, fontSize: 12, color: 'var(--eg-fg-2)' }}>
+          <code
+            style={{
+              background: 'transparent',
+              border: 0,
+              padding: 0,
+              fontSize: 12,
+              color: 'var(--eg-fg-2)',
+            }}
+          >
             issue → project → client → default ·{' '}
             <span style={{ color: 'var(--eg-fg-3)' }}>
               el primer scope configurado gana · the first configured scope wins
@@ -898,8 +997,8 @@ function RatesTab() {
               <>
                 <br />
                 <b style={{ color: 'var(--eg-red)' }}>
-                  // sin tarifas — la facturación fallará hasta configurar una · no rates yet — invoicing
-                  fails until one is set
+                  // sin tarifas — la facturación fallará hasta configurar una · no rates yet —
+                  invoicing fails until one is set
                 </b>
               </>
             )}
@@ -913,7 +1012,13 @@ function RatesTab() {
             className="b-btn"
             onClick={() => {
               setEditId(null);
-              setForm({ scope: 'default', clientId: '', projectId: '', hourlyCents: '', currency: 'EUR' });
+              setForm({
+                scope: 'default',
+                clientId: '',
+                projectId: '',
+                hourlyCents: '',
+                currency: 'EUR',
+              });
               setShowForm(true);
             }}
           >
@@ -1023,11 +1128,21 @@ function ChannelsTab() {
     onSuccess: (ch) => {
       void qc.invalidateQueries({ queryKey: ['channels'] });
       setShowCreate(false);
-      setForm({ name: '', kind: 'webhook', target: '', scope: 'global', events: ['issue.emergency'] });
+      setForm({
+        name: '',
+        kind: 'webhook',
+        target: '',
+        scope: 'global',
+        events: ['issue.emergency'],
+      });
       toast({ tone: 'ok', title: 'Canal creado · Channel created', body: ch.name });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al crear canal · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al crear canal · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -1038,7 +1153,11 @@ function ChannelsTab() {
       toast({ tone: 'ok', title: 'Canal eliminado · Channel deleted' });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al eliminar canal · Delete failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al eliminar canal · Delete failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -1052,11 +1171,19 @@ function ChannelsTab() {
       if (result.ok) {
         toast({ tone: 'ok', title: 'Canal OK · Channel test passed' });
       } else {
-        toast({ tone: 'warn', title: 'Canal con error · Channel test failed', body: result.error ?? 'error' });
+        toast({
+          tone: 'warn',
+          title: 'Canal con error · Channel test failed',
+          body: result.error ?? 'error',
+        });
       }
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al probar canal · Test failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al probar canal · Test failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -1074,10 +1201,7 @@ function ChannelsTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {showCreate && (
         <section style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)' }}>
-          <div
-            className="tag-head"
-            style={{ background: 'var(--eg-yellow)', padding: '8px 14px' }}
-          >
+          <div className="tag-head" style={{ background: 'var(--eg-yellow)', padding: '8px 14px' }}>
             <span>// NUEVO CANAL · NEW CHANNEL</span>
             <button
               className="b-btn b-btn--ghost"
@@ -1130,12 +1254,19 @@ function ChannelsTab() {
               label="destino · target (URL or email)"
               value={form.target}
               onChange={(v) => setForm((f) => ({ ...f, target: v }))}
-              placeholder={form.kind === 'email' ? 'ops@example.com' : 'https://hooks.slack.com/...'}
+              placeholder={
+                form.kind === 'email' ? 'ops@example.com' : 'https://hooks.slack.com/...'
+              }
             />
           </div>
-          <div style={{ padding: '0 18px 16px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div
+            style={{ padding: '0 18px 16px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}
+          >
             {createMut.isError && (
-              <span className="mono" style={{ color: 'var(--eg-red)', fontSize: 11, alignSelf: 'center' }}>
+              <span
+                className="mono"
+                style={{ color: 'var(--eg-red)', fontSize: 11, alignSelf: 'center' }}
+              >
                 // error · check fields
               </span>
             )}
@@ -1150,18 +1281,26 @@ function ChannelsTab() {
         </section>
       )}
 
-      <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}>
-        <div
-          className="tag-head"
-          style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}
-        >
+      <section
+        className="gs-tablewrap"
+        style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}
+      >
+        <div className="tag-head" style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}>
           <span>// AVISOS · CHANNELS · {data.length}</span>
           <span>WEBHOOK / EMAIL · OUTBOX SEAM</span>
         </div>
 
         {data.length === 0 && (
           <div className="gs-state" style={{ minHeight: 80 }}>
-            <span className="mono" style={{ color: 'var(--eg-fg-3)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            <span
+              className="mono"
+              style={{
+                color: 'var(--eg-fg-3)',
+                fontSize: 11,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+              }}
+            >
               // sin canales · no channels yet
             </span>
           </div>
@@ -1337,7 +1476,9 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
         assigneeId: formAssigneeId,
         order: parseInt(formOrder, 10) || 0,
         ...(formMatchType ? { matchType: formMatchType as CreateAssignmentRule['matchType'] } : {}),
-        ...(formMatchPriority ? { matchPriority: formMatchPriority as CreateAssignmentRule['matchPriority'] } : {}),
+        ...(formMatchPriority
+          ? { matchPriority: formMatchPriority as CreateAssignmentRule['matchPriority'] }
+          : {}),
         ...(formMatchLabelId ? { matchLabelId: formMatchLabelId } : {}),
       };
       return intake.rules.create(selectedKey, data);
@@ -1396,16 +1537,10 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
     >
       {/* Section heading */}
       <div>
-        <div
-          className="caps"
-          style={{ color: 'var(--eg-fg-3)', marginBottom: 4 }}
-        >
+        <div className="caps" style={{ color: 'var(--eg-fg-3)', marginBottom: 4 }}>
           // REGLAS DE ASIGNACIÓN · ASSIGNMENT RULES
         </div>
-        <div
-          className="mono"
-          style={{ fontSize: 11, color: 'var(--eg-fg-4)', lineHeight: 1.5 }}
-        >
+        <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-4)', lineHeight: 1.5 }}>
           La primera regla que coincide asigna el ticket entrante ·{' '}
           <span style={{ color: 'var(--eg-fg-5)' }}>
             First matching rule (by order) auto-assigns a new intake issue.
@@ -1438,7 +1573,10 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
       {selectedKey && (
         <>
           {/* Rules table */}
-          <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}>
+          <section
+            className="gs-tablewrap"
+            style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}
+          >
             <div
               className="tag-head"
               style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}
@@ -1446,10 +1584,7 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
               <span>
                 // REGLAS · RULES · {selectedKey} · {rules.length}
               </span>
-              <span
-                className="mono"
-                style={{ fontSize: 10, color: 'var(--eg-fg-4)' }}
-              >
+              <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)' }}>
                 orden · order ↑ primera coincidencia · first match wins
               </span>
             </div>
@@ -1559,10 +1694,7 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
 
                 {/* Assignee */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span
-                    className="mono"
-                    style={{ fontSize: 11, color: 'var(--eg-fg-3)' }}
-                  >
+                  <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)' }}>
                     →
                   </span>
                   <span
@@ -1580,7 +1712,9 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
                     className="b-btn b-btn--ghost"
                     style={{ fontSize: 11, padding: '4px 6px', color: 'var(--eg-red)' }}
                     onClick={() => {
-                      if (confirm('¿Borrar esta regla de asignación? · Delete this assignment rule?')) {
+                      if (
+                        confirm('¿Borrar esta regla de asignación? · Delete this assignment rule?')
+                      ) {
                         deleteMut.mutate(rule.id);
                       }
                     }}
@@ -1601,11 +1735,7 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
                 style={{ background: 'var(--eg-yellow)', padding: '8px 14px' }}
               >
                 <span>// NUEVA REGLA · NEW ASSIGNMENT RULE</span>
-                <button
-                  className="b-btn b-btn--ghost"
-                  style={{ fontSize: 11 }}
-                  onClick={resetForm}
-                >
+                <button className="b-btn b-btn--ghost" style={{ fontSize: 11 }} onClick={resetForm}>
                   ✕ cancelar
                 </button>
               </div>
@@ -1718,10 +1848,7 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
                 }}
               >
                 {createMut.isError && (
-                  <span
-                    className="mono"
-                    style={{ color: 'var(--eg-red)', fontSize: 11 }}
-                  >
+                  <span className="mono" style={{ color: 'var(--eg-red)', fontSize: 11 }}>
                     // error · comprueba los campos
                   </span>
                 )}
@@ -1739,11 +1866,7 @@ function AssignmentRulesSection({ canWrite }: { canWrite: boolean }) {
 
           {canWrite && !showForm && (
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="b-btn"
-                onClick={() => setShowForm(true)}
-              >
+              <button type="button" className="b-btn" onClick={() => setShowForm(true)}>
                 + Regla
               </button>
             </div>
@@ -1783,11 +1906,25 @@ function IntakeTab() {
       void qc.invalidateQueries({ queryKey: ['intake-sources'] });
       setShowCreate(false);
       setNewToken({ token: result.token, intakeUrl: result.intakeUrl });
-      setForm({ name: '', kind: 'generic', projectId: '', defaultType: 'bug', defaultPriority: 'high' });
-      toast({ tone: 'ok', title: 'Fuente creada · Source created', body: result.name + ' — copia el token · copy the token' });
+      setForm({
+        name: '',
+        kind: 'generic',
+        projectId: '',
+        defaultType: 'bug',
+        defaultPriority: 'high',
+      });
+      toast({
+        tone: 'ok',
+        title: 'Fuente creada · Source created',
+        body: result.name + ' — copia el token · copy the token',
+      });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al crear fuente · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al crear fuente · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -1798,7 +1935,11 @@ function IntakeTab() {
       toast({ tone: 'ok', title: 'Fuente eliminada · Source deleted' });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al eliminar fuente · Delete failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al eliminar fuente · Delete failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -1842,10 +1983,7 @@ function IntakeTab() {
           <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-4)', marginBottom: 12 }}>
             INTAKE URL: {newToken.intakeUrl}
           </div>
-          <button
-            className="b-btn b-btn--yellow"
-            onClick={() => setNewToken(null)}
-          >
+          <button className="b-btn b-btn--yellow" onClick={() => setNewToken(null)}>
             Entendido · Got it
           </button>
         </section>
@@ -1853,10 +1991,7 @@ function IntakeTab() {
 
       {showCreate && (
         <section style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)' }}>
-          <div
-            className="tag-head"
-            style={{ background: 'var(--eg-yellow)', padding: '8px 14px' }}
-          >
+          <div className="tag-head" style={{ background: 'var(--eg-yellow)', padding: '8px 14px' }}>
             <span>// NUEVA FUENTE · NEW INTAKE SOURCE</span>
             <button
               className="b-btn b-btn--ghost"
@@ -1995,9 +2130,14 @@ function IntakeTab() {
               </select>
             </div>
           </div>
-          <div style={{ padding: '0 18px 16px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div
+            style={{ padding: '0 18px 16px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}
+          >
             {createMut.isError && (
-              <span className="mono" style={{ color: 'var(--eg-red)', fontSize: 11, alignSelf: 'center' }}>
+              <span
+                className="mono"
+                style={{ color: 'var(--eg-red)', fontSize: 11, alignSelf: 'center' }}
+              >
                 // error · check fields
               </span>
             )}
@@ -2012,18 +2152,26 @@ function IntakeTab() {
         </section>
       )}
 
-      <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}>
-        <div
-          className="tag-head"
-          style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}
-        >
+      <section
+        className="gs-tablewrap"
+        style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '680px' }}
+      >
+        <div className="tag-head" style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}>
           <span>// INTEGRACIONES · INTAKE SOURCES · {data.length}</span>
           <span>TOKEN DE ACCESO · MUESTRA SOLO UNA VEZ · ONLY SHOWN ONCE</span>
         </div>
 
         {data.length === 0 && (
           <div className="gs-state" style={{ minHeight: 80 }}>
-            <span className="mono" style={{ color: 'var(--eg-fg-3)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            <span
+              className="mono"
+              style={{
+                color: 'var(--eg-fg-3)',
+                fontSize: 11,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+              }}
+            >
               // sin fuentes · no intake sources yet
             </span>
           </div>
@@ -2051,7 +2199,10 @@ function IntakeTab() {
               </span>
             </span>
             <div>
-              <div className="disp" style={{ fontSize: 16, color: 'var(--eg-iron)', lineHeight: 1 }}>
+              <div
+                className="disp"
+                style={{ fontSize: 16, color: 'var(--eg-iron)', lineHeight: 1 }}
+              >
                 {src.name}
               </div>
               <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', marginTop: 2 }}>
@@ -2197,16 +2348,19 @@ function TeamTab() {
   function handleCreate() {
     const payload: CreateUser =
       form.kind === 'client'
-        ? { email: form.email, name: form.name, kind: form.kind, role: form.role, clientId: form.clientId }
+        ? {
+            email: form.email,
+            name: form.name,
+            kind: form.kind,
+            role: form.role,
+            clientId: form.clientId,
+          }
         : { email: form.email, name: form.name, kind: form.kind, role: form.role };
     createMut.mutate(payload);
   }
 
   const createDisabled =
-    createMut.isPending ||
-    !form.email ||
-    !form.name ||
-    (form.kind === 'client' && !form.clientId);
+    createMut.isPending || !form.email || !form.name || (form.kind === 'client' && !form.clientId);
 
   if (usersList.isLoading) {
     return (
@@ -2347,7 +2501,10 @@ function TeamTab() {
                     const value = e.currentTarget.value;
                     setForm((f) => ({ ...f, clientId: value }));
                   }}
-                  style={{ ...SELECT_STYLE, borderColor: !form.clientId ? 'var(--eg-red)' : 'var(--eg-iron)' }}
+                  style={{
+                    ...SELECT_STYLE,
+                    borderColor: !form.clientId ? 'var(--eg-red)' : 'var(--eg-iron)',
+                  }}
                 >
                   <option value="">— seleccionar cliente —</option>
                   {(clientsList.data ?? []).map((c) => (
@@ -2370,11 +2527,7 @@ function TeamTab() {
                 // error · check fields
               </span>
             )}
-            <button
-              className="b-btn b-btn--ink"
-              onClick={handleCreate}
-              disabled={createDisabled}
-            >
+            <button className="b-btn b-btn--ink" onClick={handleCreate} disabled={createDisabled}>
               {createMut.isPending ? '...' : '+ Invitar Persona · Add Person'}
             </button>
           </div>
@@ -2382,10 +2535,18 @@ function TeamTab() {
       )}
 
       {/* Users table */}
-      <section className="gs-tablewrap" style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '720px' }}>
+      <section
+        className="gs-tablewrap"
+        style={{ border: '2px solid var(--eg-iron)', ['--gs-tw-min' as string]: '720px' }}
+      >
         <div
           className="tag-head"
-          style={{ background: 'var(--eg-iron)', color: 'var(--eg-yellow)', padding: '8px 14px', borderColor: 'var(--eg-iron)' }}
+          style={{
+            background: 'var(--eg-iron)',
+            color: 'var(--eg-yellow)',
+            padding: '8px 14px',
+            borderColor: 'var(--eg-iron)',
+          }}
         >
           <span>// EQUIPO · TEAM · {data.length}</span>
           <span>ACCESO POR ENLACE MÁGICO · MAGIC-LINK ACCESS</span>
@@ -2420,7 +2581,12 @@ function TeamTab() {
           <div className="gs-state" style={{ minHeight: 80 }}>
             <span
               className="mono"
-              style={{ color: 'var(--eg-fg-3)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase' }}
+              style={{
+                color: 'var(--eg-fg-3)',
+                fontSize: 11,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+              }}
             >
               // sin personas · no users yet
             </span>
@@ -2449,11 +2615,7 @@ function TeamTab() {
               }}
             >
               {/* Avatar */}
-              <Avatar
-                name={u.name}
-                seed={u.id}
-                style={{ width: 30, height: 30, fontSize: 11 }}
-              />
+              <Avatar name={u.name} seed={u.id} style={{ width: 30, height: 30, fontSize: 11 }} />
 
               {/* Name */}
               <div>
@@ -2464,7 +2626,10 @@ function TeamTab() {
                   {u.name}
                 </div>
                 {u.kind === 'client' && clientName && (
-                  <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', marginTop: 2 }}>
+                  <div
+                    className="mono"
+                    style={{ fontSize: 10, color: 'var(--eg-fg-3)', marginTop: 2 }}
+                  >
                     {clientName}
                   </div>
                 )}
@@ -2546,13 +2711,9 @@ function TeamTab() {
                     className="b-btn b-btn--ghost"
                     style={{ fontSize: 10, padding: '3px 6px' }}
                     disabled={updateMut.isPending}
-                    onClick={() =>
-                      updateMut.mutate({ id: u.id, data: { isActive: isInactive } })
-                    }
+                    onClick={() => updateMut.mutate({ id: u.id, data: { isActive: isInactive } })}
                   >
-                    {isInactive
-                      ? 'Activar · Activate'
-                      : 'Desact. · Deactivate'}
+                    {isInactive ? 'Activar · Activate' : 'Desact. · Deactivate'}
                   </button>
                   {/* Invite — only active users */}
                   {!isInactive && (
@@ -2651,13 +2812,7 @@ export function SettingsPage() {
             onClick: () => setTab('team'),
           },
         ]}
-        right={
-          tab === 'clients' ? (
-            undefined
-          ) : tab === 'rates' ? (
-            undefined
-          ) : undefined
-        }
+        right={tab === 'clients' ? undefined : tab === 'rates' ? undefined : undefined}
       />
 
       <div

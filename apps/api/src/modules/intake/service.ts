@@ -97,7 +97,9 @@ export async function runIntake(
       // dedup on (source, externalRef)
       const existing = n.externalRef
         ? await prisma.issue.findUnique({
-            where: { intakeSourceId_externalRef: { intakeSourceId: source.id, externalRef: n.externalRef } },
+            where: {
+              intakeSourceId_externalRef: { intakeSourceId: source.id, externalRef: n.externalRef },
+            },
           })
         : null;
 
@@ -142,7 +144,11 @@ export async function runIntake(
       );
       results.push({ action: 'created', key: issue.key });
     } catch (err) {
-      console.error('[intake] item failed', { sourceId: source.id, externalRef: n.externalRef, err });
+      console.error('[intake] item failed', {
+        sourceId: source.id,
+        externalRef: n.externalRef,
+        err,
+      });
       results.push({ action: 'error' });
     }
   }

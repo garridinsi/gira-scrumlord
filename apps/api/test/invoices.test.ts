@@ -65,7 +65,12 @@ describe('invoicing (M5)', () => {
     expect(inv.currency).toBe('EUR');
     expect(inv.number).toMatch(/^ANX-\d{4}-0001$/); // non-fiscal annex, not a TicketBAI invoice
     expect(inv.lines).toHaveLength(1);
-    expect(inv.lines[0]).toMatchObject({ issueKey: 'ACME-1', minutes: 120, hourlyCents: 6000, amountCents: 12000 });
+    expect(inv.lines[0]).toMatchObject({
+      issueKey: 'ACME-1',
+      minutes: 120,
+      hourlyCents: 6000,
+      amountCents: 12000,
+    });
     expect(inv.subtotalCents).toBe(12000);
 
     // Change the rate AFTER invoicing — the invoice must not move.
@@ -87,7 +92,15 @@ describe('invoicing (M5)', () => {
     expect(gen.statusCode).toBe(400);
     expect(gen.json().error ?? gen.json().message).toMatch(/rate/i);
     // And nothing was created.
-    expect((await app.inject({ method: 'GET', url: `/clients/${client.id}/invoices`, headers: { cookie: staff.cookie } })).json()).toEqual([]);
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/clients/${client.id}/invoices`,
+          headers: { cookie: staff.cookie },
+        })
+      ).json(),
+    ).toEqual([]);
   });
 
   it('records the external TicketBAI fiscal-invoice reference on the annex', async () => {
@@ -106,7 +119,11 @@ describe('invoicing (M5)', () => {
     expect(set.statusCode).toBe(200);
     expect(set.json().externalInvoiceRef).toBe('TBAI-2026-000123');
     // and it persists on the fetched annex
-    const got = await app.inject({ method: 'GET', url: `/invoices/${id}`, headers: { cookie: staff.cookie } });
+    const got = await app.inject({
+      method: 'GET',
+      url: `/invoices/${id}`,
+      headers: { cookie: staff.cookie },
+    });
     expect(got.json().externalInvoiceRef).toBe('TBAI-2026-000123');
   });
 
@@ -116,7 +133,11 @@ describe('invoicing (M5)', () => {
     await logWork(staff.cookie, 'ACME-1', 60);
     await setRate(staff.cookie, 6000);
     const id = (await generate(staff.cookie, client.id)).json().id as string;
-    await app.inject({ method: 'POST', url: `/invoices/${id}/issue`, headers: { cookie: staff.cookie } });
+    await app.inject({
+      method: 'POST',
+      url: `/invoices/${id}/issue`,
+      headers: { cookie: staff.cookie },
+    });
     await app.inject({
       method: 'POST',
       url: `/invoices/${id}/external-ref`,
@@ -125,10 +146,22 @@ describe('invoicing (M5)', () => {
     });
 
     // Voiding now would silently decouple the annex from its fiscal invoice → refused.
-    const blocked = await app.inject({ method: 'POST', url: `/invoices/${id}/void`, headers: { cookie: staff.cookie } });
+    const blocked = await app.inject({
+      method: 'POST',
+      url: `/invoices/${id}/void`,
+      headers: { cookie: staff.cookie },
+    });
     expect(blocked.statusCode).toBe(400);
     expect(blocked.json().error).toMatch(/fiscal/);
-    expect((await app.inject({ method: 'GET', url: `/invoices/${id}`, headers: { cookie: staff.cookie } })).json().status).toBe('issued');
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/invoices/${id}`,
+          headers: { cookie: staff.cookie },
+        })
+      ).json().status,
+    ).toBe('issued');
 
     // Clear the fiscal ref first, then voiding is allowed.
     await app.inject({
@@ -137,7 +170,11 @@ describe('invoicing (M5)', () => {
       headers: { cookie: staff.cookie },
       payload: { externalInvoiceRef: '' },
     });
-    const voided = await app.inject({ method: 'POST', url: `/invoices/${id}/void`, headers: { cookie: staff.cookie } });
+    const voided = await app.inject({
+      method: 'POST',
+      url: `/invoices/${id}/void`,
+      headers: { cookie: staff.cookie },
+    });
     expect(voided.statusCode).toBe(200);
     expect(voided.json().status).toBe('void');
   });
@@ -162,7 +199,11 @@ describe('invoicing (M5)', () => {
     const id = (await generate(staff.cookie, client.id)).json().id as string;
 
     const post = (path: string) =>
-      app.inject({ method: 'POST', url: `/invoices/${id}/${path}`, headers: { cookie: staff.cookie } });
+      app.inject({
+        method: 'POST',
+        url: `/invoices/${id}/${path}`,
+        headers: { cookie: staff.cookie },
+      });
 
     expect((await post('pay')).statusCode).toBe(400); // can't pay a draft
     expect((await post('issue')).json().status).toBe('issued');
@@ -190,7 +231,10 @@ describe('invoicing (M5)', () => {
   it('refuses to generate a fixed-price issue with no price set (no silent €0)', async () => {
     const { client, staff } = await setup();
     await create(staff.cookie, { projectKey: 'ACME', title: 'Fixed no price' });
-    await prisma.issue.update({ where: { key: 'ACME-1' }, data: { billingMode: 'fixed', fixedPriceCents: null } });
+    await prisma.issue.update({
+      where: { key: 'ACME-1' },
+      data: { billingMode: 'fixed', fixedPriceCents: null },
+    });
     await logWork(staff.cookie, 'ACME-1', 60);
     const gen = await generate(staff.cookie, client.id);
     expect(gen.statusCode).toBe(400);
@@ -212,7 +256,15 @@ describe('invoicing (M5)', () => {
 
     // Delete the FIRST draft (frees A's hours). The old count-based numbering would
     // now generate ...-0002 again and collide; max-based yields ...-0003.
-    expect((await app.inject({ method: 'DELETE', url: `/invoices/${a.id}`, headers: { cookie: staff.cookie } })).statusCode).toBe(204);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: `/invoices/${a.id}`,
+          headers: { cookie: staff.cookie },
+        })
+      ).statusCode,
+    ).toBe(204);
     await create(staff.cookie, { projectKey: 'ACME', title: 'C' });
     await logWork(staff.cookie, 'ACME-3', 30);
     const c = await generate(staff.cookie, client.id);
@@ -227,7 +279,11 @@ describe('invoicing (M5)', () => {
     await setRate(staff.cookie, 6000);
     const id = (await generate(staff.cookie, client.id)).json().id as string;
 
-    const del = await app.inject({ method: 'DELETE', url: `/invoices/${id}`, headers: { cookie: staff.cookie } });
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/invoices/${id}`,
+      headers: { cookie: staff.cookie },
+    });
     expect(del.statusCode).toBe(204);
     // Worklog freed → a fresh annex can be generated again.
     const regen = await generate(staff.cookie, client.id);
@@ -238,13 +294,20 @@ describe('invoicing (M5)', () => {
   it('charges a fixed price exactly once after a void + regenerate', async () => {
     const { client, staff } = await setup();
     await create(staff.cookie, { projectKey: 'ACME', title: 'Fixed scope' });
-    await prisma.issue.update({ where: { key: 'ACME-1' }, data: { billingMode: 'fixed', fixedPriceCents: 50_000 } });
+    await prisma.issue.update({
+      where: { key: 'ACME-1' },
+      data: { billingMode: 'fixed', fixedPriceCents: 50_000 },
+    });
     await logWork(staff.cookie, 'ACME-1', 120);
     await setRate(staff.cookie, 6000);
 
     const first = (await generate(staff.cookie, client.id)).json();
     expect(first.subtotalCents).toBe(50_000);
-    await app.inject({ method: 'POST', url: `/invoices/${first.id}/void`, headers: { cookie: staff.cookie } });
+    await app.inject({
+      method: 'POST',
+      url: `/invoices/${first.id}/void`,
+      headers: { cookie: staff.cookie },
+    });
 
     // Regenerate: the cancelled annex freed the hours, so the price is billed once
     // on the new annex — not doubled, not lost.
@@ -256,7 +319,10 @@ describe('invoicing (M5)', () => {
   it('re-bills a fixed price after the charging annex is voided, even while another live annex holds the issue’s hours', async () => {
     const { client, staff } = await setup();
     await create(staff.cookie, { projectKey: 'ACME', title: 'Fixed scope' });
-    await prisma.issue.update({ where: { key: 'ACME-1' }, data: { billingMode: 'fixed', fixedPriceCents: 50_000 } });
+    await prisma.issue.update({
+      where: { key: 'ACME-1' },
+      data: { billingMode: 'fixed', fixedPriceCents: 50_000 },
+    });
     await setRate(staff.cookie, 6000);
 
     // Annex A charges the €500 fixed line and claims w1.
@@ -273,10 +339,17 @@ describe('invoicing (M5)', () => {
     // Void A (frees w1). The only annex that ever charged the price is now void; B (live)
     // holds only hours. The price MUST be re-billable. The old worklog-claim predicate
     // lost it here: B's claim made the issue look "already billed", so €500 vanished.
-    await app.inject({ method: 'POST', url: `/invoices/${a.id}/void`, headers: { cookie: staff.cookie } });
+    await app.inject({
+      method: 'POST',
+      url: `/invoices/${a.id}/void`,
+      headers: { cookie: staff.cookie },
+    });
     const c = (await generate(staff.cookie, client.id)).json();
     expect(
-      c.lines.some((l: { hourlyCents: number | null; amountCents: number }) => l.hourlyCents === null && l.amountCents === 50_000),
+      c.lines.some(
+        (l: { hourlyCents: number | null; amountCents: number }) =>
+          l.hourlyCents === null && l.amountCents === 50_000,
+      ),
     ).toBe(true);
     expect(c.subtotalCents).toBe(50_000);
   });
@@ -293,11 +366,17 @@ describe('invoicing (M5)', () => {
 
     // Switch to fixed; log more hours; generate. The earlier HOURLY claim must NOT
     // suppress the fixed price — the old predicate skipped the price line entirely.
-    await prisma.issue.update({ where: { key: 'ACME-1' }, data: { billingMode: 'fixed', fixedPriceCents: 50_000 } });
+    await prisma.issue.update({
+      where: { key: 'ACME-1' },
+      data: { billingMode: 'fixed', fixedPriceCents: 50_000 },
+    });
     await logWork(staff.cookie, 'ACME-1', 30);
     const b = (await generate(staff.cookie, client.id)).json();
     expect(
-      b.lines.some((l: { hourlyCents: number | null; amountCents: number }) => l.hourlyCents === null && l.amountCents === 50_000),
+      b.lines.some(
+        (l: { hourlyCents: number | null; amountCents: number }) =>
+          l.hourlyCents === null && l.amountCents === 50_000,
+      ),
     ).toBe(true);
     expect(b.subtotalCents).toBe(50_000);
   });
@@ -330,27 +409,73 @@ describe('invoicing (M5)', () => {
 
     // A client can't reach the staff billing surface.
     expect(
-      (await app.inject({ method: 'GET', url: `/clients/${client.id}/invoices`, headers: { cookie: clientUser.cookie } })).statusCode,
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/clients/${client.id}/invoices`,
+          headers: { cookie: clientUser.cookie },
+        })
+      ).statusCode,
     ).toBe(403);
 
     // A draft is invisible in the portal…
-    expect((await app.inject({ method: 'GET', url: '/portal/invoices', headers: { cookie: clientUser.cookie } })).json()).toEqual([]);
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/portal/invoices',
+          headers: { cookie: clientUser.cookie },
+        })
+      ).json(),
+    ).toEqual([]);
     // …and a client can't fetch a draft by id (404, never confirm it exists).
     expect(
-      (await app.inject({ method: 'GET', url: `/portal/invoices/${id}`, headers: { cookie: clientUser.cookie } })).statusCode,
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/portal/invoices/${id}`,
+          headers: { cookie: clientUser.cookie },
+        })
+      ).statusCode,
     ).toBe(404);
 
     // Once issued, it appears in the portal.
-    await app.inject({ method: 'POST', url: `/invoices/${id}/issue`, headers: { cookie: staff.cookie } });
-    const portal = await app.inject({ method: 'GET', url: '/portal/invoices', headers: { cookie: clientUser.cookie } });
+    await app.inject({
+      method: 'POST',
+      url: `/invoices/${id}/issue`,
+      headers: { cookie: staff.cookie },
+    });
+    const portal = await app.inject({
+      method: 'GET',
+      url: '/portal/invoices',
+      headers: { cookie: clientUser.cookie },
+    });
     expect(portal.json()).toHaveLength(1);
     expect(portal.json()[0].id).toBe(id);
 
     // …but once VOIDED it disappears again — a cancelled annex must not show to the client.
-    await app.inject({ method: 'POST', url: `/invoices/${id}/void`, headers: { cookie: staff.cookie } });
-    expect((await app.inject({ method: 'GET', url: '/portal/invoices', headers: { cookie: clientUser.cookie } })).json()).toEqual([]);
+    await app.inject({
+      method: 'POST',
+      url: `/invoices/${id}/void`,
+      headers: { cookie: staff.cookie },
+    });
     expect(
-      (await app.inject({ method: 'GET', url: `/portal/invoices/${id}`, headers: { cookie: clientUser.cookie } })).statusCode,
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/portal/invoices',
+          headers: { cookie: clientUser.cookie },
+        })
+      ).json(),
+    ).toEqual([]);
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/portal/invoices/${id}`,
+          headers: { cookie: clientUser.cookie },
+        })
+      ).statusCode,
     ).toBe(404);
   });
 
@@ -365,11 +490,43 @@ describe('invoicing (M5)', () => {
     const draft = await generate(member.cookie, client.id);
     expect(draft.statusCode).toBe(201);
     const id = draft.json().id as string;
-    expect((await app.inject({ method: 'POST', url: `/invoices/${id}/issue`, headers: { cookie: member.cookie } })).statusCode).toBe(200);
-    expect((await app.inject({ method: 'POST', url: `/invoices/${id}/pay`, headers: { cookie: member.cookie } })).statusCode).toBe(200);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/invoices/${id}/issue`,
+          headers: { cookie: member.cookie },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/invoices/${id}/pay`,
+          headers: { cookie: member.cookie },
+        })
+      ).statusCode,
+    ).toBe(200);
     // …but NOT the destructive ones.
-    expect((await app.inject({ method: 'POST', url: `/invoices/${id}/void`, headers: { cookie: member.cookie } })).statusCode).toBe(403);
-    expect((await app.inject({ method: 'DELETE', url: `/invoices/${id}`, headers: { cookie: member.cookie } })).statusCode).toBe(403);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/invoices/${id}/void`,
+          headers: { cookie: member.cookie },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: `/invoices/${id}`,
+          headers: { cookie: member.cookie },
+        })
+      ).statusCode,
+    ).toBe(403);
   });
 
   it('a viewer can read invoices but not generate them', async () => {
@@ -381,7 +538,13 @@ describe('invoicing (M5)', () => {
     const viewer = await actingAs({ role: 'viewer' });
     expect((await generate(viewer.cookie, client.id)).statusCode).toBe(403);
     expect(
-      (await app.inject({ method: 'GET', url: `/clients/${client.id}/invoices`, headers: { cookie: viewer.cookie } })).statusCode,
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/clients/${client.id}/invoices`,
+          headers: { cookie: viewer.cookie },
+        })
+      ).statusCode,
     ).toBe(200);
   });
 
@@ -410,7 +573,10 @@ describe('invoicing (M5)', () => {
     expect(may).toMatchObject({ billableMinutes: 120, accruedCents: 12000 });
 
     // The May annex must bill exactly that.
-    const gen = await generate(staff.cookie, client.id, { periodStart: '2026-05-01', periodEnd: '2026-05-31' });
+    const gen = await generate(staff.cookie, client.id, {
+      periodStart: '2026-05-01',
+      periodEnd: '2026-05-31',
+    });
     expect(gen.statusCode).toBe(201);
     expect(gen.json().subtotalCents).toBe(may.accruedCents);
     expect(gen.json().lines[0]).toMatchObject({ issueKey: 'ACME-1', minutes: 120 });
@@ -421,14 +587,22 @@ describe('invoicing (M5)', () => {
     await create(staff.cookie, { projectKey: 'ACME', title: 'Boundary' });
     await setRate(staff.cookie, 6000);
     const logAt = (loggedAt: string, minutes: number) =>
-      app.inject({ method: 'POST', url: '/issues/ACME-1/worklogs', headers: { cookie: staff.cookie }, payload: { minutes, billable: true, loggedAt } });
+      app.inject({
+        method: 'POST',
+        url: '/issues/ACME-1/worklogs',
+        headers: { cookie: staff.cookie },
+        payload: { minutes, billable: true, loggedAt },
+      });
 
     // 22:00:00Z = Jun 1 00:00 Madrid (CEST) → monthKey June → must NOT bill on May annex.
     await logAt('2026-05-31T22:00:00.000Z', 60);
     // 21:59:59Z = May 31 23:59:59 Madrid → May → must bill on May annex.
     await logAt('2026-05-31T21:59:59.000Z', 30);
 
-    const gen = await generate(staff.cookie, client.id, { periodStart: '2026-05-01', periodEnd: '2026-05-31' });
+    const gen = await generate(staff.cookie, client.id, {
+      periodStart: '2026-05-01',
+      periodEnd: '2026-05-31',
+    });
     expect(gen.statusCode).toBe(201);
     // Only the 30-min May worklog is billed — the start-of-June one is excluded.
     expect(gen.json().lines[0].minutes).toBe(30);

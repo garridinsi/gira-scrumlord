@@ -27,8 +27,8 @@ x-env: &env
   BILLING_TIMEZONE: ${BILLING_TIMEZONE:-Europe/Madrid}
   ALLOW_PRIVATE_WEBHOOKS: ${ALLOW_PRIVATE_WEBHOOKS:-false}
   SMTP_HOST: mailpit
-  SMTP_PORT: "1025"
-  MAIL_FROM: "gira-scrumlord <no-reply@gira.local>"
+  SMTP_PORT: '1025'
+  MAIL_FROM: 'gira-scrumlord <no-reply@gira.local>'
 
 x-app: &app
   build:

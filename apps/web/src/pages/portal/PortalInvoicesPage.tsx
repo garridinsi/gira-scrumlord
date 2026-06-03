@@ -8,7 +8,10 @@ import { formatMoney } from '../../lib/money';
 import { formatDate } from '../../lib/format';
 
 function StatusBadge({ status }: { status: InvoiceListItemView['status'] }) {
-  const map: Record<InvoiceListItemView['status'], { es: string; en: string; bg: string; color: string }> = {
+  const map: Record<
+    InvoiceListItemView['status'],
+    { es: string; en: string; bg: string; color: string }
+  > = {
     draft: { es: 'Borrador', en: 'Draft', bg: 'var(--eg-paper-3)', color: 'var(--eg-iron)' },
     issued: { es: 'Emitida', en: 'Issued', bg: 'var(--eg-yellow)', color: 'var(--eg-iron)' },
     paid: { es: 'Pagada', en: 'Paid', bg: 'var(--eg-green)', color: 'var(--eg-paper)' },
@@ -132,7 +135,8 @@ export function PortalInvoicesPage() {
             margin: '4px 0 0',
           }}
         >
-          Anexos de facturación · Billing annexes (documentos informativos · informational documents)
+          Anexos de facturación · Billing annexes (documentos informativos · informational
+          documents)
         </p>
       </div>
 
@@ -155,111 +159,117 @@ export function PortalInvoicesPage() {
 
       {/* Invoice list */}
       {data.length > 0 && (
-        <div style={{ border: '2px solid var(--eg-iron)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-         <div style={{ minWidth: 800 }}>
-          {/* Table header */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '150px 165px minmax(180px, 1fr) 150px 130px',
-              gap: 0,
-              background: 'var(--eg-paper-3)',
-              borderBottom: '1.5px solid var(--eg-iron)',
-              padding: '8px 16px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 10,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: 'var(--eg-fg-3)',
-            }}
-          >
-            <span>// ref. anexo · annex ref</span>
-            <span>// estado · status</span>
-            <span>// período · period</span>
-            <span>// importe · amount</span>
-            <span>// fecha · date</span>
-          </div>
-
-          {data.map((inv, i) => (
-            <button
-              key={inv.id}
-              type="button"
-              onClick={() => navigate(`/portal/invoices/${inv.id}`)}
+        <div
+          style={{
+            border: '2px solid var(--eg-iron)',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          <div style={{ minWidth: 800 }}>
+            {/* Table header */}
+            <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: '150px 165px minmax(180px, 1fr) 150px 130px',
                 gap: 0,
-                alignItems: 'center',
-                padding: '14px 16px',
-                background: i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)',
-                cursor: 'pointer',
-                textAlign: 'left',
-                width: '100%',
-                border: 'none',
-                borderBottom: i < data.length - 1 ? '1px dashed var(--eg-rule)' : 'none',
-                transition: 'background var(--dur-1)',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'var(--eg-paper-3)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)';
+                background: 'var(--eg-paper-3)',
+                borderBottom: '1.5px solid var(--eg-iron)',
+                padding: '8px 16px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 10,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: 'var(--eg-fg-3)',
               }}
             >
-              <span
+              <span>// ref. anexo · annex ref</span>
+              <span>// estado · status</span>
+              <span>// período · period</span>
+              <span>// importe · amount</span>
+              <span>// fecha · date</span>
+            </div>
+
+            {data.map((inv, i) => (
+              <button
+                key={inv.id}
+                type="button"
+                onClick={() => navigate(`/portal/invoices/${inv.id}`)}
                 style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  color: 'var(--eg-iron)',
-                  letterSpacing: '0.06em',
+                  display: 'grid',
+                  gridTemplateColumns: '150px 165px minmax(180px, 1fr) 150px 130px',
+                  gap: 0,
+                  alignItems: 'center',
+                  padding: '14px 16px',
+                  background: i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  width: '100%',
+                  border: 'none',
+                  borderBottom: i < data.length - 1 ? '1px dashed var(--eg-rule)' : 'none',
+                  transition: 'background var(--dur-1)',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--eg-paper-3)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)';
                 }}
               >
-                {inv.number}
-              </span>
-              <span>
-                <StatusBadge status={inv.status} />
-              </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 11,
-                  color: 'var(--eg-fg-3)',
-                }}
-              >
-                {inv.periodStart || inv.periodEnd ? (
-                  <>
-                    {inv.periodStart ? formatDate(inv.periodStart) : '—'}
-                    {' – '}
-                    {inv.periodEnd ? formatDate(inv.periodEnd) : '—'}
-                  </>
-                ) : (
-                  'todo el trabajo · all work'
-                )}
-              </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  color: 'var(--eg-iron)',
-                }}
-              >
-                {formatMoney(inv.subtotalCents, inv.currency)}
-              </span>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 11,
-                  color: 'var(--eg-fg-3)',
-                }}
-              >
-                {formatDate(inv.createdAt)}
-              </span>
-            </button>
-          ))}
-         </div>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    color: 'var(--eg-iron)',
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  {inv.number}
+                </span>
+                <span>
+                  <StatusBadge status={inv.status} />
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 11,
+                    color: 'var(--eg-fg-3)',
+                  }}
+                >
+                  {inv.periodStart || inv.periodEnd ? (
+                    <>
+                      {inv.periodStart ? formatDate(inv.periodStart) : '—'}
+                      {' – '}
+                      {inv.periodEnd ? formatDate(inv.periodEnd) : '—'}
+                    </>
+                  ) : (
+                    'todo el trabajo · all work'
+                  )}
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    color: 'var(--eg-iron)',
+                  }}
+                >
+                  {formatMoney(inv.subtotalCents, inv.currency)}
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 11,
+                    color: 'var(--eg-fg-3)',
+                  }}
+                >
+                  {formatDate(inv.createdAt)}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

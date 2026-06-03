@@ -17,11 +17,15 @@ const clientErrorSchema = z.object({
 });
 
 export async function clientErrorRoutes(app: FastifyInstance): Promise<void> {
-  app.post('/client-errors', { config: { rateLimit: clientErrorRateLimit } }, async (req, reply) => {
-    const parsed = clientErrorSchema.safeParse(req.body);
-    if (parsed.success) {
-      req.log.warn({ clientError: parsed.data }, 'web runtime error (ErrorBoundary)');
-    }
-    return reply.code(204).send();
-  });
+  app.post(
+    '/client-errors',
+    { config: { rateLimit: clientErrorRateLimit } },
+    async (req, reply) => {
+      const parsed = clientErrorSchema.safeParse(req.body);
+      if (parsed.success) {
+        req.log.warn({ clientError: parsed.data }, 'web runtime error (ErrorBoundary)');
+      }
+      return reply.code(204).send();
+    },
+  );
 }

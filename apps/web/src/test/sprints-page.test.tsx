@@ -11,7 +11,12 @@ const { sprintsList, sprintsCreate, start, close } = vi.hoisted(() => ({
   close: vi.fn(),
 }));
 vi.mock('../api/client', () => ({
-  projects: { sprints: { list: (k: string) => sprintsList(k), create: (k: string, b: unknown) => sprintsCreate(k, b) } },
+  projects: {
+    sprints: {
+      list: (k: string) => sprintsList(k),
+      create: (k: string, b: unknown) => sprintsCreate(k, b),
+    },
+  },
   sprints: { start: (id: string) => start(id), close: (id: string) => close(id) },
   ApiError: class ApiError extends Error {},
 }));

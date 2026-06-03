@@ -144,7 +144,12 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
         action: 'user.update',
         entityType: 'User',
         entityId: id,
-        before: { name: before.name, role: before.role, isActive: before.isActive, clientId: before.clientId },
+        before: {
+          name: before.name,
+          role: before.role,
+          isActive: before.isActive,
+          clientId: before.clientId,
+        },
         after: { name: u.name, role: u.role, isActive: u.isActive, clientId: u.clientId },
       });
       return u;

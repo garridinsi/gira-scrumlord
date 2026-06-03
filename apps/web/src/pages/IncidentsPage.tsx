@@ -60,12 +60,7 @@ function IncidentStatusBadge({ status }: { status: IncidentView['status'] }) {
 // ── Escalation indicator ──────────────────────────────────────────────────────
 
 function EscalationBadge({ level }: { level: number }) {
-  const color =
-    level >= 3
-      ? 'var(--eg-red)'
-      : level === 2
-        ? 'var(--eg-yellow)'
-        : 'var(--eg-fg-4)';
+  const color = level >= 3 ? 'var(--eg-red)' : level === 2 ? 'var(--eg-yellow)' : 'var(--eg-fg-4)';
   return (
     <span
       style={{
@@ -82,15 +77,7 @@ function EscalationBadge({ level }: { level: number }) {
 
 // ── Incident row ──────────────────────────────────────────────────────────────
 
-function IncidentRow({
-  inc,
-  i,
-  canWrite,
-}: {
-  inc: IncidentView;
-  i: number;
-  canWrite: boolean;
-}) {
+function IncidentRow({ inc, i, canWrite }: { inc: IncidentView; i: number; canWrite: boolean }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const toast = useToast();
@@ -329,7 +316,14 @@ export function IncidentsPage() {
 
           <div style={{ textAlign: 'right' }}>
             {openCount > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  justifyContent: 'flex-end',
+                }}
+              >
                 <span
                   style={{
                     width: 10,
@@ -349,7 +343,14 @@ export function IncidentsPage() {
               </div>
             )}
             {openCount === 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  justifyContent: 'flex-end',
+                }}
+              >
                 <span
                   style={{
                     width: 10,
@@ -369,7 +370,12 @@ export function IncidentsPage() {
             )}
             <div
               className="mono"
-              style={{ fontSize: 10, color: 'var(--eg-fg-4)', letterSpacing: '0.1em', marginTop: 4 }}
+              style={{
+                fontSize: 10,
+                color: 'var(--eg-fg-4)',
+                letterSpacing: '0.1em',
+                marginTop: 4,
+              }}
             >
               {data.length} TOTAL · {statusFilter.toUpperCase()}
             </div>
@@ -414,76 +420,76 @@ export function IncidentsPage() {
 
         {/* Column headers */}
         <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '980px' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '110px 1fr 140px 130px 130px 110px 160px',
-            gap: 0,
-            padding: '6px 22px',
-            background: 'var(--eg-paper-3)',
-            borderBottom: '1px solid var(--eg-rule)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 10,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: 'var(--eg-fg-4)',
-          }}
-        >
-          <span>// issue</span>
-          <span>// título · title</span>
-          <span>// estado · status</span>
-          <span>// nivel · level</span>
-          <span>// creada · created</span>
-          <span>// último aviso</span>
-          <span style={{ textAlign: 'right' }}>// acciones · actions</span>
-        </div>
-
-        {/* Loading */}
-        {incidentsQ.isLoading && (
-          <div className="gs-state">
-            <span className="gs-loading">cargando incidencias · loading incidents</span>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '110px 1fr 140px 130px 130px 110px 160px',
+              gap: 0,
+              padding: '6px 22px',
+              background: 'var(--eg-paper-3)',
+              borderBottom: '1px solid var(--eg-rule)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'var(--eg-fg-4)',
+            }}
+          >
+            <span>// issue</span>
+            <span>// título · title</span>
+            <span>// estado · status</span>
+            <span>// nivel · level</span>
+            <span>// creada · created</span>
+            <span>// último aviso</span>
+            <span style={{ textAlign: 'right' }}>// acciones · actions</span>
           </div>
-        )}
 
-        {/* Error */}
-        {incidentsQ.isError && (
-          <div className="gs-state">
-            <span
-              className="mono"
-              style={{ color: 'var(--eg-red)', fontSize: 12, letterSpacing: '0.12em' }}
-            >
-              // error al cargar incidencias · failed to load
-            </span>
-          </div>
-        )}
-
-        {/* Empty */}
-        {!incidentsQ.isLoading && !incidentsQ.isError && data.length === 0 && (
-          <div className="gs-state" style={{ flexDirection: 'column', gap: 10 }}>
-            <div
-              className="disp"
-              style={{ fontSize: 32, color: 'var(--eg-fg-4)', fontWeight: 900 }}
-            >
-              ✓
+          {/* Loading */}
+          {incidentsQ.isLoading && (
+            <div className="gs-state">
+              <span className="gs-loading">cargando incidencias · loading incidents</span>
             </div>
-            <div
-              className="mono"
-              style={{
-                color: 'var(--eg-fg-4)',
-                fontSize: 12,
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-              }}
-            >
-              // sin incidencias · no incidents
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Rows */}
-        {data.map((inc, i) => (
-          <IncidentRow key={inc.id} inc={inc} i={i} canWrite={canWrite} />
-        ))}
+          {/* Error */}
+          {incidentsQ.isError && (
+            <div className="gs-state">
+              <span
+                className="mono"
+                style={{ color: 'var(--eg-red)', fontSize: 12, letterSpacing: '0.12em' }}
+              >
+                // error al cargar incidencias · failed to load
+              </span>
+            </div>
+          )}
+
+          {/* Empty */}
+          {!incidentsQ.isLoading && !incidentsQ.isError && data.length === 0 && (
+            <div className="gs-state" style={{ flexDirection: 'column', gap: 10 }}>
+              <div
+                className="disp"
+                style={{ fontSize: 32, color: 'var(--eg-fg-4)', fontWeight: 900 }}
+              >
+                ✓
+              </div>
+              <div
+                className="mono"
+                style={{
+                  color: 'var(--eg-fg-4)',
+                  fontSize: 12,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                // sin incidencias · no incidents
+              </div>
+            </div>
+          )}
+
+          {/* Rows */}
+          {data.map((inc, i) => (
+            <IncidentRow key={inc.id} inc={inc} i={i} canWrite={canWrite} />
+          ))}
         </div>
       </div>
     </div>

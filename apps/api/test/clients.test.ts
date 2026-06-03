@@ -20,18 +20,34 @@ describe('clients CRUD (admin)', () => {
   it('lists, reads, and patches a client; 404 on missing; member forbidden', async () => {
     const admin = await actingAs({ role: 'admin' });
     const created = (
-      await app.inject({ method: 'POST', url: '/clients', headers: { cookie: admin.cookie }, payload: { name: 'Acme', slug: 'acme', currency: 'EUR' } })
+      await app.inject({
+        method: 'POST',
+        url: '/clients',
+        headers: { cookie: admin.cookie },
+        payload: { name: 'Acme', slug: 'acme', currency: 'EUR' },
+      })
     ).json();
 
-    const list = await app.inject({ method: 'GET', url: '/clients', headers: { cookie: admin.cookie } });
+    const list = await app.inject({
+      method: 'GET',
+      url: '/clients',
+      headers: { cookie: admin.cookie },
+    });
     expect(list.statusCode).toBe(200);
     expect(list.json().map((c: { slug: string }) => c.slug)).toContain('acme');
 
-    const one = await app.inject({ method: 'GET', url: `/clients/${created.id}`, headers: { cookie: admin.cookie } });
+    const one = await app.inject({
+      method: 'GET',
+      url: `/clients/${created.id}`,
+      headers: { cookie: admin.cookie },
+    });
     expect(one.statusCode).toBe(200);
     expect(one.json().name).toBe('Acme');
 
-    expect((await app.inject({ method: 'GET', url: '/clients/nope', headers: { cookie: admin.cookie } })).statusCode).toBe(404);
+    expect(
+      (await app.inject({ method: 'GET', url: '/clients/nope', headers: { cookie: admin.cookie } }))
+        .statusCode,
+    ).toBe(404);
 
     const patched = await app.inject({
       method: 'PATCH',
@@ -43,11 +59,21 @@ describe('clients CRUD (admin)', () => {
     expect(patched.json().name).toBe('Acme Renamed');
 
     expect(
-      (await app.inject({ method: 'PATCH', url: '/clients/nope', headers: { cookie: admin.cookie }, payload: { name: 'X' } })).statusCode,
+      (
+        await app.inject({
+          method: 'PATCH',
+          url: '/clients/nope',
+          headers: { cookie: admin.cookie },
+          payload: { name: 'X' },
+        })
+      ).statusCode,
     ).toBe(404);
 
     // The whole resource is admin-only.
     const member = await actingAs({ role: 'member' });
-    expect((await app.inject({ method: 'GET', url: '/clients', headers: { cookie: member.cookie } })).statusCode).toBe(403);
+    expect(
+      (await app.inject({ method: 'GET', url: '/clients', headers: { cookie: member.cookie } }))
+        .statusCode,
+    ).toBe(403);
   });
 });

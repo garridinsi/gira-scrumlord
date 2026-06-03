@@ -56,10 +56,7 @@ export function ClientPortalLayout() {
           <Glyph />
           <span className="cp-topbar__brand-name">GIRA</span>
           <span className="cp-topbar__brand-sep">|</span>
-          <span
-            className="cp-topbar__client"
-            title={clientName}
-          >
+          <span className="cp-topbar__client" title={clientName}>
             {clientName}
           </span>
         </div>
@@ -68,9 +65,7 @@ export function ClientPortalLayout() {
           <NavLink
             to="/portal"
             end
-            className={({ isActive }) =>
-              'cp-nav__item' + (isActive ? ' cp-nav__item--active' : '')
-            }
+            className={({ isActive }) => 'cp-nav__item' + (isActive ? ' cp-nav__item--active' : '')}
           >
             <span className="cp-nav__es">Resumen</span>
             <span className="cp-nav__en">Overview</span>
@@ -78,9 +73,7 @@ export function ClientPortalLayout() {
 
           <NavLink
             to="/portal/issues"
-            className={({ isActive }) =>
-              'cp-nav__item' + (isActive ? ' cp-nav__item--active' : '')
-            }
+            className={({ isActive }) => 'cp-nav__item' + (isActive ? ' cp-nav__item--active' : '')}
           >
             <span className="cp-nav__es">Tickets</span>
             <span className="cp-nav__en">Issues</span>
@@ -88,9 +81,7 @@ export function ClientPortalLayout() {
 
           <NavLink
             to="/portal/invoices"
-            className={({ isActive }) =>
-              'cp-nav__item' + (isActive ? ' cp-nav__item--active' : '')
-            }
+            className={({ isActive }) => 'cp-nav__item' + (isActive ? ' cp-nav__item--active' : '')}
           >
             <span className="cp-nav__es">Facturas</span>
             <span className="cp-nav__en">Invoices</span>
@@ -98,9 +89,7 @@ export function ClientPortalLayout() {
 
           <NavLink
             to="/portal/account"
-            className={({ isActive }) =>
-              'cp-nav__item' + (isActive ? ' cp-nav__item--active' : '')
-            }
+            className={({ isActive }) => 'cp-nav__item' + (isActive ? ' cp-nav__item--active' : '')}
           >
             <span className="cp-nav__es">Mi cuenta</span>
             <span className="cp-nav__en">Account</span>
@@ -109,8 +98,7 @@ export function ClientPortalLayout() {
           <NavLink
             to="/portal/request"
             className={({ isActive }) =>
-              'cp-nav__item cp-nav__item--cta' +
-              (isActive ? ' cp-nav__item--active' : '')
+              'cp-nav__item cp-nav__item--cta' + (isActive ? ' cp-nav__item--active' : '')
             }
           >
             <span className="cp-nav__es">+ Nueva solicitud</span>

@@ -49,17 +49,35 @@ export function AuthCallbackPage() {
           width: '100%',
         }}
       >
-        <div style={{ height: 14, background: 'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 14px, var(--eg-iron) 14px 28px)' }} />
+        <div
+          style={{
+            height: 14,
+            background:
+              'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 14px, var(--eg-iron) 14px 28px)',
+          }}
+        />
         <div style={{ padding: '28px 32px' }}>
           <span className="plate" style={{ marginBottom: 16 }}>
             ACCESO · BOARDING
           </span>
           {failed ? (
             <>
-              <h2 className="disp" style={{ fontSize: 34, color: 'var(--eg-red)', margin: '0 0 8px', lineHeight: 1 }}>
+              <h2
+                className="disp"
+                style={{ fontSize: 34, color: 'var(--eg-red)', margin: '0 0 8px', lineHeight: 1 }}
+              >
                 ENLACE INVÁLIDO
               </h2>
-              <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 14 }}>
+              <div
+                className="mono"
+                style={{
+                  fontSize: 11,
+                  color: 'var(--eg-fg-3)',
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  marginBottom: 14,
+                }}
+              >
                 — INVALID OR EXPIRED LINK —
               </div>
               <p style={{ color: 'var(--eg-fg-2)', marginBottom: 18 }}>
@@ -71,7 +89,10 @@ export function AuthCallbackPage() {
             </>
           ) : (
             <>
-              <h2 className="disp" style={{ fontSize: 34, color: 'var(--eg-iron)', margin: '0 0 8px', lineHeight: 1 }}>
+              <h2
+                className="disp"
+                style={{ fontSize: 34, color: 'var(--eg-iron)', margin: '0 0 8px', lineHeight: 1 }}
+              >
                 ENTRANDO…
               </h2>
               <div className="gs-loading">validando enlace · validating link</div>

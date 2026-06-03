@@ -4,8 +4,22 @@ import { render } from '@testing-library/react';
 import { NavIcon, type IconName } from '../ui/icons';
 
 const NAMES: IconName[] = [
-  'board', 'backlog', 'sprints', 'monthly', 'summary', 'audit', 'daemon', 'billing',
-  'rates', 'team', 'clients', 'settings', 'incidents', 'account', 'overview', 'request',
+  'board',
+  'backlog',
+  'sprints',
+  'monthly',
+  'summary',
+  'audit',
+  'daemon',
+  'billing',
+  'rates',
+  'team',
+  'clients',
+  'settings',
+  'incidents',
+  'account',
+  'overview',
+  'request',
 ];
 
 describe('NavIcon', () => {

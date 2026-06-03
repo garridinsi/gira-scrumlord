@@ -14,12 +14,12 @@ x-env: &env
   DATABASE_URL: postgresql://gira:${POSTGRES_PASSWORD}@postgres:5432/gira?schema=public
   # The API refuses to boot in production if this is still a dev placeholder.
   SESSION_SECRET: ${SESSION_SECRET:?set a strong unique SESSION_SECRET in .env}
-  COOKIE_SECURE: "true"
+  COOKIE_SECURE: 'true'
   APP_URL: ${APP_URL:?set APP_URL, e.g. https://gira.garridinsi.dev}
   # cloudflared + nginx = 2 proxy hops, so req.ip resolves to the real client.
-  TRUST_PROXY: "2"
+  TRUST_PROXY: '2'
   BILLING_TIMEZONE: ${BILLING_TIMEZONE:-Europe/Madrid}
-  ALLOW_PRIVATE_WEBHOOKS: "false"
+  ALLOW_PRIVATE_WEBHOOKS: 'false'
   # Email — IP-allowlisted Google Workspace SMTP relay (no auth) by default.
   SMTP_HOST: ${SMTP_HOST:-smtp-relay.gmail.com}
   SMTP_PORT: ${SMTP_PORT:-587}

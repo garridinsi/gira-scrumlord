@@ -29,10 +29,18 @@ describe('health', () => {
   });
 
   it('POST /client-errors accepts a crash report (204) and swallows junk', async () => {
-    const ok = await app.inject({ method: 'POST', url: '/client-errors', payload: { message: 'boom', componentStack: 'at <App>' } });
+    const ok = await app.inject({
+      method: 'POST',
+      url: '/client-errors',
+      payload: { message: 'boom', componentStack: 'at <App>' },
+    });
     expect(ok.statusCode).toBe(204);
     // A malformed body is swallowed, never a 400 the reporter would ignore.
-    const junk = await app.inject({ method: 'POST', url: '/client-errors', payload: { not: 'valid' } });
+    const junk = await app.inject({
+      method: 'POST',
+      url: '/client-errors',
+      payload: { not: 'valid' },
+    });
     expect(junk.statusCode).toBe(204);
   });
 

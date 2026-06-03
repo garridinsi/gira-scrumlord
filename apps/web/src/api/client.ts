@@ -105,7 +105,8 @@ export function errorMessage(body: unknown, status: number): string {
     // Zod validation: surface the first issue ("path: message").
     if (b.error === 'validation_error' && Array.isArray(b.issues) && b.issues.length > 0) {
       const first = b.issues[0] as { path?: unknown[]; message?: string };
-      const where = Array.isArray(first.path) && first.path.length ? `${first.path.join('.')}: ` : '';
+      const where =
+        Array.isArray(first.path) && first.path.length ? `${first.path.join('.')}: ` : '';
       return `${where}${first.message ?? 'invalid input'}`;
     }
     if (typeof b.message === 'string') return b.message;
@@ -176,8 +177,7 @@ export const users = {
 // ---------------------------------------------------------------------------
 
 export const system = {
-  health: () =>
-    request<{ status: string; db: boolean; name: string; version: string }>('/health'),
+  health: () => request<{ status: string; db: boolean; name: string; version: string }>('/health'),
 };
 
 export const auth = {
@@ -204,9 +204,15 @@ export const auth = {
 
   // Verified email change: request mails a link to the NEW address; confirm switches.
   requestEmailChange: (newEmail: string) =>
-    request<{ status: string }>('/auth/email-change/request', { method: 'POST', ...json({ newEmail }) }),
+    request<{ status: string }>('/auth/email-change/request', {
+      method: 'POST',
+      ...json({ newEmail }),
+    }),
   confirmEmailChange: (token: string) =>
-    request<{ email: string }>('/auth/email-change/confirm', { method: 'POST', ...json({ token }) }),
+    request<{ email: string }>('/auth/email-change/confirm', {
+      method: 'POST',
+      ...json({ token }),
+    }),
 };
 
 // ---------------------------------------------------------------------------
@@ -261,8 +267,7 @@ export const projects = {
       request<StatusView>(`/projects/${key}/statuses`, { method: 'POST', ...json(data) }),
     update: (statusId: string, data: UpdateStatus) =>
       request<StatusView>(`/statuses/${statusId}`, { method: 'PATCH', ...json(data) }),
-    delete: (statusId: string) =>
-      request<void>(`/statuses/${statusId}`, { method: 'DELETE' }),
+    delete: (statusId: string) => request<void>(`/statuses/${statusId}`, { method: 'DELETE' }),
   },
 
   labels: {
@@ -345,8 +350,7 @@ export const issues = {
     return request<IssueView[]>(`/issues${qs ? `?${qs}` : ''}`);
   },
 
-  create: (data: CreateIssue) =>
-    request<IssueView>('/issues', { method: 'POST', ...json(data) }),
+  create: (data: CreateIssue) => request<IssueView>('/issues', { method: 'POST', ...json(data) }),
 
   get: (key: string) => request<IssueView>(`/issues/${key}`),
 
@@ -420,11 +424,13 @@ export const incidents = {
 
 export const channels = {
   list: () => request<ChannelView[]>('/channels'),
-  create: (data: CreateChannel) => request<ChannelView>('/channels', { method: 'POST', ...json(data) }),
+  create: (data: CreateChannel) =>
+    request<ChannelView>('/channels', { method: 'POST', ...json(data) }),
   update: (id: string, data: UpdateChannel) =>
     request<ChannelView>(`/channels/${id}`, { method: 'PATCH', ...json(data) }),
   delete: (id: string) => request<void>(`/channels/${id}`, { method: 'DELETE' }),
-  test: (id: string) => request<{ ok: boolean; error?: string }>(`/channels/${id}/test`, { method: 'POST' }),
+  test: (id: string) =>
+    request<{ ok: boolean; error?: string }>(`/channels/${id}/test`, { method: 'POST' }),
 };
 
 // ---------------------------------------------------------------------------
@@ -456,7 +462,10 @@ export const intake = {
   rules: {
     list: (key: string) => request<AssignmentRuleRecord[]>(`/projects/${key}/assignment-rules`),
     create: (key: string, data: CreateAssignmentRule) =>
-      request<AssignmentRuleRecord>(`/projects/${key}/assignment-rules`, { method: 'POST', ...json(data) }),
+      request<AssignmentRuleRecord>(`/projects/${key}/assignment-rules`, {
+        method: 'POST',
+        ...json(data),
+      }),
     delete: (id: string) => request<void>(`/assignment-rules/${id}`, { method: 'DELETE' }),
   },
 };
@@ -483,7 +492,10 @@ export const invoices = {
   void: (id: string) => request<InvoiceView>(`/invoices/${id}/void`, { method: 'POST' }),
   delete: (id: string) => request<void>(`/invoices/${id}`, { method: 'DELETE' }),
   setExternalRef: (id: string, externalInvoiceRef: string | null) =>
-    request<InvoiceView>(`/invoices/${id}/external-ref`, { method: 'POST', ...json({ externalInvoiceRef }) }),
+    request<InvoiceView>(`/invoices/${id}/external-ref`, {
+      method: 'POST',
+      ...json({ externalInvoiceRef }),
+    }),
 };
 
 // ---------------------------------------------------------------------------

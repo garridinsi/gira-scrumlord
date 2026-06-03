@@ -4,11 +4,18 @@ import { centsToDecimal, toCsv } from '../lib/csv';
 
 describe('toCsv', () => {
   it('joins cells with commas and rows with CRLF', () => {
-    expect(toCsv([['a', 'b'], [1, 2]])).toBe('a,b\r\n1,2');
+    expect(
+      toCsv([
+        ['a', 'b'],
+        [1, 2],
+      ]),
+    ).toBe('a,b\r\n1,2');
   });
 
   it('quotes cells containing commas, quotes, or newlines (RFC-4180)', () => {
-    expect(toCsv([['a,b', 'he said "hi"', 'line\nbreak']])).toBe('"a,b","he said ""hi""","line\nbreak"');
+    expect(toCsv([['a,b', 'he said "hi"', 'line\nbreak']])).toBe(
+      '"a,b","he said ""hi""","line\nbreak"',
+    );
   });
 
   it('renders null/undefined as empty cells', () => {

@@ -15,7 +15,10 @@ interface RailItem {
   lore?: string;
 }
 
-export function Rail({ open = false, onNavigate }: { open?: boolean; onNavigate?: () => void } = {}) {
+export function Rail({
+  open = false,
+  onNavigate,
+}: { open?: boolean; onNavigate?: () => void } = {}) {
   const { key } = useParams();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -46,7 +49,11 @@ export function Rail({ open = false, onNavigate }: { open?: boolean; onNavigate?
     queryFn: () => projects.sprints.list(key!),
     enabled: !!key && !isMonthly,
   });
-  const health = useQuery({ queryKey: ['health'], queryFn: () => system.health(), refetchInterval: 30_000 });
+  const health = useQuery({
+    queryKey: ['health'],
+    queryFn: () => system.health(),
+    refetchInterval: 30_000,
+  });
 
   const boardTotal = board.data?.columns.reduce((n, c) => n + c.issues.length, 0);
   const p = key ? `/projects/${key}` : '';
@@ -54,17 +61,52 @@ export function Rail({ open = false, onNavigate }: { open?: boolean; onNavigate?
   // Maintenance projects organize by calendar month, not sprints.
   const cadenceItem: RailItem = isMonthly
     ? { id: 'monthly', es: 'Mensual', en: 'Monthly', icon: 'monthly', to: `${p}/monthly` }
-    : { id: 'sprints', es: 'Sprints', en: 'Sprints', icon: 'sprints', to: `${p}/sprints`, num: sprints.data ? String(sprints.data.length) : '' };
+    : {
+        id: 'sprints',
+        es: 'Sprints',
+        en: 'Sprints',
+        icon: 'sprints',
+        to: `${p}/sprints`,
+        num: sprints.data ? String(sprints.data.length) : '',
+      };
 
   const projectItems: RailItem[] = [
-    { id: 'board', es: 'Tablero', en: 'Board', icon: 'board', to: `${p}/board`, num: boardTotal != null ? String(boardTotal) : '' },
-    { id: 'backlog', es: 'Pendientes', en: 'Backlog', icon: 'backlog', to: `${p}/backlog`, num: backlog.data ? String(backlog.data.length) : '' },
+    {
+      id: 'board',
+      es: 'Tablero',
+      en: 'Board',
+      icon: 'board',
+      to: `${p}/board`,
+      num: boardTotal != null ? String(boardTotal) : '',
+    },
+    {
+      id: 'backlog',
+      es: 'Pendientes',
+      en: 'Backlog',
+      icon: 'backlog',
+      to: `${p}/backlog`,
+      num: backlog.data ? String(backlog.data.length) : '',
+    },
     cadenceItem,
     { id: 'summary', es: 'Resumen', en: 'Summary', icon: 'summary', to: `${p}` },
   ];
   const loreItems: RailItem[] = [
-    { id: 'audit', es: 'Auditoría', en: 'Sauron · Audit', icon: 'audit', to: '/audit', num: ':666' },
-    { id: 'scrumlord', es: 'Daemon', en: 'Scrumlord', icon: 'daemon', lore: 'pg-boss · 4 jobs queued', num: '4' },
+    {
+      id: 'audit',
+      es: 'Auditoría',
+      en: 'Sauron · Audit',
+      icon: 'audit',
+      to: '/audit',
+      num: ':666',
+    },
+    {
+      id: 'scrumlord',
+      es: 'Daemon',
+      en: 'Scrumlord',
+      icon: 'daemon',
+      lore: 'pg-boss · 4 jobs queued',
+      num: '4',
+    },
   ];
   const adminItems: RailItem[] = [
     { id: 'billing', es: 'Facturación', en: 'Billing', icon: 'billing', to: '/billing' },

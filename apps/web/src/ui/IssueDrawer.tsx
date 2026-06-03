@@ -20,7 +20,15 @@ interface IssueDrawerProps {
 
 // ── SideField helper ──────────────────────────────────────────────────────────
 
-function SideField({ labelEs, labelEn, children }: { labelEs: string; labelEn: string; children: React.ReactNode }) {
+function SideField({
+  labelEs,
+  labelEn,
+  children,
+}: {
+  labelEs: string;
+  labelEn: string;
+  children: React.ReactNode;
+}) {
   return (
     <div style={{ padding: '10px 16px', borderBottom: '1px dashed var(--eg-iron)' }}>
       <div className="caps" style={{ marginBottom: 4 }}>
@@ -74,10 +82,18 @@ function TimerPanel({ issueKey, toast }: { issueKey: string; toast: ReturnType<t
       stopTimer.mutate(undefined, {
         onSuccess: (log) => {
           void queryClient.invalidateQueries({ queryKey: ['worklogs', issueKey] });
-          toast({ tone: 'ok', title: 'Cronómetro parado · Timer stopped', body: formatMinutes(log.minutes) + ' registrados' });
+          toast({
+            tone: 'ok',
+            title: 'Cronómetro parado · Timer stopped',
+            body: formatMinutes(log.minutes) + ' registrados',
+          });
         },
         onError: (err) => {
-          toast({ tone: 'danger', title: 'Error al parar · Stop failed', body: err instanceof ApiError ? err.message : 'Error' });
+          toast({
+            tone: 'danger',
+            title: 'Error al parar · Stop failed',
+            body: err instanceof ApiError ? err.message : 'Error',
+          });
         },
       });
     } else {
@@ -86,7 +102,11 @@ function TimerPanel({ issueKey, toast }: { issueKey: string; toast: ReturnType<t
           toast({ tone: 'ok', title: 'Cronómetro iniciado · Timer started' });
         },
         onError: (err) => {
-          toast({ tone: 'danger', title: 'Error al iniciar · Start failed', body: err instanceof ApiError ? err.message : 'Error' });
+          toast({
+            tone: 'danger',
+            title: 'Error al iniciar · Start failed',
+            body: err instanceof ApiError ? err.message : 'Error',
+          });
         },
       });
     }
@@ -100,7 +120,10 @@ function TimerPanel({ issueKey, toast }: { issueKey: string; toast: ReturnType<t
         background: isRunningForThisIssue ? 'var(--eg-yellow)' : 'var(--eg-paper-2)',
       }}
     >
-      <div className="caps" style={{ color: isRunningForThisIssue ? 'var(--eg-iron)' : 'var(--eg-fg-3)' }}>
+      <div
+        className="caps"
+        style={{ color: isRunningForThisIssue ? 'var(--eg-iron)' : 'var(--eg-fg-3)' }}
+      >
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           {isRunningForThisIssue && (
             <span
@@ -114,7 +137,8 @@ function TimerPanel({ issueKey, toast }: { issueKey: string; toast: ReturnType<t
               }}
             />
           )}
-          // cronómetro · timer · {isRunningForThisIssue ? 'en marcha · running' : 'parado · stopped'}
+          // cronómetro · timer ·{' '}
+          {isRunningForThisIssue ? 'en marcha · running' : 'parado · stopped'}
         </span>
       </div>
       <div
@@ -187,9 +211,15 @@ function DetailsTab({
   if (editing) {
     return (
       <div>
-        <div className="caps" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div
+          className="caps"
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        >
           <span>// descripción · description · markdown</span>
-          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em' }}>
+          <span
+            className="mono"
+            style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em' }}
+          >
             ⌘/CTRL+ENTER · ESC
           </span>
         </div>
@@ -224,10 +254,20 @@ function DetailsTab({
           }}
         />
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button type="button" className="b-btn b-btn--ink" disabled={saving} onClick={() => void commit()}>
+          <button
+            type="button"
+            className="b-btn b-btn--ink"
+            disabled={saving}
+            onClick={() => void commit()}
+          >
             {saving ? 'Guardando…' : 'Guardar · Save'}
           </button>
-          <button type="button" className="b-btn b-btn--ghost" disabled={saving} onClick={() => setEditing(false)}>
+          <button
+            type="button"
+            className="b-btn b-btn--ghost"
+            disabled={saving}
+            onClick={() => setEditing(false)}
+          >
             Cancelar · Cancel
           </button>
         </div>
@@ -237,7 +277,10 @@ function DetailsTab({
 
   return (
     <div>
-      <div className="caps" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div
+        className="caps"
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+      >
         <span>// descripción · description · markdown</span>
         <button
           type="button"
@@ -263,12 +306,14 @@ function DetailsTab({
         }}
       >
         {issue.description ? (
-          <pre style={{
-            margin: 0,
-            fontFamily: 'var(--font-body)',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}>
+          <pre
+            style={{
+              margin: 0,
+              fontFamily: 'var(--font-body)',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+            }}
+          >
             {issue.description}
           </pre>
         ) : (
@@ -295,14 +340,19 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
   });
 
   const createComment = useMutation({
-    mutationFn: (b: string) => issues.comments.create(issueKey, { body: b, visibility: internal ? 'internal' : 'client' }),
+    mutationFn: (b: string) =>
+      issues.comments.create(issueKey, { body: b, visibility: internal ? 'internal' : 'client' }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['comments', issueKey] });
       setBody('');
       toast({ tone: 'ok', title: 'Comentario añadido · Comment added' });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al comentar · Comment failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al comentar · Comment failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -319,7 +369,16 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
   return (
     <div>
       {comments.length === 0 && (
-        <div style={{ padding: '20px 0', color: 'var(--eg-fg-4)', fontFamily: 'var(--font-mono)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+        <div
+          style={{
+            padding: '20px 0',
+            color: 'var(--eg-fg-4)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+          }}
+        >
           Sin comentarios · No comments yet
         </div>
       )}
@@ -335,29 +394,50 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
         >
           <Avatar user={c.author} lg />
           <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}
+            >
               <span style={{ fontWeight: 600, color: 'var(--eg-iron)' }}>
                 {c.author.name}
                 {c.visibility === 'internal' && (
                   <span
                     className="mono"
                     title="Solo visible para el equipo · Staff-only"
-                    style={{ marginLeft: 8, fontSize: 9, padding: '1px 5px', background: 'var(--eg-iron)', color: 'var(--eg-yellow)', letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 9,
+                      padding: '1px 5px',
+                      background: 'var(--eg-iron)',
+                      color: 'var(--eg-yellow)',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                    }}
                   >
                     interna · internal
                   </span>
                 )}
               </span>
-              <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}>
+              <span
+                className="mono"
+                style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}
+              >
                 {formatRelativeTime(c.createdAt)}
               </span>
             </div>
-            <div style={{ fontSize: 13.5, color: 'var(--eg-iron)', marginTop: 4, lineHeight: 1.5 }}>{c.body}</div>
+            <div style={{ fontSize: 13.5, color: 'var(--eg-iron)', marginTop: 4, lineHeight: 1.5 }}>
+              {c.body}
+            </div>
           </div>
         </div>
       ))}
 
-      <div style={{ marginTop: 16, border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper-2)' }}>
+      <div
+        style={{
+          marginTop: 16,
+          border: '1.5px solid var(--eg-iron)',
+          background: 'var(--eg-paper-2)',
+        }}
+      >
         <div className="tag-head">
           <span>// responder · reply</span>
           <span>⌘+ENTER</span>
@@ -384,9 +464,33 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
             resize: 'vertical',
           }}
         />
-        <div style={{ padding: '6px 10px', borderTop: '1px solid var(--eg-iron)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-          <label className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-            <input type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} />
+        <div
+          style={{
+            padding: '6px 10px',
+            borderTop: '1px solid var(--eg-iron)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <label
+            className="mono"
+            style={{
+              fontSize: 10,
+              color: 'var(--eg-fg-3)',
+              letterSpacing: '0.06em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={internal}
+              onChange={(e) => setInternal(e.target.checked)}
+            />
             nota interna · internal note
           </label>
           <button
@@ -427,10 +531,18 @@ function WorklogsTab({ issueKey }: { issueKey: string }) {
       setShowAdd(false);
       setAddMinutes('');
       setAddNote('');
-      toast({ tone: 'ok', title: 'Trabajo registrado · Worklog added', body: formatMinutes(log.minutes) });
+      toast({
+        tone: 'ok',
+        title: 'Trabajo registrado · Worklog added',
+        body: formatMinutes(log.minutes),
+      });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al registrar · Worklog failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al registrar · Worklog failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -449,26 +561,68 @@ function WorklogsTab({ issueKey }: { issueKey: string }) {
   return (
     <div>
       {/* Summary strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0, border: '1.5px solid var(--eg-iron)', marginBottom: 14 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gap: 0,
+          border: '1.5px solid var(--eg-iron)',
+          marginBottom: 14,
+        }}
+      >
         {[
           { l: 'total', en: 'total', v: formatMinutes(total), sub: 'todos los registros' },
-          { l: 'facturable', en: 'billable', v: formatMinutes(bill), sub: total > 0 ? `${Math.round((bill / total) * 100)}%` : '—' },
+          {
+            l: 'facturable',
+            en: 'billable',
+            v: formatMinutes(bill),
+            sub: total > 0 ? `${Math.round((bill / total) * 100)}%` : '—',
+          },
         ].map((s, i) => (
-          <div key={i} style={{ padding: '10px 12px', borderRight: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper-2)' }}>
-            <div className="caps">// {s.l} · {s.en}</div>
-            <div className="disp" style={{ fontSize: 22, color: 'var(--eg-iron)', lineHeight: 1.1 }}>{s.v}</div>
-            <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)' }}>{s.sub}</div>
+          <div
+            key={i}
+            style={{
+              padding: '10px 12px',
+              borderRight: '1.5px solid var(--eg-iron)',
+              background: 'var(--eg-paper-2)',
+            }}
+          >
+            <div className="caps">
+              // {s.l} · {s.en}
+            </div>
+            <div
+              className="disp"
+              style={{ fontSize: 22, color: 'var(--eg-iron)', lineHeight: 1.1 }}
+            >
+              {s.v}
+            </div>
+            <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)' }}>
+              {s.sub}
+            </div>
           </div>
         ))}
         <div style={{ padding: '10px 12px', background: 'var(--eg-yellow)' }}>
           <div className="caps">// sin asignar · not billed</div>
-          <div className="disp" style={{ fontSize: 22, color: 'var(--eg-iron)', lineHeight: 1.1 }}>{formatMinutes(total - bill)}</div>
-          <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)' }}>no facturable</div>
+          <div className="disp" style={{ fontSize: 22, color: 'var(--eg-iron)', lineHeight: 1.1 }}>
+            {formatMinutes(total - bill)}
+          </div>
+          <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)' }}>
+            no facturable
+          </div>
         </div>
       </div>
 
       {logs.length === 0 && (
-        <div style={{ padding: '20px 0', color: 'var(--eg-fg-4)', fontFamily: 'var(--font-mono)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+        <div
+          style={{
+            padding: '20px 0',
+            color: 'var(--eg-fg-4)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+          }}
+        >
           Sin registros · No worklogs yet
         </div>
       )}
@@ -479,10 +633,23 @@ function WorklogsTab({ issueKey }: { issueKey: string }) {
 
       {/* Add worklog form */}
       {showAdd ? (
-        <div style={{ marginTop: 12, border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper-2)' }}>
+        <div
+          style={{
+            marginTop: 12,
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper-2)',
+          }}
+        >
           <div className="tag-head">
             <span>// añadir registro · add worklog</span>
-            <button type="button" className="b-btn b-btn--ghost" onClick={() => setShowAdd(false)} style={{ fontSize: 11 }}>✕</button>
+            <button
+              type="button"
+              className="b-btn b-btn--ghost"
+              onClick={() => setShowAdd(false)}
+              style={{ fontSize: 11 }}
+            >
+              ✕
+            </button>
           </div>
           <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -491,10 +658,29 @@ function WorklogsTab({ issueKey }: { issueKey: string }) {
                 placeholder="Minutos · Minutes"
                 value={addMinutes}
                 onChange={(e) => setAddMinutes(e.target.value)}
-                style={{ width: '50%', padding: '6px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 12 }}
+                style={{
+                  width: '50%',
+                  padding: '6px 8px',
+                  border: '1.5px solid var(--eg-iron)',
+                  background: 'var(--eg-paper)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                }}
               />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
-                <input type="checkbox" checked={addBillable} onChange={(e) => setAddBillable(e.target.checked)} />
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={addBillable}
+                  onChange={(e) => setAddBillable(e.target.checked)}
+                />
                 Facturable · Billable
               </label>
             </div>
@@ -503,7 +689,13 @@ function WorklogsTab({ issueKey }: { issueKey: string }) {
               placeholder="Nota · Note"
               value={addNote}
               onChange={(e) => setAddNote(e.target.value)}
-              style={{ padding: '6px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 12 }}
+              style={{
+                padding: '6px 8px',
+                border: '1.5px solid var(--eg-iron)',
+                background: 'var(--eg-paper)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+              }}
             />
             <button
               type="button"
@@ -550,10 +742,15 @@ function WorklogRow({ log, issueKey }: { log: WorklogRecord; issueKey: string })
     void queryClient.invalidateQueries({ queryKey: ['issue', issueKey] });
   };
   const onError = (err: unknown) =>
-    toast({ tone: 'danger', title: 'Error', body: err instanceof ApiError ? err.message : 'Error' });
+    toast({
+      tone: 'danger',
+      title: 'Error',
+      body: err instanceof ApiError ? err.message : 'Error',
+    });
 
   const update = useMutation({
-    mutationFn: () => issues.worklogs.update(log.id, { minutes: Number(minutes), note: note.trim(), billable }),
+    mutationFn: () =>
+      issues.worklogs.update(log.id, { minutes: Number(minutes), note: note.trim(), billable }),
     onSuccess: () => {
       invalidate();
       setEditing(false);
@@ -572,16 +769,44 @@ function WorklogRow({ log, issueKey }: { log: WorklogRecord; issueKey: string })
 
   if (editing) {
     return (
-      <div style={{ padding: '10px', borderBottom: '1px dashed var(--eg-iron)', background: 'var(--eg-paper-2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div
+        style={{
+          padding: '10px',
+          borderBottom: '1px dashed var(--eg-iron)',
+          background: 'var(--eg-paper-2)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             type="number"
             value={minutes}
             onChange={(e) => setMinutes(e.target.value)}
-            style={{ width: '50%', padding: '6px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 12 }}
+            style={{
+              width: '50%',
+              padding: '6px 8px',
+              border: '1.5px solid var(--eg-iron)',
+              background: 'var(--eg-paper)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 12,
+            }}
           />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
-            <input type="checkbox" checked={billable} onChange={(e) => setBillable(e.target.checked)} />
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={billable}
+              onChange={(e) => setBillable(e.target.checked)}
+            />
             Facturable · Billable
           </label>
         </div>
@@ -590,7 +815,13 @@ function WorklogRow({ log, issueKey }: { log: WorklogRecord; issueKey: string })
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Nota · Note"
-          style={{ padding: '6px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 12 }}
+          style={{
+            padding: '6px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+          }}
         />
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -624,16 +855,29 @@ function WorklogRow({ log, issueKey }: { log: WorklogRecord; issueKey: string })
       <Avatar user={log.user} />
       <div>
         <div style={{ color: 'var(--eg-iron)' }}>{log.note || '—'}</div>
-        <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.08em', marginTop: 2 }}>
+        <div
+          className="mono"
+          style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.08em', marginTop: 2 }}
+        >
           {formatRelativeTime(log.loggedAt)}
         </div>
       </div>
       <span className="mono" style={{ fontSize: 11, color: 'var(--eg-iron)', fontWeight: 600 }}>
         {formatMinutes(log.minutes)}
       </span>
-      {log.billable ? <span className="chip chip--green">$</span> : <span className="chip chip--low">·</span>}
+      {log.billable ? (
+        <span className="chip chip--green">$</span>
+      ) : (
+        <span className="chip chip--low">·</span>
+      )}
       <span style={{ display: 'inline-flex', gap: 4 }}>
-        <button type="button" className="b-btn b-btn--ghost" title="Editar · Edit" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => setEditing(true)}>
+        <button
+          type="button"
+          className="b-btn b-btn--ghost"
+          title="Editar · Edit"
+          style={{ fontSize: 11, padding: '2px 6px' }}
+          onClick={() => setEditing(true)}
+        >
           ✎
         </button>
         <button
@@ -671,7 +915,14 @@ function CostTab({ issueKey }: { issueKey: string }) {
 
   if (costQuery.isError || !costQuery.data) {
     return (
-      <div style={{ padding: 16, color: 'var(--eg-red)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+      <div
+        style={{
+          padding: 16,
+          color: 'var(--eg-red)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+        }}
+      >
         Error al cargar el coste · Failed to load cost
       </div>
     );
@@ -695,14 +946,24 @@ function CostTab({ issueKey }: { issueKey: string }) {
         }}
       >
         <div>
-          <div className="caps" style={{ color: 'var(--eg-fg-4)' }}>// facturable · billable</div>
-          <div className="disp" style={{ fontSize: 28, color: 'var(--eg-yellow)', lineHeight: 1.05 }}>
+          <div className="caps" style={{ color: 'var(--eg-fg-4)' }}>
+            // facturable · billable
+          </div>
+          <div
+            className="disp"
+            style={{ fontSize: 28, color: 'var(--eg-yellow)', lineHeight: 1.05 }}
+          >
             {formatMinutes(cost.billableMinutes)}
           </div>
         </div>
         <div>
-          <div className="caps" style={{ color: 'var(--eg-fg-4)' }}>// modo · mode</div>
-          <div className="disp" style={{ fontSize: 18, color: 'var(--eg-paper)', lineHeight: 1.05 }}>
+          <div className="caps" style={{ color: 'var(--eg-fg-4)' }}>
+            // modo · mode
+          </div>
+          <div
+            className="disp"
+            style={{ fontSize: 18, color: 'var(--eg-paper)', lineHeight: 1.05 }}
+          >
             {cost.billingMode === 'fixed' ? 'FIJO' : 'HORA'}
           </div>
           {cost.hourlyCents != null && (
@@ -712,14 +973,21 @@ function CostTab({ issueKey }: { issueKey: string }) {
           )}
         </div>
         <div>
-          <div className="caps" style={{ color: 'var(--eg-fg-4)' }}>// devengado · accrued</div>
-          <div className="disp" style={{ fontSize: 22, color: 'var(--eg-yellow)', lineHeight: 1.05 }}>
+          <div className="caps" style={{ color: 'var(--eg-fg-4)' }}>
+            // devengado · accrued
+          </div>
+          <div
+            className="disp"
+            style={{ fontSize: 22, color: 'var(--eg-yellow)', lineHeight: 1.05 }}
+          >
             {formatMoney(cost.accruedCents, cost.currency)}
           </div>
         </div>
       </div>
 
-      <div className="caps" style={{ marginTop: 18 }}>// cálculo · math</div>
+      <div className="caps" style={{ marginTop: 18 }}>
+        // cálculo · math
+      </div>
       <pre style={{ marginTop: 6, padding: 14, fontSize: 11, lineHeight: 1.7, margin: '6px 0 0' }}>
         {`accruedCents = ${cost.accruedCents}  // ${formatMoney(cost.accruedCents, cost.currency)}
 billableMinutes = ${cost.billableMinutes}
@@ -754,9 +1022,22 @@ function AuditMiniTab({ issueId }: { issueId: string }) {
         <span>// sauron · este issue · this issue</span>
         <span style={{ color: 'var(--eg-fg-3)' }}>↗ :666</span>
       </div>
-      <div style={{ marginTop: 6, border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper-2)' }}>
+      <div
+        style={{
+          marginTop: 6,
+          border: '1.5px solid var(--eg-iron)',
+          background: 'var(--eg-paper-2)',
+        }}
+      >
         {entries.length === 0 && (
-          <div style={{ padding: 12, color: 'var(--eg-fg-4)', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+          <div
+            style={{
+              padding: 12,
+              color: 'var(--eg-fg-4)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+            }}
+          >
             Sin entradas · No audit entries
           </div>
         )}
@@ -774,8 +1055,19 @@ function AuditMiniTab({ issueId }: { issueId: string }) {
               fontSize: 11,
             }}
           >
-            <span style={{ color: 'var(--eg-fg-3)' }}>{new Date(a.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-            <span style={{ color: 'var(--eg-iron)', fontWeight: 700 }}>{a.actor?.name?.split(' ').map((n) => n[0]).join('') ?? '??'}</span>
+            <span style={{ color: 'var(--eg-fg-3)' }}>
+              {new Date(a.at).toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              })}
+            </span>
+            <span style={{ color: 'var(--eg-iron)', fontWeight: 700 }}>
+              {a.actor?.name
+                ?.split(' ')
+                .map((n) => n[0])
+                .join('') ?? '??'}
+            </span>
             <span>
               <b style={{ color: 'var(--eg-red)' }}>{a.action}</b>
               {a.entityId && <span style={{ color: 'var(--eg-fg-2)' }}> · {a.entityId}</span>}
@@ -801,7 +1093,19 @@ function DrawerSidebar({
   issue: IssueView;
   statuses: StatusView[];
   labels: LabelView[];
-  onUpdate: (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null; resolution: string | null; blockedReason: string | null; severity: string | null; moscow: string | null }>) => void;
+  onUpdate: (
+    data: Partial<{
+      statusId: string;
+      priority: string;
+      type: string;
+      labelIds: string[];
+      dueAt: Date | null;
+      resolution: string | null;
+      blockedReason: string | null;
+      severity: string | null;
+      moscow: string | null;
+    }>,
+  ) => void;
   onAssigneeChange: (assigneeId: string | null) => void;
   toast: ReturnType<typeof useToast>;
 }) {
@@ -823,10 +1127,21 @@ function DrawerSidebar({
         <select
           value={issue.statusId}
           onChange={(e) => onUpdate({ statusId: e.target.value })}
-          style={{ width: '100%', padding: '4px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}
+          style={{
+            width: '100%',
+            padding: '4px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+          }}
         >
           {statuses.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
           ))}
         </select>
         {currentStatus && (
@@ -835,11 +1150,12 @@ function DrawerSidebar({
             style={{
               marginTop: 4,
               display: 'inline-flex',
-              background: currentStatus.category === 'done'
-                ? 'var(--eg-green)'
-                : currentStatus.category === 'in_progress'
-                  ? 'var(--eg-yellow)'
-                  : 'var(--eg-paper-3)',
+              background:
+                currentStatus.category === 'done'
+                  ? 'var(--eg-green)'
+                  : currentStatus.category === 'in_progress'
+                    ? 'var(--eg-yellow)'
+                    : 'var(--eg-paper-3)',
               color: currentStatus.category === 'done' ? 'var(--eg-paper)' : 'var(--eg-iron)',
               borderColor: 'var(--eg-iron)',
             }}
@@ -864,7 +1180,9 @@ function DrawerSidebar({
         >
           <option value="">— sin asignar · unassigned</option>
           {userList.map((u) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
+            <option key={u.id} value={u.id}>
+              {u.name}
+            </option>
           ))}
         </select>
         {issue.assignee && (
@@ -882,7 +1200,9 @@ function DrawerSidebar({
             <span style={{ fontSize: 13, color: 'var(--eg-iron)' }}>{issue.reporter.name}</span>
           </span>
         ) : (
-          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)' }}>—</span>
+          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)' }}>
+            —
+          </span>
         )}
       </SideField>
 
@@ -890,10 +1210,20 @@ function DrawerSidebar({
         <select
           value={issue.priority}
           onChange={(e) => onUpdate({ priority: e.target.value })}
-          style={{ width: '100%', marginBottom: 6, padding: '4px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+          style={{
+            width: '100%',
+            marginBottom: 6,
+            padding: '4px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+          }}
         >
           {(['low', 'medium', 'high', 'urgent', 'emergency'] as const).map((p) => (
-            <option key={p} value={p}>{p}</option>
+            <option key={p} value={p}>
+              {p}
+            </option>
           ))}
         </select>
         <PriorityChip priority={issue.priority} />
@@ -903,10 +1233,20 @@ function DrawerSidebar({
         <select
           value={issue.type}
           onChange={(e) => onUpdate({ type: e.target.value })}
-          style={{ width: '100%', marginBottom: 6, padding: '4px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+          style={{
+            width: '100%',
+            marginBottom: 6,
+            padding: '4px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+          }}
         >
           {(['task', 'bug', 'story', 'epic'] as const).map((t) => (
-            <option key={t} value={t}>{t}</option>
+            <option key={t} value={t}>
+              {t}
+            </option>
           ))}
         </select>
         <TypeChip type={issue.type} />
@@ -916,7 +1256,14 @@ function DrawerSidebar({
         <select
           value={issue.resolution ?? ''}
           onChange={(e) => onUpdate({ resolution: e.target.value || null })}
-          style={{ width: '100%', padding: '4px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+          style={{
+            width: '100%',
+            padding: '4px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+          }}
         >
           <option value="">— sin resolución · none —</option>
           <option value="fixed">Resuelto · Fixed</option>
@@ -930,7 +1277,14 @@ function DrawerSidebar({
         <select
           value={issue.moscow ?? ''}
           onChange={(e) => onUpdate({ moscow: e.target.value || null })}
-          style={{ width: '100%', padding: '4px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+          style={{
+            width: '100%',
+            padding: '4px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+          }}
         >
           <option value="">— sin · none —</option>
           <option value="must">Must · imprescindible</option>
@@ -944,7 +1298,14 @@ function DrawerSidebar({
         <select
           value={issue.severity ?? ''}
           onChange={(e) => onUpdate({ severity: e.target.value || null })}
-          style={{ width: '100%', padding: '4px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+          style={{
+            width: '100%',
+            padding: '4px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+          }}
         >
           <option value="">— sin severidad · none —</option>
           <option value="critical">Crítica · Critical</option>
@@ -966,7 +1327,14 @@ function DrawerSidebar({
             const v = e.target.value.trim();
             if (v !== (issue.blockedReason ?? '')) onUpdate({ blockedReason: v || null });
           }}
-          style={{ width: '100%', padding: '4px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+          style={{
+            width: '100%',
+            padding: '4px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+          }}
         />
       </SideField>
 
@@ -1068,13 +1436,23 @@ function DrawerSidebar({
                 onUpdate({ labelIds: [...issue.labels.map((x) => x.id), e.target.value] });
               }
             }}
-            style={{ width: '100%', padding: '4px 8px', border: '1.5px dashed var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--eg-fg-3)' }}
+            style={{
+              width: '100%',
+              padding: '4px 8px',
+              border: '1.5px dashed var(--eg-iron)',
+              background: 'var(--eg-paper)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              color: 'var(--eg-fg-3)',
+            }}
           >
             <option value="">+ Añadir etiqueta · Add label</option>
             {labels
               .filter((l) => !issue.labels.find((x) => x.id === l.id))
               .map((l) => (
-                <option key={l.id} value={l.id}>{l.name}</option>
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
               ))}
           </select>
         )}
@@ -1092,19 +1470,28 @@ function DrawerSidebar({
       </SideField>
 
       <SideField labelEs="creado" labelEn="created">
-        <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em' }}>
+        <span
+          className="mono"
+          style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em' }}
+        >
           {formatDate(issue.createdAt)}
         </span>
       </SideField>
 
       <SideField labelEs="actualizado" labelEn="updated">
-        <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em' }}>
+        <span
+          className="mono"
+          style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em' }}
+        >
           {formatRelativeTime(issue.updatedAt)}
         </span>
       </SideField>
 
       <SideField labelEs="serie" labelEn="serial">
-        <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em' }}>
+        <span
+          className="mono"
+          style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.06em' }}
+        >
           {issue.key}·{issue.id.slice(0, 8)}
         </span>
       </SideField>
@@ -1115,11 +1502,11 @@ function DrawerSidebar({
 // ── Main drawer ───────────────────────────────────────────────────────────────
 
 const DRAWER_TABS = [
-  { id: 'details',  es: 'Detalles',    en: 'Details'   },
-  { id: 'comments', es: 'Comentarios', en: 'Comments'  },
-  { id: 'worklogs', es: 'Registros',   en: 'Worklogs'  },
-  { id: 'cost',     es: 'Coste',       en: 'Cost'      },
-  { id: 'audit',    es: 'Auditoría',   en: 'Audit'     },
+  { id: 'details', es: 'Detalles', en: 'Details' },
+  { id: 'comments', es: 'Comentarios', en: 'Comments' },
+  { id: 'worklogs', es: 'Registros', en: 'Worklogs' },
+  { id: 'cost', es: 'Coste', en: 'Cost' },
+  { id: 'audit', es: 'Auditoría', en: 'Audit' },
 ] as const;
 
 type DrawerTab = (typeof DRAWER_TABS)[number]['id'];
@@ -1164,9 +1551,17 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
       queryClient.setQueryData(['issue', issueKey], updated);
       void queryClient.invalidateQueries({ queryKey: ['board', projectKey] });
       if ('title' in vars) {
-        toast({ tone: 'ok', title: 'Ticket actualizado · Issue updated', body: 'Título guardado · Title saved' });
+        toast({
+          tone: 'ok',
+          title: 'Ticket actualizado · Issue updated',
+          body: 'Título guardado · Title saved',
+        });
       } else if ('description' in vars) {
-        toast({ tone: 'ok', title: 'Ticket actualizado · Issue updated', body: 'Descripción guardada · Description saved' });
+        toast({
+          tone: 'ok',
+          title: 'Ticket actualizado · Issue updated',
+          body: 'Descripción guardada · Description saved',
+        });
       } else if ('assigneeId' in vars) {
         const name = updated.assignee?.name ?? 'sin asignar · unassigned';
         toast({ tone: 'ok', title: 'Asignación actualizada · Assignee updated', body: name });
@@ -1180,7 +1575,11 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
       }
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al actualizar · Update failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al actualizar · Update failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -1189,10 +1588,18 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
     onSuccess: (updated) => {
       queryClient.setQueryData(['issue', issueKey], updated);
       void queryClient.invalidateQueries({ queryKey: ['board', projectKey] });
-      toast({ tone: 'ok', title: 'Ticket actualizado · Issue updated', body: 'Estado cambiado · Status changed' });
+      toast({
+        tone: 'ok',
+        title: 'Ticket actualizado · Issue updated',
+        body: 'Estado cambiado · Status changed',
+      });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al mover · Move failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al mover · Move failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -1201,12 +1608,26 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
 
   // Close on Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleUpdate = (data: Partial<{ statusId: string; priority: string; type: string; labelIds: string[]; dueAt: Date | null; resolution: string | null; blockedReason: string | null; severity: string | null; moscow: string | null }>) => {
+  const handleUpdate = (
+    data: Partial<{
+      statusId: string;
+      priority: string;
+      type: string;
+      labelIds: string[];
+      dueAt: Date | null;
+      resolution: string | null;
+      blockedReason: string | null;
+      severity: string | null;
+      moscow: string | null;
+    }>,
+  ) => {
     if (data.statusId) {
       moveMutation.mutate({ statusId: data.statusId });
     } else {
@@ -1234,7 +1655,9 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
   return (
     <div
       className="gs-scrim"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       role="dialog"
       aria-modal="true"
       aria-label={issueKey}
@@ -1281,11 +1704,19 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
           </span>
           {issue && (
             <span style={{ color: emergency ? 'var(--eg-paper)' : 'var(--eg-fg-4)' }}>
-              {issue.type} · creado {formatDate(issue.createdAt)} · actualizado {formatRelativeTime(issue.updatedAt)}
+              {issue.type} · creado {formatDate(issue.createdAt)} · actualizado{' '}
+              {formatRelativeTime(issue.updatedAt)}
             </span>
           )}
           {emergency && (
-            <Plate style={{ marginLeft: 'auto', background: 'var(--eg-paper)', color: 'var(--eg-iron)', borderColor: 'var(--eg-paper)' }}>
+            <Plate
+              style={{
+                marginLeft: 'auto',
+                background: 'var(--eg-paper)',
+                color: 'var(--eg-iron)',
+                borderColor: 'var(--eg-paper)',
+              }}
+            >
               !! EMERGENCIA
             </Plate>
           )}
@@ -1295,7 +1726,15 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
               aria-label="Cerrar · Close"
               title="Cerrar · Close"
               onClick={onClose}
-              style={{ background: 'none', border: 0, cursor: 'pointer', opacity: 0.8, color: 'inherit', font: 'inherit', padding: 0 }}
+              style={{
+                background: 'none',
+                border: 0,
+                cursor: 'pointer',
+                opacity: 0.8,
+                color: 'inherit',
+                font: 'inherit',
+                padding: 0,
+              }}
             >
               ✕
             </button>
@@ -1308,7 +1747,8 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
             style={{
               height: 8,
               flexShrink: 0,
-              background: 'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 10px, var(--eg-iron) 10px 20px)',
+              background:
+                'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 10px, var(--eg-iron) 10px 20px)',
             }}
           />
         )}
@@ -1324,15 +1764,31 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
           <div className="gs-state">
             <div>
               <Plate tone="red">ERROR</Plate>
-              <p style={{ marginTop: 12, color: 'var(--eg-fg-2)' }}>No se pudo cargar el ticket · Could not load issue</p>
+              <p style={{ marginTop: 12, color: 'var(--eg-fg-2)' }}>
+                No se pudo cargar el ticket · Could not load issue
+              </p>
             </div>
           </div>
         )}
 
         {issue && (
-          <div className="gs-drawer__body" style={{ display: 'grid', gridTemplateColumns: '1fr 280px', flex: 1, overflow: 'hidden' }}>
+          <div
+            className="gs-drawer__body"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 280px',
+              flex: 1,
+              overflow: 'hidden',
+            }}
+          >
             {/* Main panel */}
-            <div style={{ overflow: 'auto', padding: '18px 22px', borderRight: '1px solid var(--eg-iron)' }}>
+            <div
+              style={{
+                overflow: 'auto',
+                padding: '18px 22px',
+                borderRight: '1px solid var(--eg-iron)',
+              }}
+            >
               <div className="caps">// título · title</div>
               {editingTitle ? (
                 <textarea
@@ -1341,25 +1797,32 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
                   onChange={(e) => setTitleDraft(e.target.value)}
                   onBlur={handleTitleSave}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTitleSave(); }
-                    if (e.key === 'Escape') { setEditingTitle(false); }
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleTitleSave();
+                    }
+                    if (e.key === 'Escape') {
+                      setEditingTitle(false);
+                    }
                   }}
-                  style={{
-                    width: '100%',
-                    fontSize: 28,
-                    fontFamily: 'var(--font-display)',
-                    fontWeight: 900,
-                    textTransform: 'uppercase',
-                    letterSpacing: '-0.01em',
-                    lineHeight: 1.05,
-                    color: 'var(--eg-iron)',
-                    border: '2px solid var(--eg-yellow)',
-                    background: 'var(--eg-yellow-soft)',
-                    padding: '4px 8px',
-                    margin: '4px 0 14px',
-                    resize: 'none',
-                    rows: 2,
-                  } as React.CSSProperties}
+                  style={
+                    {
+                      width: '100%',
+                      fontSize: 28,
+                      fontFamily: 'var(--font-display)',
+                      fontWeight: 900,
+                      textTransform: 'uppercase',
+                      letterSpacing: '-0.01em',
+                      lineHeight: 1.05,
+                      color: 'var(--eg-iron)',
+                      border: '2px solid var(--eg-yellow)',
+                      background: 'var(--eg-yellow-soft)',
+                      padding: '4px 8px',
+                      margin: '4px 0 14px',
+                      resize: 'none',
+                      rows: 2,
+                    } as React.CSSProperties
+                  }
                 />
               ) : (
                 <h2
@@ -1373,7 +1836,10 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
                     letterSpacing: '-0.01em',
                     cursor: 'pointer',
                   }}
-                  onClick={() => { setTitleDraft(issue.title); setEditingTitle(true); }}
+                  onClick={() => {
+                    setTitleDraft(issue.title);
+                    setEditingTitle(true);
+                  }}
                   title="Haz clic para editar · Click to edit"
                 >
                   {issue.title}
@@ -1384,7 +1850,12 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
               <div
                 role="tablist"
                 aria-label="Secciones de la incidencia · Issue sections"
-                style={{ display: 'flex', borderBottom: '2px solid var(--eg-iron)', marginBottom: 16, flexShrink: 0 }}
+                style={{
+                  display: 'flex',
+                  borderBottom: '2px solid var(--eg-iron)',
+                  marginBottom: 16,
+                  flexShrink: 0,
+                }}
               >
                 {DRAWER_TABS.map((t) => {
                   const count = tabCountFor(t.id);
@@ -1448,7 +1919,7 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
 
               {/* Tab content */}
               <div role="tabpanel" id={`drawer-panel-${tab}`} aria-labelledby={`drawer-tab-${tab}`}>
-                {tab === 'details'  && (
+                {tab === 'details' && (
                   <DetailsTab
                     issue={issue}
                     saving={updateMutation.isPending}
@@ -1457,8 +1928,8 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
                 )}
                 {tab === 'comments' && <CommentsTab issueKey={issue.key} />}
                 {tab === 'worklogs' && <WorklogsTab issueKey={issue.key} />}
-                {tab === 'cost'     && <CostTab issueKey={issue.key} />}
-                {tab === 'audit'    && <AuditMiniTab issueId={issue.id} />}
+                {tab === 'cost' && <CostTab issueKey={issue.key} />}
+                {tab === 'audit' && <AuditMiniTab issueId={issue.id} />}
               </div>
             </div>
 

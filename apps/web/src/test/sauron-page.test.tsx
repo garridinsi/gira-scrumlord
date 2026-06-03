@@ -15,8 +15,26 @@ describe('SauronPage (audit log)', () => {
     auditList.mockResolvedValue({
       count: 2,
       entries: [
-        { id: 'a1', action: 'issue.create', entityType: 'Issue', entityId: 'i1', actor: { id: 'u1', name: 'Ada Lovelace' }, at: '2026-06-01T00:00:00Z', before: null, after: { key: 'GIRA-1' } },
-        { id: 'a2', action: 'invoice.generate', entityType: 'Invoice', entityId: 'inv1', actor: null, at: '2026-06-02T00:00:00Z', before: null, after: {} },
+        {
+          id: 'a1',
+          action: 'issue.create',
+          entityType: 'Issue',
+          entityId: 'i1',
+          actor: { id: 'u1', name: 'Ada Lovelace' },
+          at: '2026-06-01T00:00:00Z',
+          before: null,
+          after: { key: 'GIRA-1' },
+        },
+        {
+          id: 'a2',
+          action: 'invoice.generate',
+          entityType: 'Invoice',
+          entityId: 'inv1',
+          actor: null,
+          at: '2026-06-02T00:00:00Z',
+          before: null,
+          after: {},
+        },
       ],
     });
     renderWithProviders(<SauronPage />);

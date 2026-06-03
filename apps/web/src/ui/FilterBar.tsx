@@ -17,7 +17,16 @@ import { downloadCsv } from '../lib/csv';
 
 function exportIssuesCsv(projectKey: string, list: IssueView[]): void {
   downloadCsv(`${projectKey}-incidencias`, [
-    ['Key', 'Título · Title', 'Tipo · Type', 'Prioridad · Priority', 'Estado · Status', 'Asignado · Assignee', 'Puntos · Points', 'Vence · Due'],
+    [
+      'Key',
+      'Título · Title',
+      'Tipo · Type',
+      'Prioridad · Priority',
+      'Estado · Status',
+      'Asignado · Assignee',
+      'Puntos · Points',
+      'Vence · Due',
+    ],
     ...list.map((i) => [
       i.key,
       i.title,
@@ -102,7 +111,13 @@ function isFilterEmpty(f: FilterState): boolean {
 }
 
 function filtersEqual(a: FilterState, b: FilterState): boolean {
-  return a.q === b.q && a.assigneeId === b.assigneeId && a.type === b.type && a.priority === b.priority && a.labelId === b.labelId;
+  return (
+    a.q === b.q &&
+    a.assigneeId === b.assigneeId &&
+    a.type === b.type &&
+    a.priority === b.priority &&
+    a.labelId === b.labelId
+  );
 }
 
 // ── FilterBar component ───────────────────────────────────────────────────────
@@ -168,8 +183,16 @@ export function FilterBar({ projectKey, myId, onResults }: FilterBarProps) {
         projectKey,
         q: debouncedFilter.q || undefined,
         assigneeId: debouncedFilter.assigneeId ?? undefined,
-        type: (debouncedFilter.type as Parameters<typeof issuesApi.list>[0] extends { type?: infer T } ? T : never) ?? undefined,
-        priority: (debouncedFilter.priority as Parameters<typeof issuesApi.list>[0] extends { priority?: infer T } ? T : never) ?? undefined,
+        type:
+          (debouncedFilter.type as Parameters<typeof issuesApi.list>[0] extends { type?: infer T }
+            ? T
+            : never) ?? undefined,
+        priority:
+          (debouncedFilter.priority as Parameters<typeof issuesApi.list>[0] extends {
+            priority?: infer T;
+          }
+            ? T
+            : never) ?? undefined,
         labelId: debouncedFilter.labelId ?? undefined,
       }),
     enabled: filterActive && !!projectKey,
@@ -247,7 +270,13 @@ export function FilterBar({ projectKey, myId, onResults }: FilterBarProps) {
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
           <span
             className="mono"
-            style={{ position: 'absolute', left: 8, fontSize: 10, color: 'var(--eg-fg-4)', pointerEvents: 'none' }}
+            style={{
+              position: 'absolute',
+              left: 8,
+              fontSize: 10,
+              color: 'var(--eg-fg-4)',
+              pointerEvents: 'none',
+            }}
           >
             //
           </span>
@@ -270,7 +299,9 @@ export function FilterBar({ projectKey, myId, onResults }: FilterBarProps) {
         >
           <option value="">Asignado · Assignee</option>
           {userList.map((u) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
+            <option key={u.id} value={u.id}>
+              {u.name}
+            </option>
           ))}
         </select>
 
@@ -283,7 +314,9 @@ export function FilterBar({ projectKey, myId, onResults }: FilterBarProps) {
         >
           <option value="">Tipo · Type</option>
           {(['task', 'bug', 'story', 'epic'] as const).map((t) => (
-            <option key={t} value={t}>{t}</option>
+            <option key={t} value={t}>
+              {t}
+            </option>
           ))}
         </select>
 
@@ -296,7 +329,9 @@ export function FilterBar({ projectKey, myId, onResults }: FilterBarProps) {
         >
           <option value="">Prioridad · Priority</option>
           {(['low', 'medium', 'high', 'urgent', 'emergency'] as const).map((p) => (
-            <option key={p} value={p}>{p}</option>
+            <option key={p} value={p}>
+              {p}
+            </option>
           ))}
         </select>
 
@@ -309,13 +344,23 @@ export function FilterBar({ projectKey, myId, onResults }: FilterBarProps) {
         >
           <option value="">Etiqueta · Label</option>
           {labels.map((l) => (
-            <option key={l.id} value={l.id}>{l.name}</option>
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
           ))}
         </select>
 
         {/* Loading indicator */}
         {filterActive && filteredQ.isFetching && (
-          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span
+            className="mono"
+            style={{
+              fontSize: 10,
+              color: 'var(--eg-fg-4)',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+            }}
+          >
             ···
           </span>
         )}
@@ -403,10 +448,16 @@ export function FilterBar({ projectKey, myId, onResults }: FilterBarProps) {
           />
         )}
         {filter.type && (
-          <ActiveChip label={filter.type} onClear={() => setFilter((f) => ({ ...f, type: null }))} />
+          <ActiveChip
+            label={filter.type}
+            onClear={() => setFilter((f) => ({ ...f, type: null }))}
+          />
         )}
         {filter.priority && (
-          <ActiveChip label={filter.priority} onClear={() => setFilter((f) => ({ ...f, priority: null }))} />
+          <ActiveChip
+            label={filter.priority}
+            onClear={() => setFilter((f) => ({ ...f, priority: null }))}
+          />
         )}
         {filter.labelId && labels.find((l) => l.id === filter.labelId) && (
           <LabelChipWithClear
@@ -416,11 +467,8 @@ export function FilterBar({ projectKey, myId, onResults }: FilterBarProps) {
         )}
 
         {/* Divider */}
-        {(filterActive) && allViews.length > 0 && (
-          <span
-            className="mono"
-            style={{ fontSize: 10, color: 'var(--eg-fg-4)', margin: '0 4px' }}
-          >
+        {filterActive && allViews.length > 0 && (
+          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)', margin: '0 4px' }}>
             |
           </span>
         )}
@@ -441,9 +489,15 @@ export function FilterBar({ projectKey, myId, onResults }: FilterBarProps) {
         {filterActive && filteredQ.data && (
           <span
             className="mono"
-            style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.1em' }}
+            style={{
+              marginLeft: 'auto',
+              fontSize: 10,
+              color: 'var(--eg-fg-3)',
+              letterSpacing: '0.1em',
+            }}
           >
-            {filteredQ.data.length} resultado{filteredQ.data.length !== 1 ? 's' : ''} · result{filteredQ.data.length !== 1 ? 's' : ''}
+            {filteredQ.data.length} resultado{filteredQ.data.length !== 1 ? 's' : ''} · result
+            {filteredQ.data.length !== 1 ? 's' : ''}
           </span>
         )}
       </div>
@@ -475,7 +529,16 @@ function ActiveChip({ label, onClear }: { label: string; onClear: () => void }) 
       <button
         type="button"
         onClick={onClear}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1, padding: 0, color: 'var(--eg-iron)', fontWeight: 700 }}
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 11,
+          lineHeight: 1,
+          padding: 0,
+          color: 'var(--eg-iron)',
+          fontWeight: 700,
+        }}
       >
         ×
       </button>
@@ -490,7 +553,15 @@ function LabelChipWithClear({ label, onClear }: { label: LabelView; onClear: () 
       <button
         type="button"
         onClick={onClear}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: '0 2px', color: 'var(--eg-iron)', fontWeight: 700 }}
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 11,
+          padding: '0 2px',
+          color: 'var(--eg-iron)',
+          fontWeight: 700,
+        }}
       >
         ×
       </button>

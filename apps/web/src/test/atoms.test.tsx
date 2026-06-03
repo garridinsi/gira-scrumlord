@@ -2,7 +2,17 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { LabelView, PublicUserView } from '@gira/shared';
-import { Avatar, Bi, Glyph, LabelChip, Plate, PriorityChip, TypeChip, hueFor, initialsOf } from '../ui/atoms';
+import {
+  Avatar,
+  Bi,
+  Glyph,
+  LabelChip,
+  Plate,
+  PriorityChip,
+  TypeChip,
+  hueFor,
+  initialsOf,
+} from '../ui/atoms';
 
 const label = (name: string, color: string) => ({ id: name, name, color }) as unknown as LabelView;
 const user = (id: string, name: string) => ({ id, name }) as unknown as PublicUserView;

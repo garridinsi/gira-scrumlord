@@ -72,8 +72,10 @@ export async function deliverPersonal(event: DomainEvent): Promise<number> {
     });
     if (!issue) return 0;
     const recipients = new Set<string>();
-    if (issue.reporter?.isActive && issue.reporterId !== actorId) recipients.add(issue.reporter.email);
-    if (issue.assignee?.isActive && issue.assignee.id !== actorId) recipients.add(issue.assignee.email);
+    if (issue.reporter?.isActive && issue.reporterId !== actorId)
+      recipients.add(issue.reporter.email);
+    if (issue.assignee?.isActive && issue.assignee.id !== actorId)
+      recipients.add(issue.assignee.email);
     const title = asString(event.payload.title) ?? issue.title;
     let sent = 0;
     for (const email of recipients) {
@@ -132,7 +134,10 @@ export async function dispatchEvent(event: DomainEvent) {
   }
 
   if (incidentId) {
-    await prisma.incident.update({ where: { id: incidentId }, data: { lastNotifiedAt: new Date() } });
+    await prisma.incident.update({
+      where: { id: incidentId },
+      data: { lastNotifiedAt: new Date() },
+    });
   }
 
   const userEmails = await deliverPersonal(event);

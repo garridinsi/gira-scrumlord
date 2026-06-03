@@ -47,11 +47,15 @@ function PointsBar({
 }) {
   const c = committed ?? 0;
   const d = completed ?? 0;
-  if (c === 0 && d === 0) return <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-4)' }}>—</span>;
+  if (c === 0 && d === 0)
+    return (
+      <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-4)' }}>
+        —
+      </span>
+    );
 
   const pct = c > 0 ? Math.min(100, Math.round((d / c) * 100)) : 0;
-  const barColor =
-    d >= c ? 'var(--eg-green)' : d / c < 0.85 ? 'var(--eg-red)' : 'var(--eg-yellow)';
+  const barColor = d >= c ? 'var(--eg-green)' : d / c < 0.85 ? 'var(--eg-red)' : 'var(--eg-yellow)';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 140 }}>
@@ -84,7 +88,16 @@ function PointsBar({
           }}
         />
       </div>
-      <span className="mono" style={{ fontSize: 11, color: 'var(--eg-iron)', fontWeight: 700, minWidth: 60, textAlign: 'right' }}>
+      <span
+        className="mono"
+        style={{
+          fontSize: 11,
+          color: 'var(--eg-iron)',
+          fontWeight: 700,
+          minWidth: 60,
+          textAlign: 'right',
+        }}
+      >
         {d} / {c} pts
       </span>
     </div>
@@ -92,13 +105,7 @@ function PointsBar({
 }
 
 // ── Single sprint row ─────────────────────────────────────────────────────────
-function SprintRow({
-  sprint,
-  projectKey,
-}: {
-  sprint: SprintRecord;
-  projectKey: string;
-}) {
+function SprintRow({ sprint, projectKey }: { sprint: SprintRecord; projectKey: string }) {
   const qc = useQueryClient();
   const toast = useToast();
 
@@ -109,7 +116,11 @@ function SprintRow({
       toast({ tone: 'ok', title: 'Sprint iniciado · Sprint started', body: sprint.name });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al iniciar · Start failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al iniciar · Start failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -120,7 +131,11 @@ function SprintRow({
       toast({ tone: 'ok', title: 'Sprint cerrado · Sprint closed', body: sprint.name });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al cerrar · Close failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al cerrar · Close failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -131,7 +146,11 @@ function SprintRow({
       toast({ tone: 'ok', title: 'Sprint eliminado · Sprint deleted', body: sprint.name });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al eliminar · Delete failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al eliminar · Delete failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -153,7 +172,11 @@ function SprintRow({
         alignItems: 'center',
         padding: '14px 18px',
         borderBottom: '1px solid var(--eg-iron)',
-        background: isActive ? 'var(--eg-yellow)' : isClosed ? 'var(--eg-paper-2)' : 'var(--eg-paper)',
+        background: isActive
+          ? 'var(--eg-yellow)'
+          : isClosed
+            ? 'var(--eg-paper-2)'
+            : 'var(--eg-paper)',
       }}
     >
       <StateBadge state={sprint.state} />
@@ -165,7 +188,10 @@ function SprintRow({
         >
           {sprint.name}
         </div>
-        <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}>
+        <div
+          className="mono"
+          style={{ fontSize: 10, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}
+        >
           {dateRange}
           {sprint.goal ? ` · ${sprint.goal}` : ''}
         </div>
@@ -179,7 +205,10 @@ function SprintRow({
           </span>
         )}
         {sprint.committedPoints != null && (
-          <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}>
+          <span
+            className="mono"
+            style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}
+          >
             {sprint.committedPoints} pts comprometidos
             {isClosed && sprint.completedPoints != null && ` · ${sprint.completedPoints} hechos`}
           </span>
@@ -223,7 +252,15 @@ function SprintRow({
           </button>
         )}
         {isClosed && (
-          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span
+            className="mono"
+            style={{
+              fontSize: 10,
+              color: 'var(--eg-fg-4)',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+            }}
+          >
             CERRADO
           </span>
         )}
@@ -233,13 +270,7 @@ function SprintRow({
 }
 
 // ── Create Sprint inline form ─────────────────────────────────────────────────
-function CreateSprintInline({
-  projectKey,
-  onDone,
-}: {
-  projectKey: string;
-  onDone: () => void;
-}) {
+function CreateSprintInline({ projectKey, onDone }: { projectKey: string; onDone: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
   const [name, setName] = useState('');
@@ -261,7 +292,11 @@ function CreateSprintInline({
       onDone();
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al crear sprint · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al crear sprint · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -278,7 +313,9 @@ function CreateSprintInline({
       }}
     >
       <div style={{ flex: 2, minWidth: 180 }}>
-        <div className="caps" style={{ marginBottom: 4 }}>Nombre · Name</div>
+        <div className="caps" style={{ marginBottom: 4 }}>
+          Nombre · Name
+        </div>
         <input
           autoFocus
           value={name}
@@ -297,7 +334,9 @@ function CreateSprintInline({
         />
       </div>
       <div style={{ flex: 2, minWidth: 160 }}>
-        <div className="caps" style={{ marginBottom: 4 }}>Objetivo · Goal</div>
+        <div className="caps" style={{ marginBottom: 4 }}>
+          Objetivo · Goal
+        </div>
         <input
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
@@ -315,7 +354,9 @@ function CreateSprintInline({
         />
       </div>
       <div>
-        <div className="caps" style={{ marginBottom: 4 }}>Inicio</div>
+        <div className="caps" style={{ marginBottom: 4 }}>
+          Inicio
+        </div>
         <input
           type="date"
           value={startDate}
@@ -331,7 +372,9 @@ function CreateSprintInline({
         />
       </div>
       <div>
-        <div className="caps" style={{ marginBottom: 4 }}>Fin</div>
+        <div className="caps" style={{ marginBottom: 4 }}>
+          Fin
+        </div>
         <input
           type="date"
           value={endDate}
@@ -443,56 +486,62 @@ export function SprintsPage() {
           </span>
           <span
             className="mono"
-            style={{ fontSize: 10, color: 'var(--eg-fg-5)', letterSpacing: '0.12em', marginLeft: 8 }}
+            style={{
+              fontSize: 10,
+              color: 'var(--eg-fg-5)',
+              letterSpacing: '0.12em',
+              marginLeft: 8,
+            }}
           >
-            SPRINT LIST · {allSprints.length} TOTAL · {active.length} ACTIVO · {future.length} FUTURO · {closed.length} CERRADO
+            SPRINT LIST · {allSprints.length} TOTAL · {active.length} ACTIVO · {future.length}{' '}
+            FUTURO · {closed.length} CERRADO
           </span>
         </div>
 
         {/* Create form inline */}
-        {creating && (
-          <CreateSprintInline projectKey={key} onDone={() => setCreating(false)} />
-        )}
+        {creating && <CreateSprintInline projectKey={key} onDone={() => setCreating(false)} />}
 
         {/* Column headings */}
         <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '760px' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '90px 1fr auto 200px auto',
-            gap: 18,
-            padding: '6px 18px',
-            background: 'var(--eg-paper-3)',
-            borderBottom: '1px solid var(--eg-iron)',
-          }}
-        >
-          {['ESTADO', 'SPRINT', 'COMPROMETIDO', 'PROGRESO', 'ACCIONES'].map((h) => (
-            <span key={h} className="caps">{h}</span>
-          ))}
-        </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '90px 1fr auto 200px auto',
+              gap: 18,
+              padding: '6px 18px',
+              background: 'var(--eg-paper-3)',
+              borderBottom: '1px solid var(--eg-iron)',
+            }}
+          >
+            {['ESTADO', 'SPRINT', 'COMPROMETIDO', 'PROGRESO', 'ACCIONES'].map((h) => (
+              <span key={h} className="caps">
+                {h}
+              </span>
+            ))}
+          </div>
 
-        {/* Sprint rows */}
-        {ordered.length === 0 ? (
-          <div className="gs-state">
-            <div>
-              <Plate tone="yellow">SIN SPRINTS</Plate>
-              <div
-                className="mono"
-                style={{
-                  fontSize: 11,
-                  color: 'var(--eg-fg-3)',
-                  letterSpacing: '0.14em',
-                  marginTop: 12,
-                  textTransform: 'uppercase',
-                }}
-              >
-                No hay sprints · Create the first sprint above
+          {/* Sprint rows */}
+          {ordered.length === 0 ? (
+            <div className="gs-state">
+              <div>
+                <Plate tone="yellow">SIN SPRINTS</Plate>
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--eg-fg-3)',
+                    letterSpacing: '0.14em',
+                    marginTop: 12,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  No hay sprints · Create the first sprint above
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          ordered.map((s) => <SprintRow key={s.id} sprint={s} projectKey={key} />)
-        )}
+          ) : (
+            ordered.map((s) => <SprintRow key={s.id} sprint={s} projectKey={key} />)
+          )}
         </div>
       </div>
     </div>

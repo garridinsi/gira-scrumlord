@@ -142,7 +142,11 @@ describe('runTimerReap', () => {
       },
     });
     await prisma.timer.create({
-      data: { issueId: issue.id, userId: user.id, startedAt: new Date(Date.now() - 14 * 60 * 60 * 1000) },
+      data: {
+        issueId: issue.id,
+        userId: user.id,
+        startedAt: new Date(Date.now() - 14 * 60 * 60 * 1000),
+      },
     });
 
     expect(await runTimerReap(new Date())).toBe(1);
@@ -262,21 +266,49 @@ describe('runSprintAutoclose', () => {
     const { user, project, doneStatus, todoStatus } = await createBaseFixtures();
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const sprint = await prisma.sprint.create({
-      data: { projectId: project.id, name: 'Detach test', state: 'active', endDate: yesterday, committedPoints: 8 },
+      data: {
+        projectId: project.id,
+        name: 'Detach test',
+        state: 'active',
+        endDate: yesterday,
+        committedPoints: 8,
+      },
     });
     const doneIssue = await prisma.issue.create({
-      data: { projectId: project.id, key: 'ACME-20', title: 'shipped', statusId: doneStatus.id, reporterId: user.id, sprintId: sprint.id, storyPoints: 5, rank: 'aaa' },
+      data: {
+        projectId: project.id,
+        key: 'ACME-20',
+        title: 'shipped',
+        statusId: doneStatus.id,
+        reporterId: user.id,
+        sprintId: sprint.id,
+        storyPoints: 5,
+        rank: 'aaa',
+      },
     });
     const openIssue = await prisma.issue.create({
-      data: { projectId: project.id, key: 'ACME-21', title: 'carryover', statusId: todoStatus.id, reporterId: user.id, sprintId: sprint.id, storyPoints: 3, rank: 'bbb' },
+      data: {
+        projectId: project.id,
+        key: 'ACME-21',
+        title: 'carryover',
+        statusId: todoStatus.id,
+        reporterId: user.id,
+        sprintId: sprint.id,
+        storyPoints: 3,
+        rank: 'bbb',
+      },
     });
 
     expect(await runSprintAutoclose(new Date())).toBe(1);
 
     // The done issue stays on the (now closed) sprint as part of its record; the
     // unfinished one returns to the backlog instead of being orphaned on a closed sprint.
-    expect((await prisma.issue.findUniqueOrThrow({ where: { id: doneIssue.id } })).sprintId).toBe(sprint.id);
-    expect((await prisma.issue.findUniqueOrThrow({ where: { id: openIssue.id } })).sprintId).toBeNull();
+    expect((await prisma.issue.findUniqueOrThrow({ where: { id: doneIssue.id } })).sprintId).toBe(
+      sprint.id,
+    );
+    expect(
+      (await prisma.issue.findUniqueOrThrow({ where: { id: openIssue.id } })).sprintId,
+    ).toBeNull();
   });
 
   it('does not close an active sprint whose endDate is in the future', async () => {
@@ -312,7 +344,10 @@ describe('runOutboxDispatch', () => {
       data: [
         { type: 'sprint.started', payload: { sprintId: 'abc' } },
         { type: 'issue.moved', payload: { issueKey: 'ACME-1' } },
-        { type: 'issue.priority.emergency', payload: { issueKey: 'ACME-2', priority: 'emergency' } },
+        {
+          type: 'issue.priority.emergency',
+          payload: { issueKey: 'ACME-2', priority: 'emergency' },
+        },
         { type: 'timer.stopped', payload: { timerId: 'xyz' }, processedAt: processedEarlier },
       ],
     });
@@ -331,7 +366,7 @@ describe('runOutboxDispatch', () => {
     for (const row of dispatched) {
       expect(row.processedAt).not.toBeNull();
       // processedAt should be close to now (within 1 second)
-      expect(Math.abs((row.processedAt!.getTime()) - now.getTime())).toBeLessThan(1000);
+      expect(Math.abs(row.processedAt!.getTime() - now.getTime())).toBeLessThan(1000);
     }
 
     // The already-processed row must not have been re-dispatched
@@ -372,10 +407,28 @@ describe('runVelocitySnapshot', () => {
       data: { projectId: project.id, name: 'Live sprint', state: 'active', committedPoints: 10 },
     });
     await prisma.issue.create({
-      data: { projectId: project.id, key: 'ACME-30', title: 'done', statusId: doneStatus.id, reporterId: user.id, sprintId: sprint.id, storyPoints: 5, rank: 'a' },
+      data: {
+        projectId: project.id,
+        key: 'ACME-30',
+        title: 'done',
+        statusId: doneStatus.id,
+        reporterId: user.id,
+        sprintId: sprint.id,
+        storyPoints: 5,
+        rank: 'a',
+      },
     });
     await prisma.issue.create({
-      data: { projectId: project.id, key: 'ACME-31', title: 'wip', statusId: todoStatus.id, reporterId: user.id, sprintId: sprint.id, storyPoints: 3, rank: 'b' },
+      data: {
+        projectId: project.id,
+        key: 'ACME-31',
+        title: 'wip',
+        statusId: todoStatus.id,
+        reporterId: user.id,
+        sprintId: sprint.id,
+        storyPoints: 3,
+        rank: 'b',
+      },
     });
 
     expect(await runVelocitySnapshot()).toBe(1);
@@ -403,13 +456,23 @@ describe('runHousekeeping', () => {
 
     // Sessions: expired, revoked, and a live one.
     await prisma.session.create({ data: { userId: user.id, tokenHash: 'h1', expiresAt: past } });
-    await prisma.session.create({ data: { userId: user.id, tokenHash: 'h2', expiresAt: future, revokedAt: past } });
-    const liveSession = await prisma.session.create({ data: { userId: user.id, tokenHash: 'h3', expiresAt: future } });
+    await prisma.session.create({
+      data: { userId: user.id, tokenHash: 'h2', expiresAt: future, revokedAt: past },
+    });
+    const liveSession = await prisma.session.create({
+      data: { userId: user.id, tokenHash: 'h3', expiresAt: future },
+    });
 
     // Tokens: expired, consumed, and a live one.
-    await prisma.magicLinkToken.create({ data: { email: 'a@x.test', tokenHash: 't1', expiresAt: past } });
-    await prisma.magicLinkToken.create({ data: { email: 'b@x.test', tokenHash: 't2', expiresAt: future, consumedAt: past } });
-    const liveToken = await prisma.magicLinkToken.create({ data: { email: 'c@x.test', tokenHash: 't3', expiresAt: future } });
+    await prisma.magicLinkToken.create({
+      data: { email: 'a@x.test', tokenHash: 't1', expiresAt: past },
+    });
+    await prisma.magicLinkToken.create({
+      data: { email: 'b@x.test', tokenHash: 't2', expiresAt: future, consumedAt: past },
+    });
+    const liveToken = await prisma.magicLinkToken.create({
+      data: { email: 'c@x.test', tokenHash: 't3', expiresAt: future },
+    });
 
     // Outbox: old-processed (reaped), recent-processed (kept), unprocessed (kept).
     await prisma.outbox.create({ data: { type: 'x', payload: {}, processedAt: longAgo } });

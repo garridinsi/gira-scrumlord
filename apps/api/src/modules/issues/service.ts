@@ -56,14 +56,21 @@ export async function createIssue(
         select: { isActive: true, kind: true, clientId: true },
       });
       if (!a || !a.isActive) throw badRequest('invalid assigneeId');
-      if (a.kind === 'client' && a.clientId !== project.clientId) throw badRequest('invalid assigneeId');
+      if (a.kind === 'client' && a.clientId !== project.clientId)
+        throw badRequest('invalid assigneeId');
     }
     if (input.sprintId) {
-      const s = await tx.sprint.findUnique({ where: { id: input.sprintId }, select: { projectId: true } });
+      const s = await tx.sprint.findUnique({
+        where: { id: input.sprintId },
+        select: { projectId: true },
+      });
       if (!s || s.projectId !== project.id) throw badRequest('invalid sprintId');
     }
     if (input.parentId) {
-      const p = await tx.issue.findUnique({ where: { id: input.parentId }, select: { projectId: true } });
+      const p = await tx.issue.findUnique({
+        where: { id: input.parentId },
+        select: { projectId: true },
+      });
       if (!p || p.projectId !== project.id) throw badRequest('invalid parentId');
     }
     if (input.labelIds?.length) {
@@ -71,7 +78,10 @@ export async function createIssue(
         where: { id: { in: input.labelIds } },
         select: { projectId: true },
       });
-      if (labels.length !== input.labelIds.length || labels.some((l) => l.projectId !== project.id)) {
+      if (
+        labels.length !== input.labelIds.length ||
+        labels.some((l) => l.projectId !== project.id)
+      ) {
         throw badRequest('invalid labelIds');
       }
     }
@@ -129,7 +139,13 @@ export async function createIssue(
       await tx.outbox.create({
         data: {
           type: 'issue.assigned',
-          payload: { issueKey: key, projectKey: project.key, assigneeId: issue.assigneeId, title: issue.title, actorId: reporterId },
+          payload: {
+            issueKey: key,
+            projectKey: project.key,
+            assigneeId: issue.assigneeId,
+            title: issue.title,
+            actorId: reporterId,
+          },
         },
       });
     }

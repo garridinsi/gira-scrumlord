@@ -68,7 +68,10 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
     const { id } = req.params as { id: string };
     const input = updateChannelSchema.parse(req.body);
     if (input.target !== undefined) {
-      const existing = await prisma.notificationChannel.findUnique({ where: { id }, select: { kind: true } });
+      const existing = await prisma.notificationChannel.findUnique({
+        where: { id },
+        select: { kind: true },
+      });
       if (!existing) throw notFound('channel not found');
       validateWebhookTarget(existing.kind, input.target);
     }

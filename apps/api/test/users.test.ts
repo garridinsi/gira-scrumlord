@@ -29,7 +29,12 @@ describe('users', () => {
     const clientA = await prisma.client.create({ data: { name: 'A', slug: 'a' } });
     const clientB = await prisma.client.create({ data: { name: 'B', slug: 'b' } });
     await makeUser({ kind: 'client', role: 'viewer', clientId: clientB.id, name: 'B person' });
-    const a = await actingAs({ kind: 'client', role: 'viewer', clientId: clientA.id, name: 'A person' });
+    const a = await actingAs({
+      kind: 'client',
+      role: 'viewer',
+      clientId: clientA.id,
+      name: 'A person',
+    });
 
     const res = await app.inject({ method: 'GET', url: '/users', headers: { cookie: a.cookie } });
     expect(res.json().map((u: { name: string }) => u.name)).toEqual(['A person']);
@@ -50,7 +55,12 @@ describe('users', () => {
       role: 'member',
     });
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toMatchObject({ email: 'rex@example.test', kind: 'staff', role: 'member', isActive: true });
+    expect(res.json()).toMatchObject({
+      email: 'rex@example.test',
+      kind: 'staff',
+      role: 'member',
+      isActive: true,
+    });
 
     // The new user now exists with a magic-link identity → the login flow mints a token.
     const link = await app.inject({
@@ -59,7 +69,9 @@ describe('users', () => {
       payload: { email: 'rex@example.test' },
     });
     expect(link.statusCode).toBe(202);
-    expect(await prisma.magicLinkToken.findFirst({ where: { email: 'rex@example.test' } })).not.toBeNull();
+    expect(
+      await prisma.magicLinkToken.findFirst({ where: { email: 'rex@example.test' } }),
+    ).not.toBeNull();
   });
 
   it('creates a client user bound to a client, and rejects one without a client', async () => {
@@ -75,17 +87,25 @@ describe('users', () => {
     expect(ok.statusCode).toBe(201);
     expect(ok.json()).toMatchObject({ kind: 'client', clientId: client.id });
 
-    const bad = await post(admin.cookie, '/users', { email: 'orphan@acme.test', name: 'Orphan', kind: 'client' });
+    const bad = await post(admin.cookie, '/users', {
+      email: 'orphan@acme.test',
+      name: 'Orphan',
+      kind: 'client',
+    });
     expect(bad.statusCode).toBe(400);
   });
 
   it('rejects duplicate email and non-admin creators', async () => {
     const admin = await actingAs({ role: 'admin' });
     await post(admin.cookie, '/users', { email: 'dup@example.test', name: 'A' });
-    expect((await post(admin.cookie, '/users', { email: 'dup@example.test', name: 'B' })).statusCode).toBe(409);
+    expect(
+      (await post(admin.cookie, '/users', { email: 'dup@example.test', name: 'B' })).statusCode,
+    ).toBe(409);
 
     const member = await actingAs({ role: 'member' });
-    expect((await post(member.cookie, '/users', { email: 'x@example.test', name: 'X' })).statusCode).toBe(403);
+    expect(
+      (await post(member.cookie, '/users', { email: 'x@example.test', name: 'X' })).statusCode,
+    ).toBe(403);
   });
 
   it('treats email case-insensitively on create (no case-variant shadow account)', async () => {
@@ -94,38 +114,60 @@ describe('users', () => {
     expect(created.statusCode).toBe(201);
     expect(created.json().email).toBe('case@example.test'); // stored lowercased
     // A case variant collides with the lowercased existing row.
-    expect((await post(admin.cookie, '/users', { email: 'CASE@example.TEST', name: 'B' })).statusCode).toBe(409);
+    expect(
+      (await post(admin.cookie, '/users', { email: 'CASE@example.TEST', name: 'B' })).statusCode,
+    ).toBe(409);
   });
 
   it('changes roles but blocks self-demotion and removing the last admin', async () => {
     const admin = await actingAs({ role: 'admin' });
     const other = await makeUser({ role: 'member', name: 'Other' });
 
-    expect((await patch(admin.cookie, `/users/${other.id}`, { role: 'admin' })).json().role).toBe('admin');
-    expect((await patch(admin.cookie, `/users/${admin.user.id}`, { role: 'member' })).statusCode).toBe(400);
+    expect((await patch(admin.cookie, `/users/${other.id}`, { role: 'admin' })).json().role).toBe(
+      'admin',
+    );
+    expect(
+      (await patch(admin.cookie, `/users/${admin.user.id}`, { role: 'member' })).statusCode,
+    ).toBe(400);
     // Two admins exist now, so demoting the other one is allowed.
-    expect((await patch(admin.cookie, `/users/${other.id}`, { role: 'viewer' })).json().role).toBe('viewer');
+    expect((await patch(admin.cookie, `/users/${other.id}`, { role: 'viewer' })).json().role).toBe(
+      'viewer',
+    );
   });
 
   it('deactivates a user; deactivated are hidden from the default list', async () => {
     const admin = await actingAs({ role: 'admin' });
     const victim = await makeUser({ role: 'member', name: 'Gone' });
 
-    expect((await patch(admin.cookie, `/users/${victim.id}`, { isActive: false })).json().isActive).toBe(false);
+    expect(
+      (await patch(admin.cookie, `/users/${victim.id}`, { isActive: false })).json().isActive,
+    ).toBe(false);
 
-    const def = await app.inject({ method: 'GET', url: '/users', headers: { cookie: admin.cookie } });
+    const def = await app.inject({
+      method: 'GET',
+      url: '/users',
+      headers: { cookie: admin.cookie },
+    });
     expect(def.json().some((u: { id: string }) => u.id === victim.id)).toBe(false);
-    const all = await app.inject({ method: 'GET', url: '/users?includeInactive=true', headers: { cookie: admin.cookie } });
+    const all = await app.inject({
+      method: 'GET',
+      url: '/users?includeInactive=true',
+      headers: { cookie: admin.cookie },
+    });
     expect(all.json().some((u: { id: string }) => u.id === victim.id)).toBe(true);
   });
 
   it('invite mints a sign-in link for an active user', async () => {
     const admin = await actingAs({ role: 'admin' });
-    const u = (await post(admin.cookie, '/users', { email: 'invitee@example.test', name: 'Inv' })).json();
+    const u = (
+      await post(admin.cookie, '/users', { email: 'invitee@example.test', name: 'Inv' })
+    ).json();
     const res = await post(admin.cookie, `/users/${u.id}/invite`, {});
     expect(res.statusCode).toBe(200);
     expect(res.json().sent).toBe(true);
-    expect(await prisma.magicLinkToken.findFirst({ where: { email: 'invitee@example.test' } })).not.toBeNull();
+    expect(
+      await prisma.magicLinkToken.findFirst({ where: { email: 'invitee@example.test' } }),
+    ).not.toBeNull();
   });
 
   // ── security: client users are always read-only viewers ─────────────────────
@@ -180,16 +222,31 @@ describe('users', () => {
       prisma.client.create({ data: { name: 'B', slug: 'cid-b' } }),
     ]);
     const clientUser = (
-      await post(admin.cookie, '/users', { email: 'c@acme.test', name: 'C', kind: 'client', clientId: a.id })
+      await post(admin.cookie, '/users', {
+        email: 'c@acme.test',
+        name: 'C',
+        kind: 'client',
+        clientId: a.id,
+      })
     ).json();
-    const staffUser = (await post(admin.cookie, '/users', { email: 's@acme.test', name: 'S' })).json();
+    const staffUser = (
+      await post(admin.cookie, '/users', { email: 's@acme.test', name: 'S' })
+    ).json();
 
     // A client user cannot be un-scoped or moved to another tenant.
-    expect((await patch(admin.cookie, `/users/${clientUser.id}`, { clientId: null })).statusCode).toBe(400);
-    expect((await patch(admin.cookie, `/users/${clientUser.id}`, { clientId: b.id })).statusCode).toBe(400);
+    expect(
+      (await patch(admin.cookie, `/users/${clientUser.id}`, { clientId: null })).statusCode,
+    ).toBe(400);
+    expect(
+      (await patch(admin.cookie, `/users/${clientUser.id}`, { clientId: b.id })).statusCode,
+    ).toBe(400);
     // A staff user cannot be scoped to a client.
-    expect((await patch(admin.cookie, `/users/${staffUser.id}`, { clientId: a.id })).statusCode).toBe(400);
+    expect(
+      (await patch(admin.cookie, `/users/${staffUser.id}`, { clientId: a.id })).statusCode,
+    ).toBe(400);
     // A no-op (same client) is fine.
-    expect((await patch(admin.cookie, `/users/${clientUser.id}`, { clientId: a.id })).statusCode).toBe(200);
+    expect(
+      (await patch(admin.cookie, `/users/${clientUser.id}`, { clientId: a.id })).statusCode,
+    ).toBe(200);
   });
 });

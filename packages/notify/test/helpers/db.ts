@@ -13,7 +13,10 @@ export async function resetDb(): Promise<void> {
 /** Minimal project+issue so notification logic has something to reference. */
 export async function makeIssue(key = 'T-1', projectKey = 'T') {
   const user = await prisma.user.create({
-    data: { email: `r-${key}-${Math.random().toString(36).slice(2)}@example.test`, name: 'Reporter' },
+    data: {
+      email: `r-${key}-${Math.random().toString(36).slice(2)}@example.test`,
+      name: 'Reporter',
+    },
   });
   const project = await prisma.project.create({ data: { key: projectKey, name: projectKey } });
   const status = await prisma.status.create({

@@ -70,7 +70,10 @@ describe('BoardPage', () => {
     board.mockResolvedValue({
       projectKey: 'PRJ',
       columns: [
-        { status: { id: 's1', name: 'Backlog', category: 'todo', order: 0 }, issues: [issue({ key: 'GIRA-1', title: 'Card one' })] },
+        {
+          status: { id: 's1', name: 'Backlog', category: 'todo', order: 0 },
+          issues: [issue({ key: 'GIRA-1', title: 'Card one' })],
+        },
         { status: { id: 's2', name: 'Done', category: 'done', order: 4 }, issues: [] },
       ],
     });

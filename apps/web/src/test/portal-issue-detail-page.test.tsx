@@ -14,7 +14,10 @@ vi.mock('../api/client', () => ({
   issues: {
     get: (k: string) => issueGet(k),
     cost: (k: string) => cost(k),
-    comments: { list: (k: string) => commentsList(k), create: (k: string, b: unknown) => commentCreate(k, b) },
+    comments: {
+      list: (k: string) => commentsList(k),
+      create: (k: string, b: unknown) => commentCreate(k, b),
+    },
   },
 }));
 
@@ -53,7 +56,12 @@ describe('PortalIssueDetailPage', () => {
     });
     cost.mockResolvedValue({ billableMinutes: 60, accruedCents: 6000, currency: 'EUR' });
     commentsList.mockResolvedValue([
-      { id: 'c1', body: 'we are on it', author: { id: 'u1', name: 'Ada' }, createdAt: '2026-06-01T00:00:00Z' },
+      {
+        id: 'c1',
+        body: 'we are on it',
+        author: { id: 'u1', name: 'Ada' },
+        createdAt: '2026-06-01T00:00:00Z',
+      },
     ]);
     renderAt('GIRA-1');
 

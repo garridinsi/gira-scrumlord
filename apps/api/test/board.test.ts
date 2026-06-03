@@ -22,16 +22,25 @@ describe('board + move', () => {
     const { user, cookie } = await actingAs({ role: 'member' });
     const { projectKey, byName } = await seedProject({ reporterId: user.id });
     for (const title of ['One', 'Two', 'Three']) {
-      await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey, title } });
+      await app.inject({
+        method: 'POST',
+        url: '/issues',
+        headers: { cookie },
+        payload: { projectKey, title },
+      });
     }
     return { cookie, projectKey, byName };
   }
 
   const board = (cookie: string, key: string) =>
-    app.inject({ method: 'GET', url: `/projects/${key}/board`, headers: { cookie } }).then((r) => r.json());
+    app
+      .inject({ method: 'GET', url: `/projects/${key}/board`, headers: { cookie } })
+      .then((r) => r.json());
 
-  const columnKeys = (b: { columns: Array<{ status: { name: string }; issues: Array<{ key: string }> }> }, name: string) =>
-    b.columns.find((c) => c.status.name === name)!.issues.map((i) => i.key);
+  const columnKeys = (
+    b: { columns: Array<{ status: { name: string }; issues: Array<{ key: string }> }> },
+    name: string,
+  ) => b.columns.find((c) => c.status.name === name)!.issues.map((i) => i.key);
 
   it('lists columns in order with issues sorted by rank', async () => {
     const { cookie, projectKey } = await setup();
@@ -64,8 +73,18 @@ describe('board + move', () => {
     const { cookie, projectKey } = await setup(); // GIRA-1, GIRA-2, GIRA-3 in Backlog
     // Two staff drop GIRA-2 and GIRA-3 into the SAME gap (above GIRA-1) at once.
     const [a, b] = await Promise.all([
-      app.inject({ method: 'POST', url: '/issues/GIRA-2/move', headers: { cookie }, payload: { afterId: 'GIRA-1' } }),
-      app.inject({ method: 'POST', url: '/issues/GIRA-3/move', headers: { cookie }, payload: { afterId: 'GIRA-1' } }),
+      app.inject({
+        method: 'POST',
+        url: '/issues/GIRA-2/move',
+        headers: { cookie },
+        payload: { afterId: 'GIRA-1' },
+      }),
+      app.inject({
+        method: 'POST',
+        url: '/issues/GIRA-3/move',
+        headers: { cookie },
+        payload: { afterId: 'GIRA-1' },
+      }),
     ]);
     expect(a.statusCode).toBe(200);
     expect(b.statusCode).toBe(200);
@@ -130,7 +149,12 @@ describe('board + move', () => {
 
     // A pure reorder within a column changes no status → no event.
     await prisma.outbox.deleteMany({});
-    await app.inject({ method: 'POST', url: '/issues/GIRA-2/move', headers: { cookie }, payload: { afterId: 'GIRA-3' } });
+    await app.inject({
+      method: 'POST',
+      url: '/issues/GIRA-2/move',
+      headers: { cookie },
+      payload: { afterId: 'GIRA-3' },
+    });
     expect(await prisma.outbox.count({ where: { type: 'issue.status_changed' } })).toBe(0);
   });
 

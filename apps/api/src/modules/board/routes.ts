@@ -41,7 +41,9 @@ async function placeInColumn(
   afterKey?: string,
 ): Promise<string> {
   const rankOf = async (k?: string): Promise<string | null> =>
-    k ? ((await tx.issue.findUnique({ where: { key: k }, select: { rank: true } }))?.rank ?? null) : null;
+    k
+      ? ((await tx.issue.findUnique({ where: { key: k }, select: { rank: true } }))?.rank ?? null)
+      : null;
   const endOfColumn = async (): Promise<string | null> =>
     (
       await tx.issue.findFirst({

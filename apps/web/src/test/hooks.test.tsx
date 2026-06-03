@@ -16,7 +16,11 @@ const { me, logout, projectGet, timerActive, timerStart, timerStop } = vi.hoiste
 vi.mock('../api/client', () => ({
   auth: { me: () => me(), logout: () => logout() },
   projects: { get: (k: string) => projectGet(k) },
-  timers: { active: () => timerActive(), start: (k: string) => timerStart(k), stop: () => timerStop() },
+  timers: {
+    active: () => timerActive(),
+    start: (k: string) => timerStart(k),
+    stop: () => timerStop(),
+  },
 }));
 
 import { useMe, useLogout } from '../hooks/useAuth';

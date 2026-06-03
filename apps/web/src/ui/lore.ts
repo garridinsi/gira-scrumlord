@@ -8,7 +8,7 @@ export function consoleBoot(): void {
       '// scrumlord · pg-boss worker · 4 jobs queued\n' +
       '// sauron · audit log · port :666 · watching\n' +
       '// chaos · adapters · M4 · works by accident\n' +
-      "// el roadmap no se lee, se siente. pero lo escribimos igual,\n" +
+      '// el roadmap no se lee, se siente. pero lo escribimos igual,\n' +
       '// porque el velociraptor insistió.',
     'background:#0b1620;color:#f5c400;padding:2px 6px;font:700 13px/1.2 monospace',
     'background:#f5c400;color:#0b1620;padding:2px 6px;font:600 12px/1.2 monospace',

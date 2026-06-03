@@ -66,7 +66,9 @@ export async function resolveUserFromCookie(cookie?: string): Promise<UserView |
   // Throttled "last active" touch for the account → active-sessions screen.
   const now = Date.now();
   if (!session.lastSeenAt || now - session.lastSeenAt.getTime() > LAST_SEEN_THROTTLE_MS) {
-    await prisma.session.update({ where: { id }, data: { lastSeenAt: new Date(now) } }).catch(() => {});
+    await prisma.session
+      .update({ where: { id }, data: { lastSeenAt: new Date(now) } })
+      .catch(() => {});
   }
 
   return toUserView(session.user);
@@ -75,7 +77,10 @@ export async function resolveUserFromCookie(cookie?: string): Promise<UserView |
 export async function revokeSessionFromCookie(cookie?: string): Promise<void> {
   const id = sessionIdFromCookie(cookie);
   if (!id) return;
-  await prisma.session.updateMany({ where: { id, revokedAt: null }, data: { revokedAt: new Date() } });
+  await prisma.session.updateMany({
+    where: { id, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
 }
 
 /** Revoke every live session for a user except (optionally) the one given. */

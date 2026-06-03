@@ -5,9 +5,17 @@ import userEvent from '@testing-library/user-event';
 import type { IncidentView } from '@gira/shared';
 import { renderWithProviders } from './render';
 
-const { list, ack, resolve } = vi.hoisted(() => ({ list: vi.fn(), ack: vi.fn(), resolve: vi.fn() }));
+const { list, ack, resolve } = vi.hoisted(() => ({
+  list: vi.fn(),
+  ack: vi.fn(),
+  resolve: vi.fn(),
+}));
 vi.mock('../api/client', () => ({
-  incidents: { list: (f?: string) => list(f), ack: (id: string) => ack(id), resolve: (id: string) => resolve(id) },
+  incidents: {
+    list: (f?: string) => list(f),
+    ack: (id: string) => ack(id),
+    resolve: (id: string) => resolve(id),
+  },
   ApiError: class ApiError extends Error {},
 }));
 vi.mock('../hooks/useAuth', () => ({ useMe: () => ({ data: { role: 'admin' } }) }));
@@ -35,7 +43,13 @@ describe('IncidentsPage', () => {
 
   it('renders incident rows and the open-count headline', async () => {
     list.mockResolvedValue([
-      incident({ id: 'inc1', issueKey: 'GIRA-1', title: 'PROD DOWN', status: 'open', escalationLevel: 2 }),
+      incident({
+        id: 'inc1',
+        issueKey: 'GIRA-1',
+        title: 'PROD DOWN',
+        status: 'open',
+        escalationLevel: 2,
+      }),
       incident({ id: 'inc2', issueKey: 'GIRA-2', title: 'Recovered', status: 'resolved' }),
     ]);
     renderWithProviders(<IncidentsPage />);

@@ -35,7 +35,13 @@ describe('contracts CRUD (admin)', () => {
       method: 'POST',
       url: '/contracts',
       headers: { cookie: admin.cookie },
-      payload: { clientId, name: 'Retainer 2026', retainerCents: 500_000, includedHours: 40, status: 'active' },
+      payload: {
+        clientId,
+        name: 'Retainer 2026',
+        retainerCents: 500_000,
+        includedHours: 40,
+        status: 'active',
+      },
     });
     expect(created.statusCode).toBe(201);
     const contract = created.json();
@@ -44,7 +50,11 @@ describe('contracts CRUD (admin)', () => {
     expect(contract.includedHours).toBe(40);
     expect(contract.status).toBe('active');
 
-    const list = await app.inject({ method: 'GET', url: '/contracts', headers: { cookie: admin.cookie } });
+    const list = await app.inject({
+      method: 'GET',
+      url: '/contracts',
+      headers: { cookie: admin.cookie },
+    });
     expect(list.statusCode).toBe(200);
     expect(list.json().map((c: { id: string }) => c.id)).toContain(contract.id);
 
@@ -55,7 +65,11 @@ describe('contracts CRUD (admin)', () => {
     });
     expect(filtered.json()).toHaveLength(1);
 
-    const one = await app.inject({ method: 'GET', url: `/contracts/${contract.id}`, headers: { cookie: admin.cookie } });
+    const one = await app.inject({
+      method: 'GET',
+      url: `/contracts/${contract.id}`,
+      headers: { cookie: admin.cookie },
+    });
     expect(one.statusCode).toBe(200);
     expect(one.json().name).toBe('Retainer 2026');
 
@@ -69,21 +83,52 @@ describe('contracts CRUD (admin)', () => {
     expect(patched.json().status).toBe('ended');
     expect(patched.json().retainerCents).toBeNull();
 
-    const del = await app.inject({ method: 'DELETE', url: `/contracts/${contract.id}`, headers: { cookie: admin.cookie } });
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/contracts/${contract.id}`,
+      headers: { cookie: admin.cookie },
+    });
     expect(del.statusCode).toBe(204);
     expect(
-      (await app.inject({ method: 'GET', url: `/contracts/${contract.id}`, headers: { cookie: admin.cookie } })).statusCode,
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/contracts/${contract.id}`,
+          headers: { cookie: admin.cookie },
+        })
+      ).statusCode,
     ).toBe(404);
   });
 
   it('404s for missing contract and a non-existent client on create', async () => {
     const admin = await actingAs({ role: 'admin' });
-    expect((await app.inject({ method: 'GET', url: '/contracts/nope', headers: { cookie: admin.cookie } })).statusCode).toBe(404);
     expect(
-      (await app.inject({ method: 'PATCH', url: '/contracts/nope', headers: { cookie: admin.cookie }, payload: { name: 'X' } })).statusCode,
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/contracts/nope',
+          headers: { cookie: admin.cookie },
+        })
+      ).statusCode,
     ).toBe(404);
     expect(
-      (await app.inject({ method: 'DELETE', url: '/contracts/nope', headers: { cookie: admin.cookie } })).statusCode,
+      (
+        await app.inject({
+          method: 'PATCH',
+          url: '/contracts/nope',
+          headers: { cookie: admin.cookie },
+          payload: { name: 'X' },
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: '/contracts/nope',
+          headers: { cookie: admin.cookie },
+        })
+      ).statusCode,
     ).toBe(404);
     // cuid-shaped but non-existent → passes schema validation, hits the notFound guard.
     const orphan = await app.inject({
@@ -97,7 +142,10 @@ describe('contracts CRUD (admin)', () => {
 
   it('is admin-only', async () => {
     const member = await actingAs({ role: 'member' });
-    expect((await app.inject({ method: 'GET', url: '/contracts', headers: { cookie: member.cookie } })).statusCode).toBe(403);
+    expect(
+      (await app.inject({ method: 'GET', url: '/contracts', headers: { cookie: member.cookie } }))
+        .statusCode,
+    ).toBe(403);
   });
 
   it('blocks deleting a client that still has a contract', async () => {
@@ -109,7 +157,11 @@ describe('contracts CRUD (admin)', () => {
       headers: { cookie: admin.cookie },
       payload: { clientId, name: 'Active SOW' },
     });
-    const del = await app.inject({ method: 'DELETE', url: `/clients/${clientId}`, headers: { cookie: admin.cookie } });
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/clients/${clientId}`,
+      headers: { cookie: admin.cookie },
+    });
     expect(del.statusCode).toBe(409);
     expect(del.json().error).toMatch(/contract/i);
   });

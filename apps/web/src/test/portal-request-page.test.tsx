@@ -4,7 +4,10 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from './render';
 
-const { overview, createRequest } = vi.hoisted(() => ({ overview: vi.fn(), createRequest: vi.fn() }));
+const { overview, createRequest } = vi.hoisted(() => ({
+  overview: vi.fn(),
+  createRequest: vi.fn(),
+}));
 vi.mock('../api/client', () => ({
   portal: { overview: () => overview(), createRequest: (d: unknown) => createRequest(d) },
 }));
@@ -12,7 +15,14 @@ vi.mock('../api/client', () => ({
 import { PortalRequestPage } from '../pages/portal/PortalRequestPage';
 
 const overviewWith = (projects: Array<{ key: string; name: string }>) => ({
-  projects: projects.map((p) => ({ ...p, open: 0, inProgress: 0, done: 0, totalMinutes: 0, accruedCents: 0 })),
+  projects: projects.map((p) => ({
+    ...p,
+    open: 0,
+    inProgress: 0,
+    done: 0,
+    totalMinutes: 0,
+    accruedCents: 0,
+  })),
   totals: { open: 0, inProgress: 0, done: 0, totalMinutes: 0, accruedCents: 0, currency: 'EUR' },
   client: { name: 'Acme', currency: 'EUR' },
 });
@@ -33,11 +43,20 @@ describe('PortalRequestPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /Submit request/ }));
 
     await waitFor(() => expect(createRequest).toHaveBeenCalledTimes(1));
-    expect(createRequest.mock.calls[0]![0]).toMatchObject({ projectKey: 'ALFA', title: 'It broke', type: 'bug' });
+    expect(createRequest.mock.calls[0]![0]).toMatchObject({
+      projectKey: 'ALFA',
+      title: 'It broke',
+      type: 'bug',
+    });
   });
 
   it('lets you pick a project and switch the type to task when several exist', async () => {
-    overview.mockResolvedValue(overviewWith([{ key: 'ALFA', name: 'Alfa' }, { key: 'BETA', name: 'Beta' }]));
+    overview.mockResolvedValue(
+      overviewWith([
+        { key: 'ALFA', name: 'Alfa' },
+        { key: 'BETA', name: 'Beta' },
+      ]),
+    );
     createRequest.mockResolvedValue({ key: 'BETA-1', title: 'Need this' });
     renderWithProviders(<PortalRequestPage />);
 
@@ -47,6 +66,10 @@ describe('PortalRequestPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /Submit request/ }));
 
     await waitFor(() => expect(createRequest).toHaveBeenCalledTimes(1));
-    expect(createRequest.mock.calls[0]![0]).toMatchObject({ projectKey: 'BETA', title: 'Need this', type: 'task' });
+    expect(createRequest.mock.calls[0]![0]).toMatchObject({
+      projectKey: 'BETA',
+      title: 'Need this',
+      type: 'task',
+    });
   });
 });

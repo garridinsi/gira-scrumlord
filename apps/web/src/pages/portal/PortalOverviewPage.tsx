@@ -67,13 +67,9 @@ export function PortalOverviewPage() {
       {/* ── Poster header ─────────────────────────────────── */}
       <div className="cp-poster">
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div className="cp-poster__eyebrow">
-            Portal de cliente · Client portal
-          </div>
+          <div className="cp-poster__eyebrow">Portal de cliente · Client portal</div>
           <h1 className="cp-poster__title">{clientName || 'Portal'}</h1>
-          <p className="cp-poster__sub">
-            Resumen de proyectos · Project overview
-          </p>
+          <p className="cp-poster__sub">Resumen de proyectos · Project overview</p>
         </div>
       </div>
 
@@ -192,9 +188,7 @@ function ProjectRollupCard({
     <article className="cp-proj-card">
       <div className="cp-proj-card__head">
         <span className="cp-proj-card__key">{project.key}</span>
-        <span>
-          {project.open + project.inProgress + project.done} tickets
-        </span>
+        <span>{project.open + project.inProgress + project.done} tickets</span>
       </div>
       <div className="cp-proj-card__body">
         <div className="cp-proj-card__name">{project.name}</div>

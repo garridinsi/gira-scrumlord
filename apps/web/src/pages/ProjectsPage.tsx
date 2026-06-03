@@ -25,9 +25,14 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
     mutationFn: () => projects.create(form),
     onSuccess: (p) => {
       void qc.invalidateQueries({ queryKey: ['projects'] });
-      toast({ tone: 'ok', title: 'Proyecto creado · Project created', body: `${p.key} · ${p.name}` });
+      toast({
+        tone: 'ok',
+        title: 'Proyecto creado · Project created',
+        body: `${p.key} · ${p.name}`,
+      });
       onDone();
-      const dest = p.cadence === 'monthly' ? `/projects/${p.key}/monthly` : `/projects/${p.key}/board`;
+      const dest =
+        p.cadence === 'monthly' ? `/projects/${p.key}/monthly` : `/projects/${p.key}/board`;
       navigate(dest);
     },
     onError: (err) => {
@@ -62,7 +67,11 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
 
   return (
     <section
-      style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)', marginBottom: 24 }}
+      style={{
+        border: '2px solid var(--eg-iron)',
+        background: 'var(--eg-paper)',
+        marginBottom: 24,
+      }}
     >
       <div
         className="tag-head"
@@ -92,7 +101,14 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
             onChange={(e) => setForm((f) => ({ ...f, key: e.target.value.toUpperCase() }))}
             placeholder="MTNR"
             maxLength={10}
-            style={{ ...fieldStyle, fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.06em' }}
+            style={{
+              ...fieldStyle,
+              fontFamily: 'var(--font-display)',
+              fontWeight: 700,
+              fontSize: 14,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+            }}
           />
         </div>
 
@@ -149,7 +165,10 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
         </div>
       </div>
       {mut.isError && (
-        <div className="mono" style={{ fontSize: 11, color: 'var(--eg-red)', padding: '0 18px 12px' }}>
+        <div
+          className="mono"
+          style={{ fontSize: 11, color: 'var(--eg-red)', padding: '0 18px 12px' }}
+        >
           Error: {(mut.error as Error).message}
         </div>
       )}
@@ -192,12 +211,25 @@ export function ProjectsPage() {
         )}
         {list.data && list.data.length === 0 && !showCreate && (
           <div className="gs-state">
-            <span className="mono" style={{ color: 'var(--eg-fg-3)', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            <span
+              className="mono"
+              style={{
+                color: 'var(--eg-fg-3)',
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+              }}
+            >
               // sin proyectos · no projects yet
             </span>
           </div>
         )}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: 16,
+          }}
+        >
           {(list.data ?? []).map((p) => {
             const isMonthly = p.cadence === 'monthly';
             const dest = isMonthly ? `/projects/${p.key}/monthly` : `/projects/${p.key}/board`;
@@ -215,21 +247,44 @@ export function ProjectsPage() {
               >
                 <div className="tag-head">
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="mono" style={{ background: 'var(--eg-yellow)', color: 'var(--eg-iron)', padding: '2px 7px', fontWeight: 700, letterSpacing: '0.12em' }}>
+                    <span
+                      className="mono"
+                      style={{
+                        background: 'var(--eg-yellow)',
+                        color: 'var(--eg-iron)',
+                        padding: '2px 7px',
+                        fontWeight: 700,
+                        letterSpacing: '0.12em',
+                      }}
+                    >
                       {p.key}
                     </span>
                     {isMonthly && (
-                      <Plate tone="yellow" style={{ fontSize: 9, padding: '1px 5px' }}>MENSUAL</Plate>
+                      <Plate tone="yellow" style={{ fontSize: 9, padding: '1px 5px' }}>
+                        MENSUAL
+                      </Plate>
                     )}
                   </span>
                   <span>// proyecto</span>
                 </div>
                 <div style={{ padding: '16px 16px 18px' }}>
-                  <div className="disp" style={{ fontSize: 24, color: 'var(--eg-iron)', lineHeight: 1, marginBottom: 8 }}>
+                  <div
+                    className="disp"
+                    style={{
+                      fontSize: 24,
+                      color: 'var(--eg-iron)',
+                      lineHeight: 1,
+                      marginBottom: 8,
+                    }}
+                  >
                     {p.name}
                   </div>
                   {p.description && (
-                    <p style={{ fontSize: 13, color: 'var(--eg-fg-2)', margin: 0, lineHeight: 1.5 }}>{p.description}</p>
+                    <p
+                      style={{ fontSize: 13, color: 'var(--eg-fg-2)', margin: 0, lineHeight: 1.5 }}
+                    >
+                      {p.description}
+                    </p>
                   )}
                 </div>
               </Link>

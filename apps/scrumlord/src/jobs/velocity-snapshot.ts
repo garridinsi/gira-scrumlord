@@ -36,7 +36,7 @@ export async function runVelocitySnapshot(): Promise<number> {
   let snapshotted = 0;
 
   for (const sprint of activeSprints) {
-    const issues = sprint.issues.map((i: typeof sprint.issues[number]) => ({
+    const issues = sprint.issues.map((i: (typeof sprint.issues)[number]) => ({
       storyPoints: i.storyPoints,
       statusCategory: i.status.category as 'todo' | 'in_progress' | 'done',
     }));

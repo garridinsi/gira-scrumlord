@@ -10,7 +10,10 @@ describe('errorMessage (API error envelope → human text)', () => {
   });
 
   it('renders the first Zod issue as "path: message"', () => {
-    const body = { error: 'validation_error', issues: [{ path: ['clientId'], message: 'Required' }] };
+    const body = {
+      error: 'validation_error',
+      issues: [{ path: ['clientId'], message: 'Required' }],
+    };
     expect(errorMessage(body, 400)).toBe('clientId: Required');
   });
 
@@ -20,7 +23,9 @@ describe('errorMessage (API error envelope → human text)', () => {
   });
 
   it('prefers an explicit message field when present', () => {
-    expect(errorMessage({ error: 'validation_error', message: 'body required' }, 400)).toBe('body required');
+    expect(errorMessage({ error: 'validation_error', message: 'body required' }, 400)).toBe(
+      'body required',
+    );
   });
 
   it('falls back to HTTP status when the body is unusable', () => {

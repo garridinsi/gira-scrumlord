@@ -10,7 +10,10 @@ const { clientsList, listForClient, generate } = vi.hoisted(() => ({
 }));
 vi.mock('../api/client', () => ({
   clients: { list: () => clientsList() },
-  invoices: { listForClient: (id: string) => listForClient(id), generate: (c: string, b: unknown) => generate(c, b) },
+  invoices: {
+    listForClient: (id: string) => listForClient(id),
+    generate: (c: string, b: unknown) => generate(c, b),
+  },
   ApiError: class ApiError extends Error {},
 }));
 vi.mock('../hooks/useAuth', () => ({ useMe: () => ({ data: { role: 'admin' } }) }));

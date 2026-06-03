@@ -100,7 +100,10 @@ export async function intakeRoutes(app: FastifyInstance): Promise<void> {
     const { key } = req.params as { key: string };
     const project = await getProjectByKeyOr404(key);
     assertCanAccessProject(currentUser(req), project);
-    return prisma.assignmentRule.findMany({ where: { projectId: project.id }, orderBy: { order: 'asc' } });
+    return prisma.assignmentRule.findMany({
+      where: { projectId: project.id },
+      orderBy: { order: 'asc' },
+    });
   });
 
   app.post('/projects/:key/assignment-rules', { preHandler: requireAuth }, async (req, reply) => {

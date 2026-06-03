@@ -67,7 +67,9 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
           style={{ border: 0, background: 'none', height: '100%' }}
         >
           <span className="pk">{key ?? '—'}</span>
-          <span className="topbar__projectname">{current?.name ?? (key ? key : 'Selecciona proyecto · Pick a project')}</span>
+          <span className="topbar__projectname">
+            {current?.name ?? (key ? key : 'Selecciona proyecto · Pick a project')}
+          </span>
           <span className="chev">▾</span>
         </button>
         {menuOpen && (
@@ -107,7 +109,12 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
               >
                 <span
                   className="mono"
-                  style={{ fontWeight: 700, fontSize: 11, color: 'var(--eg-iron)', letterSpacing: '0.1em' }}
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 11,
+                    color: 'var(--eg-iron)',
+                    letterSpacing: '0.1em',
+                  }}
                 >
                   {p.key}
                 </span>
@@ -145,7 +152,9 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void } = {}) {
 
       <div className="topbar__right">
         <div className="topbar__btn lore" data-lore="scrumlord · daemon · pg-boss · 4 jobs">
-          <span style={{ width: 6, height: 6, background: 'var(--eg-green)', borderRadius: '50%' }} />
+          <span
+            style={{ width: 6, height: 6, background: 'var(--eg-green)', borderRadius: '50%' }}
+          />
           <span>scrumlord</span>
           <span style={{ color: 'var(--eg-fg-5)' }}>RUN</span>
         </div>

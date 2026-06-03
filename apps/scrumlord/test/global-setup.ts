@@ -12,13 +12,9 @@ export default function setup(): void {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const dbDir = path.resolve(here, '../../../packages/db');
 
-  execFileSync(
-    'pnpm',
-    ['exec', 'prisma', 'db', 'push', '--skip-generate', '--accept-data-loss'],
-    {
-      cwd: dbDir,
-      stdio: 'inherit',
-      env: process.env, // DATABASE_URL points at gira_scrumlord_test
-    },
-  );
+  execFileSync('pnpm', ['exec', 'prisma', 'db', 'push', '--skip-generate', '--accept-data-loss'], {
+    cwd: dbDir,
+    stdio: 'inherit',
+    env: process.env, // DATABASE_URL points at gira_scrumlord_test
+  });
 }

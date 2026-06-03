@@ -15,11 +15,11 @@ docker compose -f docker-compose.full.yml --profile seed up --build
 
 Then:
 
-| Service | URL | Notes |
-|---|---|---|
-| **Web app** | http://localhost:8080 | the SPA; nginx also proxies `/api` → api |
-| **Sauron audit** | http://localhost:666 | read-only audit log (the canonical port) |
-| **Mailpit** | http://localhost:8025 | catches magic-link emails in this demo |
+| Service          | URL                   | Notes                                    |
+| ---------------- | --------------------- | ---------------------------------------- |
+| **Web app**      | http://localhost:8080 | the SPA; nginx also proxies `/api` → api |
+| **Sauron audit** | http://localhost:666  | read-only audit log (the canonical port) |
+| **Mailpit**      | http://localhost:8025 | catches magic-link emails in this demo   |
 
 Log in: open the web app, enter an email. On a **fresh** database the first email
 becomes the admin; with the `seed` profile, log in as `boss@example.test`. The
@@ -46,7 +46,7 @@ magic link appears in Mailpit.
 3. **Timezone:** set `BILLING_TIMEZONE` (IANA, e.g. `Europe/Madrid`) so monthly
    maintenance rollups bucket worklogs by your local calendar month.
 4. **Webhooks:** keep `ALLOW_PRIVATE_WEBHOOKS=false` in production — the notifier
-   refuses outbound calls to private/loopback hosts and re-checks the *resolved*
+   refuses outbound calls to private/loopback hosts and re-checks the _resolved_
    IP (DNS-rebinding guard).
 5. **Email:** point `SMTP_HOST`/`SMTP_PORT`/`MAIL_FROM` at a real mail server
    (drop the `mailpit` service).

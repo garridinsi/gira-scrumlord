@@ -42,7 +42,8 @@ export async function requestEmailChange(
       where: { userId: user.id, createdAt: { gt: new Date(Date.now() - cooldownMs) } },
       select: { id: true },
     });
-    if (recent) throw tooManyRequests('please wait a moment before requesting another email-change link');
+    if (recent)
+      throw tooManyRequests('please wait a moment before requesting another email-change link');
   }
 
   // Single outstanding change request per user: drop any prior unconsumed tokens.

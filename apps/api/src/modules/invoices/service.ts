@@ -137,7 +137,11 @@ export async function generateInvoice(
   if (input.periodEnd) {
     // Date.UTC handles month/year rollover (day+1 = 32 → the 1st of next month).
     const dayAfter = new Date(
-      Date.UTC(input.periodEnd.getUTCFullYear(), input.periodEnd.getUTCMonth(), input.periodEnd.getUTCDate() + 1),
+      Date.UTC(
+        input.periodEnd.getUTCFullYear(),
+        input.periodEnd.getUTCMonth(),
+        input.periodEnd.getUTCDate() + 1,
+      ),
     );
     loggedAt.lt = zonedDayStartUtc(dayAfter, config.BILLING_TIMEZONE);
   }
@@ -181,29 +185,30 @@ export async function generateInvoice(
     });
     const projectIds = [...new Set(issues.map((i) => i.projectId))];
 
-    const [issueRates, projectRates, clientRate, defaultRate, fixedAlreadyBilled] = await Promise.all([
-      tx.rate.findMany({ where: { issueId: { in: issueIds } } }),
-      tx.rate.findMany({ where: { projectId: { in: projectIds } } }),
-      tx.rate.findUnique({ where: { clientId } }),
-      tx.rate.findFirst({ where: { scope: 'default' } }),
-      // Fixed-price issues that ALREADY carry a fixed-price LINE (hourlyCents IS NULL) on a
-      // NON-VOID invoice. The "already charged" test MUST key off an actual charged line —
-      // never off worklog claims (the old, broken predicate): inferring it from worklogs
-      // loses the price when the invoice that charged it is voided (its hours free, but a
-      // *different* live invoice may still hold other hours of the same issue, so the
-      // re-charge is suppressed) and double-suppresses it when hours were billed hourly
-      // before the issue was switched to fixed. A voided invoice keeps its line but with
-      // status='void' (excluded here); a deleted draft cascades its lines away.
-      tx.invoiceLine.findMany({
-        where: {
-          issueId: { in: issueIds },
-          hourlyCents: null,
-          invoice: { status: { not: 'void' } },
-        },
-        select: { issueId: true },
-        distinct: ['issueId'],
-      }),
-    ]);
+    const [issueRates, projectRates, clientRate, defaultRate, fixedAlreadyBilled] =
+      await Promise.all([
+        tx.rate.findMany({ where: { issueId: { in: issueIds } } }),
+        tx.rate.findMany({ where: { projectId: { in: projectIds } } }),
+        tx.rate.findUnique({ where: { clientId } }),
+        tx.rate.findFirst({ where: { scope: 'default' } }),
+        // Fixed-price issues that ALREADY carry a fixed-price LINE (hourlyCents IS NULL) on a
+        // NON-VOID invoice. The "already charged" test MUST key off an actual charged line —
+        // never off worklog claims (the old, broken predicate): inferring it from worklogs
+        // loses the price when the invoice that charged it is voided (its hours free, but a
+        // *different* live invoice may still hold other hours of the same issue, so the
+        // re-charge is suppressed) and double-suppresses it when hours were billed hourly
+        // before the issue was switched to fixed. A voided invoice keeps its line but with
+        // status='void' (excluded here); a deleted draft cascades its lines away.
+        tx.invoiceLine.findMany({
+          where: {
+            issueId: { in: issueIds },
+            hourlyCents: null,
+            invoice: { status: { not: 'void' } },
+          },
+          select: { issueId: true },
+          distinct: ['issueId'],
+        }),
+      ]);
     const issueRateById = new Map(issueRates.map((r) => [r.issueId, r]));
     const projectRateById = new Map(projectRates.map((r) => [r.projectId, r]));
     const alreadyBilled = new Set(

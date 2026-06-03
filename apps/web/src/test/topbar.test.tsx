@@ -4,7 +4,10 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from './render';
 
-const { projectsList, incidentsList } = vi.hoisted(() => ({ projectsList: vi.fn(), incidentsList: vi.fn() }));
+const { projectsList, incidentsList } = vi.hoisted(() => ({
+  projectsList: vi.fn(),
+  incidentsList: vi.fn(),
+}));
 vi.mock('../api/client', () => ({
   projects: { list: () => projectsList() },
   incidents: { list: (f?: string) => incidentsList(f) },

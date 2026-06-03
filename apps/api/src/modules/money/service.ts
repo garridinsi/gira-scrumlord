@@ -162,14 +162,19 @@ export async function computeProjectMonthly(
   if (!project) throw notFound('project not found');
 
   const [issues, projectRate, clientRate, defaultRate] = await Promise.all([
-    prisma.issue.findMany({ where: { projectId: project.id }, select: { id: true, billingMode: true } }),
+    prisma.issue.findMany({
+      where: { projectId: project.id },
+      select: { id: true, billingMode: true },
+    }),
     prisma.rate.findUnique({ where: { projectId: project.id } }),
     project.clientId
       ? prisma.rate.findUnique({ where: { clientId: project.clientId } })
       : Promise.resolve(null),
     prisma.rate.findFirst({ where: { scope: 'default' } }),
   ]);
-  const issueRates = await prisma.rate.findMany({ where: { issueId: { in: issues.map((i) => i.id) } } });
+  const issueRates = await prisma.rate.findMany({
+    where: { issueId: { in: issues.map((i) => i.id) } },
+  });
   const issueRateById = new Map(issueRates.map((r) => [r.issueId, r]));
   const billingModeById = new Map(issues.map((i) => [i.id, i.billingMode]));
   const rateFor = (issueId: string) =>
@@ -204,7 +209,10 @@ export async function computeProjectMonthly(
     if (w.billable) {
       b.billableMinutes += w.minutes;
       if ((billingModeById.get(w.issueId) ?? 'hourly') === 'hourly') {
-        b.hourlyMinutesByIssue.set(w.issueId, (b.hourlyMinutesByIssue.get(w.issueId) ?? 0) + w.minutes);
+        b.hourlyMinutesByIssue.set(
+          w.issueId,
+          (b.hourlyMinutesByIssue.get(w.issueId) ?? 0) + w.minutes,
+        );
       }
     }
     buckets.set(month, b);
@@ -217,7 +225,11 @@ export async function computeProjectMonthly(
       let accrued = 0;
       for (const [issueId, mins] of b.hourlyMinutesByIssue) {
         const r = rateFor(issueId);
-        accrued += accruedCents({ billingMode: 'hourly', billableMinutes: mins, hourlyCents: r?.hourlyCents ?? null });
+        accrued += accruedCents({
+          billingMode: 'hourly',
+          billableMinutes: mins,
+          hourlyCents: r?.hourlyCents ?? null,
+        });
       }
       return {
         month,

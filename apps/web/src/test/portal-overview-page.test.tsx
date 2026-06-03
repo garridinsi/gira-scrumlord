@@ -9,9 +9,24 @@ vi.mock('../api/client', () => ({ portal: { overview: () => overview() } }));
 import { PortalOverviewPage } from '../pages/portal/PortalOverviewPage';
 
 const data = (over: Record<string, unknown> = {}) => ({
-  totals: { open: 3, inProgress: 2, done: 5, totalMinutes: 120, accruedCents: 10000, currency: 'EUR' },
+  totals: {
+    open: 3,
+    inProgress: 2,
+    done: 5,
+    totalMinutes: 120,
+    accruedCents: 10000,
+    currency: 'EUR',
+  },
   projects: [
-    { key: 'ALFA', name: 'Project Alfa', open: 1, inProgress: 1, done: 1, totalMinutes: 60, accruedCents: 5000 },
+    {
+      key: 'ALFA',
+      name: 'Project Alfa',
+      open: 1,
+      inProgress: 1,
+      done: 1,
+      totalMinutes: 60,
+      accruedCents: 5000,
+    },
   ],
   client: { name: 'Acme Corp', currency: 'EUR' },
   ...over,

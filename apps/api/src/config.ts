@@ -61,7 +61,10 @@ const parsed = envSchema.parse(process.env);
 // with this marker and satisfy the 16-char minimum, so without this guard a
 // production deploy that forgets to set SESSION_SECRET would sign session cookies
 // with a publicly-known key. Match the marker, not an exact string.
-if (parsed.NODE_ENV === 'production' && parsed.SESSION_SECRET.startsWith('dev-only-insecure-change-me')) {
+if (
+  parsed.NODE_ENV === 'production' &&
+  parsed.SESSION_SECRET.startsWith('dev-only-insecure-change-me')
+) {
   throw new Error(
     'SESSION_SECRET is still an insecure default — set a strong unique secret before deploying to production.',
   );

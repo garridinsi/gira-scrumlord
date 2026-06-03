@@ -37,7 +37,10 @@ export async function contractRoutes(app: FastifyInstance): Promise<void> {
   app.post('/contracts', adminOnly, async (req, reply) => {
     const user = currentUser(req);
     const data = createContractSchema.parse(req.body);
-    const client = await prisma.client.findUnique({ where: { id: data.clientId }, select: { id: true } });
+    const client = await prisma.client.findUnique({
+      where: { id: data.clientId },
+      select: { id: true },
+    });
     if (!client) throw notFound('client not found');
     const contract = await prisma.$transaction(async (tx) => {
       const c = await tx.contract.create({

@@ -22,9 +22,17 @@ vi.mock('../api/client', () => ({
     update: vi.fn(),
     move: vi.fn(),
     comments: { list: (k: string) => h.commentsList(k), create: vi.fn() },
-    worklogs: { list: (k: string) => h.worklogsList(k), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    worklogs: {
+      list: (k: string) => h.worklogsList(k),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
   },
-  projects: { statuses: { list: (k: string) => h.statusesList(k) }, labels: { list: (k: string) => h.labelsList(k) } },
+  projects: {
+    statuses: { list: (k: string) => h.statusesList(k) },
+    labels: { list: (k: string) => h.labelsList(k) },
+  },
   users: { list: () => h.usersList() },
   audit: { list: () => h.auditList() },
   ApiError: class ApiError extends Error {},
@@ -67,10 +75,19 @@ const issue = (over: Partial<IssueView>): IssueView =>
 describe('IssueDetailPage', () => {
   beforeEach(() => {
     h.get.mockReset();
-    h.cost.mockReset().mockResolvedValue({ minutes: 0, billableMinutes: 0, hourlyCents: 6000, accruedCents: 0, currency: 'EUR', billingMode: 'hourly' });
+    h.cost.mockReset().mockResolvedValue({
+      minutes: 0,
+      billableMinutes: 0,
+      hourlyCents: 6000,
+      accruedCents: 0,
+      currency: 'EUR',
+      billingMode: 'hourly',
+    });
     h.commentsList.mockReset().mockResolvedValue([]);
     h.worklogsList.mockReset().mockResolvedValue([]);
-    h.statusesList.mockReset().mockResolvedValue([{ id: 's1', name: 'Backlog', category: 'todo', order: 0 }]);
+    h.statusesList
+      .mockReset()
+      .mockResolvedValue([{ id: 's1', name: 'Backlog', category: 'todo', order: 0 }]);
     h.labelsList.mockReset().mockResolvedValue([]);
     h.usersList.mockReset().mockResolvedValue([]);
     h.auditList.mockReset().mockResolvedValue({ count: 0, entries: [] });

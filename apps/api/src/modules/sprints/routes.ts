@@ -171,7 +171,11 @@ export async function sprintRoutes(app: FastifyInstance): Promise<void> {
       });
       const s = await tx.sprint.update({
         where: { id },
-        data: { state: 'closed', completedPoints: v.completedPoints, endDate: sprint.endDate ?? new Date() },
+        data: {
+          state: 'closed',
+          completedPoints: v.completedPoints,
+          endDate: sprint.endDate ?? new Date(),
+        },
       });
       await recordAudit(tx, {
         actorId: user.id,

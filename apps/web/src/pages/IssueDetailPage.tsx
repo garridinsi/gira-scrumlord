@@ -46,7 +46,14 @@ export function IssueDetailPage() {
         <div className="gs-state">
           <div>
             <Plate tone="red">404 · NO ENCONTRADO</Plate>
-            <p style={{ marginTop: 12, color: 'var(--eg-fg-2)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+            <p
+              style={{
+                marginTop: 12,
+                color: 'var(--eg-fg-2)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+              }}
+            >
               Ticket no encontrado · Issue not found: {issueKey}
             </p>
           </div>
@@ -74,11 +81,7 @@ export function IssueDetailPage() {
       />
 
       {issueKey && projectKey && (
-        <IssueDrawer
-          issueKey={issueKey}
-          projectKey={projectKey}
-          onClose={handleClose}
-        />
+        <IssueDrawer issueKey={issueKey} projectKey={projectKey} onClose={handleClose} />
       )}
     </div>
   );

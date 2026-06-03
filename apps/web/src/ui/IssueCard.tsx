@@ -87,7 +87,12 @@ export function IssueCard({
               className="chip"
               title={`severidad · severity: ${issue.severity}`}
               style={{
-                background: issue.severity === 'critical' ? 'var(--eg-red)' : issue.severity === 'major' ? 'var(--eg-yellow)' : 'var(--eg-paper-3)',
+                background:
+                  issue.severity === 'critical'
+                    ? 'var(--eg-red)'
+                    : issue.severity === 'major'
+                      ? 'var(--eg-yellow)'
+                      : 'var(--eg-paper-3)',
                 color: issue.severity === 'critical' ? 'var(--eg-paper)' : 'var(--eg-iron)',
                 borderColor: 'var(--eg-iron)',
               }}
@@ -99,7 +104,11 @@ export function IssueCard({
             <span
               className="chip"
               title={issue.blockedReason}
-              style={{ background: 'var(--eg-red)', color: 'var(--eg-paper)', borderColor: 'var(--eg-iron)' }}
+              style={{
+                background: 'var(--eg-red)',
+                color: 'var(--eg-paper)',
+                borderColor: 'var(--eg-iron)',
+              }}
             >
               ⛔ BLOQUEADO · BLOCKED
             </span>
@@ -108,7 +117,9 @@ export function IssueCard({
             <LabelChip key={l.id} label={l} />
           ))}
           {isFixed && issue.fixedPriceCents != null && (
-            <span className="chip chip--ink">fixed · {formatMoney(issue.fixedPriceCents, 'EUR')}</span>
+            <span className="chip chip--ink">
+              fixed · {formatMoney(issue.fixedPriceCents, 'EUR')}
+            </span>
           )}
         </div>
 
@@ -175,7 +186,8 @@ export function IssueCard({
                 }}
                 title={`Vencimiento · Due: ${formatDate(issue.dueAt!)}`}
               >
-                {isOverdue ? '!!' : ''}{formatDate(issue.dueAt!)}
+                {isOverdue ? '!!' : ''}
+                {formatDate(issue.dueAt!)}
               </span>
             )}
           </div>

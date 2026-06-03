@@ -4,3 +4,4 @@ build
 coverage
 packages/db/generated
 pnpm-lock.yaml
+.remember

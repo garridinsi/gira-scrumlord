@@ -76,16 +76,31 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div style={{ padding: '10px 14px' }}>
               <div
                 className="mono"
-                style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: 'var(--eg-yellow)', textTransform: 'uppercase' }}
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  color: 'var(--eg-yellow)',
+                  textTransform: 'uppercase',
+                }}
               >
                 // {t.title}
               </div>
-              {t.body && <div style={{ fontSize: 12, color: 'var(--eg-paper)', marginTop: 3 }}>{t.body}</div>}
+              {t.body && (
+                <div style={{ fontSize: 12, color: 'var(--eg-paper)', marginTop: 3 }}>{t.body}</div>
+              )}
             </div>
             <button
               type="button"
               onClick={() => remove(t.id)}
-              style={{ background: 'transparent', border: 0, color: 'var(--eg-fg-5)', fontFamily: 'var(--font-mono)', cursor: 'pointer', padding: '10px 12px' }}
+              style={{
+                background: 'transparent',
+                border: 0,
+                color: 'var(--eg-fg-5)',
+                fontFamily: 'var(--font-mono)',
+                cursor: 'pointer',
+                padding: '10px 12px',
+              }}
               aria-label="cerrar"
             >
               ✕

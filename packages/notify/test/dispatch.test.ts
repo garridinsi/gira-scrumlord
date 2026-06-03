@@ -13,10 +13,19 @@ describe('dispatch', () => {
   it('matches an emergency channel, opens one incident (deduped), and delivers', async () => {
     await makeIssue('T-1', 'T');
     await prisma.notificationChannel.create({
-      data: { name: 'oncall email', kind: 'email', target: 'oncall@example.test', scope: 'global', events: ['issue.emergency'] },
+      data: {
+        name: 'oncall email',
+        kind: 'email',
+        target: 'oncall@example.test',
+        scope: 'global',
+        events: ['issue.emergency'],
+      },
     });
 
-    const ev = { type: 'issue.emergency', payload: { issueKey: 'T-1', projectKey: 'T', title: 'PROD DOWN' } };
+    const ev = {
+      type: 'issue.emergency',
+      payload: { issueKey: 'T-1', projectKey: 'T', title: 'PROD DOWN' },
+    };
     const first = await dispatchEvent(ev);
     expect(first.channelsMatched).toBe(1);
     expect(first.delivered).toBe(1);
@@ -32,9 +41,18 @@ describe('dispatch', () => {
   it('does not match channels subscribed to other event types', async () => {
     await makeIssue('T-1', 'T');
     await prisma.notificationChannel.create({
-      data: { name: 'assignments', kind: 'email', target: 'a@example.test', scope: 'global', events: ['issue.assigned'] },
+      data: {
+        name: 'assignments',
+        kind: 'email',
+        target: 'a@example.test',
+        scope: 'global',
+        events: ['issue.assigned'],
+      },
     });
-    const res = await dispatchEvent({ type: 'issue.emergency', payload: { issueKey: 'T-1', projectKey: 'T' } });
+    const res = await dispatchEvent({
+      type: 'issue.emergency',
+      payload: { issueKey: 'T-1', projectKey: 'T' },
+    });
     expect(res.channelsMatched).toBe(0);
   });
 
@@ -42,9 +60,19 @@ describe('dispatch', () => {
     await makeIssue('T-1', 'T');
     const other = await prisma.project.create({ data: { key: 'OTHER', name: 'Other' } });
     await prisma.notificationChannel.create({
-      data: { name: 'other only', kind: 'email', target: 'x@example.test', scope: 'project', projectId: other.id, events: ['issue.emergency'] },
+      data: {
+        name: 'other only',
+        kind: 'email',
+        target: 'x@example.test',
+        scope: 'project',
+        projectId: other.id,
+        events: ['issue.emergency'],
+      },
     });
-    const res = await dispatchEvent({ type: 'issue.emergency', payload: { issueKey: 'T-1', projectKey: 'T' } });
+    const res = await dispatchEvent({
+      type: 'issue.emergency',
+      payload: { issueKey: 'T-1', projectKey: 'T' },
+    });
     expect(res.channelsMatched).toBe(0);
   });
 
@@ -72,26 +100,50 @@ describe('dispatch', () => {
     it('POSTs the payload to a webhook channel', async () => {
       await makeIssue('T-1', 'T');
       await prisma.notificationChannel.create({
-        data: { name: 'hook', kind: 'webhook', target: url, scope: 'global', events: ['issue.emergency'] },
+        data: {
+          name: 'hook',
+          kind: 'webhook',
+          target: url,
+          scope: 'global',
+          events: ['issue.emergency'],
+        },
       });
-      const res = await dispatchEvent({ type: 'issue.emergency', payload: { issueKey: 'T-1', projectKey: 'T', title: 'down' } });
+      const res = await dispatchEvent({
+        type: 'issue.emergency',
+        payload: { issueKey: 'T-1', projectKey: 'T', title: 'down' },
+      });
       expect(res.delivered).toBe(1);
       expect(received).not.toBeNull();
-      expect(JSON.parse(received!.body)).toMatchObject({ type: 'issue.emergency', issueKey: 'T-1' });
+      expect(JSON.parse(received!.body)).toMatchObject({
+        type: 'issue.emergency',
+        issueKey: 'T-1',
+      });
     });
   });
 
   describe('per-user notifications', () => {
     it('emails the assignee on assignment, but not when they assigned themselves', async () => {
       const { issue } = await makeIssue('T-9', 'T9');
-      const assignee = await prisma.user.create({ data: { email: 'dev@example.test', name: 'Dev' } });
+      const assignee = await prisma.user.create({
+        data: { email: 'dev@example.test', name: 'Dev' },
+      });
       await prisma.issue.update({ where: { id: issue.id }, data: { assigneeId: assignee.id } });
 
-      const payload = { issueKey: 'T-9', assigneeId: assignee.id, title: 'PROD DOWN', actorId: 'someone-else' };
+      const payload = {
+        issueKey: 'T-9',
+        assigneeId: assignee.id,
+        title: 'PROD DOWN',
+        actorId: 'someone-else',
+      };
       expect((await dispatchEvent({ type: 'issue.assigned', payload })).userEmails).toBe(1);
       // self-assignment → no email to yourself
       expect(
-        (await dispatchEvent({ type: 'issue.assigned', payload: { ...payload, actorId: assignee.id } })).userEmails,
+        (
+          await dispatchEvent({
+            type: 'issue.assigned',
+            payload: { ...payload, actorId: assignee.id },
+          })
+        ).userEmails,
       ).toBe(0);
       // inactive assignee → skipped
       await prisma.user.update({ where: { id: assignee.id }, data: { isActive: false } });
@@ -104,7 +156,12 @@ describe('dispatch', () => {
       expect((await dispatchEvent({ type: 'issue.status_changed', payload })).userEmails).toBe(1);
       // the reporter made the change → no self-email
       expect(
-        (await dispatchEvent({ type: 'issue.status_changed', payload: { ...payload, actorId: user.id } })).userEmails,
+        (
+          await dispatchEvent({
+            type: 'issue.status_changed',
+            payload: { ...payload, actorId: user.id },
+          })
+        ).userEmails,
       ).toBe(0);
     });
   });

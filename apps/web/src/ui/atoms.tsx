@@ -93,7 +93,12 @@ export function EyeGlyph({ size = 14 }: { size?: number }) {
       style={{ display: 'inline-block', verticalAlign: 'middle' }}
       aria-hidden
     >
-      <path d="M 1 5 Q 7 0.5 13 5 Q 7 9.5 1 5 Z" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <path
+        d="M 1 5 Q 7 0.5 13 5 Q 7 9.5 1 5 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+      />
       <ellipse cx="7" cy="5" rx="1.6" ry="2.6" fill="currentColor" />
     </svg>
   );
@@ -191,7 +196,11 @@ export function Avatar({
   const display = user?.name ?? name ?? '';
   const hue = hueFor(seed ?? user?.id ?? display);
   return (
-    <span className={'avatar avatar--' + hue + (lg ? ' avatar--lg' : '')} style={style} title={display}>
+    <span
+      className={'avatar avatar--' + hue + (lg ? ' avatar--lg' : '')}
+      style={style}
+      title={display}
+    >
       {initialsOf(display)}
     </span>
   );

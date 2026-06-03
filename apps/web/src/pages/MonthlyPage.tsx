@@ -26,8 +26,18 @@ function exportMonthlyCsv(key: string, data: ProjectMonthlyView): void {
 
 // ── Month label: 'YYYY-MM' → 'MAYO 2026' ─────────────────────────────────────
 const MONTH_NAMES_ES = [
-  'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
-  'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE',
+  'ENERO',
+  'FEBRERO',
+  'MARZO',
+  'ABRIL',
+  'MAYO',
+  'JUNIO',
+  'JULIO',
+  'AGOSTO',
+  'SEPTIEMBRE',
+  'OCTUBRE',
+  'NOVIEMBRE',
+  'DICIEMBRE',
 ] as const;
 
 function formatMonthLabel(ym: string): string {
@@ -49,30 +59,25 @@ function lastDayOf(ym: string): string {
 }
 
 // ── Budget progress bar ───────────────────────────────────────────────────────
-function BudgetBar({
-  spent,
-  cap,
-  label,
-}: {
-  spent: number;
-  cap: number;
-  label: string;
-}) {
+function BudgetBar({ spent, cap, label }: { spent: number; cap: number; label: string }) {
   const pct = cap > 0 ? Math.min(Math.round((spent / cap) * 100), 999) : 0;
   const isOver = spent > cap;
   const isWarn = !isOver && pct >= 80;
 
-  const barColor = isOver
-    ? 'var(--eg-red)'
-    : isWarn
-      ? 'var(--eg-yellow)'
-      : 'var(--eg-iron)';
+  const barColor = isOver ? 'var(--eg-red)' : isWarn ? 'var(--eg-yellow)' : 'var(--eg-iron)';
 
   const barWidth = Math.min(pct, 100);
 
   return (
     <div style={{ marginTop: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 3,
+        }}
+      >
         <span
           className="mono"
           style={{
@@ -121,7 +126,8 @@ function BudgetBar({
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'repeating-linear-gradient(45deg, var(--eg-red) 0px, var(--eg-red) 3px, transparent 3px, transparent 6px)',
+              background:
+                'repeating-linear-gradient(45deg, var(--eg-red) 0px, var(--eg-red) 3px, transparent 3px, transparent 6px)',
               opacity: 0.35,
             }}
           />
@@ -212,21 +218,26 @@ function MonthRow({
       <div>
         <span
           className="disp"
-          style={{ fontSize: 16, color: 'var(--eg-iron)', fontWeight: 800, letterSpacing: '-0.01em' }}
+          style={{
+            fontSize: 16,
+            color: 'var(--eg-iron)',
+            fontWeight: 800,
+            letterSpacing: '-0.01em',
+          }}
         >
           {formatMonthLabel(row.month)}
         </span>
-        <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)', letterSpacing: '0.12em', marginTop: 2 }}>
+        <div
+          className="mono"
+          style={{ fontSize: 10, color: 'var(--eg-fg-4)', letterSpacing: '0.12em', marginTop: 2 }}
+        >
           {row.month}
         </div>
       </div>
 
       {/* Time */}
       <div>
-        <span
-          className="mono"
-          style={{ fontSize: 14, fontWeight: 700, color: 'var(--eg-iron)' }}
-        >
+        <span className="mono" style={{ fontSize: 14, fontWeight: 700, color: 'var(--eg-iron)' }}>
           {formatMinutes(row.billableMinutes)}
         </span>
         {showBillable && (
@@ -245,10 +256,7 @@ function MonthRow({
 
       {/* Cost */}
       <div>
-        <span
-          className="mono"
-          style={{ fontSize: 14, fontWeight: 700, color: 'var(--eg-iron)' }}
-        >
+        <span className="mono" style={{ fontSize: 14, fontWeight: 700, color: 'var(--eg-iron)' }}>
           {formatMoney(row.accruedCents, currency)}
         </span>
         {budgetCents != null && (
@@ -274,7 +282,12 @@ function MonthRow({
         ) : !clientId ? (
           <span
             className="mono"
-            style={{ fontSize: 10, color: 'var(--eg-fg-4)', letterSpacing: '0.1em', fontStyle: 'italic' }}
+            style={{
+              fontSize: 10,
+              color: 'var(--eg-fg-4)',
+              letterSpacing: '0.1em',
+              fontStyle: 'italic',
+            }}
           >
             asigna un cliente para facturar · assign a client to invoice
           </span>
@@ -360,9 +373,15 @@ export function MonthlyPage() {
           </span>
           <span
             className="mono"
-            style={{ fontSize: 10, color: 'var(--eg-fg-5)', letterSpacing: '0.12em', marginLeft: 8 }}
+            style={{
+              fontSize: 10,
+              color: 'var(--eg-fg-5)',
+              letterSpacing: '0.12em',
+              marginLeft: 8,
+            }}
           >
-            TIEMPO Y COSTE POR MES · TIME &amp; COST PER MONTH · {data.months.length} MESES · {data.currency}
+            TIEMPO Y COSTE POR MES · TIME &amp; COST PER MONTH · {data.months.length} MESES ·{' '}
+            {data.currency}
           </span>
           {hasBudget && (
             <span
@@ -375,8 +394,7 @@ export function MonthlyPage() {
                 fontWeight: 700,
               }}
             >
-              CAP:{' '}
-              {budgetMinutes != null ? formatMinutes(budgetMinutes) : '—'}
+              CAP: {budgetMinutes != null ? formatMinutes(budgetMinutes) : '—'}
               {' / '}
               {budgetCents != null ? formatMoney(budgetCents, data.currency) : '—'}
             </span>
@@ -392,54 +410,61 @@ export function MonthlyPage() {
 
         {/* Column headings */}
         <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '720px' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '200px 160px 160px 1fr',
-            gap: 18,
-            padding: '6px 18px',
-            background: 'var(--eg-paper-3)',
-            borderBottom: '1px solid var(--eg-iron)',
-          }}
-        >
-          {['MES · MONTH', 'TIEMPO FACTURABLE · BILLABLE TIME', 'COSTE · COST', 'ACCIÓN · ACTION'].map((h) => (
-            <span key={h} className="caps">{h}</span>
-          ))}
-        </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '200px 160px 160px 1fr',
+              gap: 18,
+              padding: '6px 18px',
+              background: 'var(--eg-paper-3)',
+              borderBottom: '1px solid var(--eg-iron)',
+            }}
+          >
+            {[
+              'MES · MONTH',
+              'TIEMPO FACTURABLE · BILLABLE TIME',
+              'COSTE · COST',
+              'ACCIÓN · ACTION',
+            ].map((h) => (
+              <span key={h} className="caps">
+                {h}
+              </span>
+            ))}
+          </div>
 
-        {/* Rows */}
-        {data.months.length === 0 ? (
-          <div className="gs-state">
-            <div>
-              <Plate tone="yellow">SIN REGISTROS</Plate>
-              <div
-                className="mono"
-                style={{
-                  fontSize: 11,
-                  color: 'var(--eg-fg-3)',
-                  letterSpacing: '0.14em',
-                  marginTop: 12,
-                  textTransform: 'uppercase',
-                }}
-              >
-                sin tiempo registrado todavía · no time logged yet
+          {/* Rows */}
+          {data.months.length === 0 ? (
+            <div className="gs-state">
+              <div>
+                <Plate tone="yellow">SIN REGISTROS</Plate>
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--eg-fg-3)',
+                    letterSpacing: '0.14em',
+                    marginTop: 12,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  sin tiempo registrado todavía · no time logged yet
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          data.months.map((row, i) => (
-            <MonthRow
-              key={row.month}
-              row={row}
-              currency={data.currency}
-              clientId={clientId}
-              canInvoice={canInvoice}
-              odd={i % 2 === 1}
-              budgetMinutes={budgetMinutes}
-              budgetCents={budgetCents}
-            />
-          ))
-        )}
+          ) : (
+            data.months.map((row, i) => (
+              <MonthRow
+                key={row.month}
+                row={row}
+                currency={data.currency}
+                clientId={clientId}
+                canInvoice={canInvoice}
+                odd={i % 2 === 1}
+                budgetMinutes={budgetMinutes}
+                budgetCents={budgetCents}
+              />
+            ))
+          )}
         </div>
       </div>
     </div>

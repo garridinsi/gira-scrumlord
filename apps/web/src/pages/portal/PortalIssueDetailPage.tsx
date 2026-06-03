@@ -109,11 +109,7 @@ export function PortalIssueDetailPage() {
   return (
     <div className="cp-detail">
       {/* ── Back ──────────────────────────────────────── */}
-      <button
-        type="button"
-        className="cp-detail__back"
-        onClick={() => navigate('/portal/issues')}
-      >
+      <button type="button" className="cp-detail__back" onClick={() => navigate('/portal/issues')}>
         ← Volver · Back
       </button>
 
@@ -124,9 +120,7 @@ export function PortalIssueDetailPage() {
           <TypeChip type={issue.type} />
           <PriorityChip priority={issue.priority} />
           {issue.statusName && (
-            <span className={statusClass(issue.statusCategory)}>
-              {issue.statusName}
-            </span>
+            <span className={statusClass(issue.statusCategory)}>{issue.statusName}</span>
           )}
           {issue.labels.map((l) => (
             <LabelChip key={l.id} label={l} />
@@ -141,9 +135,7 @@ export function PortalIssueDetailPage() {
         <div>
           {/* Description */}
           <div className="cp-detail__desc">
-            <div className="cp-detail__desc-head">
-              Descripción · Description
-            </div>
+            <div className="cp-detail__desc-head">Descripción · Description</div>
             {issue.description ? (
               <pre className="cp-detail__desc-text">{issue.description}</pre>
             ) : (
@@ -164,9 +156,7 @@ export function PortalIssueDetailPage() {
           {/* Cost box */}
           {(cost || costQ.isLoading) && (
             <div className="cp-cost-box" style={{ marginBottom: 32 }}>
-              <div className="cp-cost-box__head">
-                Tiempo y coste · Time &amp; cost
-              </div>
+              <div className="cp-cost-box__head">Tiempo y coste · Time &amp; cost</div>
               {costQ.isLoading ? (
                 <span className="gs-loading">cargando · loading</span>
               ) : cost ? (
@@ -177,9 +167,7 @@ export function PortalIssueDetailPage() {
                   </div>
                   <div className="cp-cost-row">
                     <span className="cp-cost-row__key">Tiempo facturable · Billable time</span>
-                    <span className="cp-cost-row__val">
-                      {formatMinutes(cost.billableMinutes)}
-                    </span>
+                    <span className="cp-cost-row__val">{formatMinutes(cost.billableMinutes)}</span>
                   </div>
                   <div className="cp-cost-row cp-cost-row--total">
                     <span className="cp-cost-row__key">Devengado · Accrued</span>
@@ -213,9 +201,7 @@ export function PortalIssueDetailPage() {
               )}
             </div>
 
-            {commentsQ.isLoading && (
-              <span className="gs-loading">cargando · loading</span>
-            )}
+            {commentsQ.isLoading && <span className="gs-loading">cargando · loading</span>}
 
             {!commentsQ.isLoading && comments.length === 0 && (
               <p
@@ -241,9 +227,7 @@ export function PortalIssueDetailPage() {
                       <span className="cp-comment__author">{c.author.name}</span>
                     </>
                   )}
-                  <span style={{ marginLeft: 'auto' }}>
-                    {formatRelativeTime(c.createdAt)}
-                  </span>
+                  <span style={{ marginLeft: 'auto' }}>{formatRelativeTime(c.createdAt)}</span>
                 </div>
                 <div className="cp-comment__body">{c.body}</div>
               </div>
@@ -260,9 +244,7 @@ export function PortalIssueDetailPage() {
               }}
             >
               <div className="cp-field">
-                <label htmlFor="cp-comment-input">
-                  Añadir comentario · Add comment
-                </label>
+                <label htmlFor="cp-comment-input">Añadir comentario · Add comment</label>
                 <textarea
                   id="cp-comment-input"
                   value={commentBody}
@@ -277,9 +259,7 @@ export function PortalIssueDetailPage() {
                 className="b-btn b-btn--ink"
                 disabled={addComment.isPending || !commentBody.trim()}
               >
-                {addComment.isPending
-                  ? 'Enviando · Sending…'
-                  : 'Enviar · Submit'}
+                {addComment.isPending ? 'Enviando · Sending…' : 'Enviar · Submit'}
               </button>
             </form>
           </div>
@@ -331,18 +311,14 @@ export function PortalIssueDetailPage() {
           {issue.storyPoints != null && (
             <div className="cp-detail__field">
               <span className="cp-detail__field-label">Puntos · Points</span>
-              <span className="cp-detail__field-val">
-                {issue.storyPoints} pts
-              </span>
+              <span className="cp-detail__field-val">{issue.storyPoints} pts</span>
             </div>
           )}
 
           {issue.estimateMinutes != null && issue.estimateMinutes > 0 && (
             <div className="cp-detail__field">
               <span className="cp-detail__field-label">Estimación · Estimate</span>
-              <span className="cp-detail__field-val">
-                {formatMinutes(issue.estimateMinutes)}
-              </span>
+              <span className="cp-detail__field-val">{formatMinutes(issue.estimateMinutes)}</span>
             </div>
           )}
 

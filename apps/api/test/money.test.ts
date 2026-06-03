@@ -42,7 +42,11 @@ describe('money: rates + accrued cost', () => {
 
     // default rate: 90min @ 5000/h = 7500
     let cost = await app.inject({ method: 'GET', url: '/issues/GIRA-1/cost', headers: { cookie } });
-    expect(cost.json()).toMatchObject({ billableMinutes: 90, hourlyCents: 5000, accruedCents: 7500 });
+    expect(cost.json()).toMatchObject({
+      billableMinutes: 90,
+      hourlyCents: 5000,
+      accruedCents: 7500,
+    });
 
     // issue-level rate wins: 90min @ 12000/h = 18000
     await setRate(cookie, { scope: 'issue', issueId, hourlyCents: 12000 });
@@ -66,7 +70,11 @@ describe('money: rates + accrued cost', () => {
       headers: { cookie },
       payload: { minutes: 600, billable: true },
     });
-    const cost = await app.inject({ method: 'GET', url: '/issues/GIRA-1/cost', headers: { cookie } });
+    const cost = await app.inject({
+      method: 'GET',
+      url: '/issues/GIRA-1/cost',
+      headers: { cookie },
+    });
     expect(cost.json()).toMatchObject({ billingMode: 'fixed', accruedCents: 25000 });
   });
 
@@ -75,8 +83,18 @@ describe('money: rates + accrued cost', () => {
     const { projectKey } = await seedProject({ reporterId: user.id });
     await setRate(cookie, { scope: 'default', hourlyCents: 5000 });
 
-    await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey, title: 'Hourly' } });
-    await app.inject({ method: 'POST', url: '/issues/GIRA-1/worklogs', headers: { cookie }, payload: { minutes: 120, billable: true } });
+    await app.inject({
+      method: 'POST',
+      url: '/issues',
+      headers: { cookie },
+      payload: { projectKey, title: 'Hourly' },
+    });
+    await app.inject({
+      method: 'POST',
+      url: '/issues/GIRA-1/worklogs',
+      headers: { cookie },
+      payload: { minutes: 120, billable: true },
+    });
     await app.inject({
       method: 'POST',
       url: '/issues',
@@ -84,7 +102,11 @@ describe('money: rates + accrued cost', () => {
       payload: { projectKey, title: 'Fixed', billingMode: 'fixed', fixedPriceCents: 25000 },
     });
 
-    const summary = await app.inject({ method: 'GET', url: `/projects/${projectKey}/summary`, headers: { cookie } });
+    const summary = await app.inject({
+      method: 'GET',
+      url: `/projects/${projectKey}/summary`,
+      headers: { cookie },
+    });
     const body = summary.json();
     expect(body.totalMinutes).toBe(120);
     expect(body.billableMinutes).toBe(120);
@@ -96,7 +118,9 @@ describe('money: rates + accrued cost', () => {
 
   it('upserts project- and client-scoped rates and deletes one (audited, 404 when gone)', async () => {
     const admin = await actingAs({ role: 'admin' });
-    const client = await prisma.client.create({ data: { name: 'Acme', slug: 'acme', currency: 'EUR' } });
+    const client = await prisma.client.create({
+      data: { name: 'Acme', slug: 'acme', currency: 'EUR' },
+    });
     const projRes = await app.inject({
       method: 'POST',
       url: '/projects',
@@ -106,19 +130,46 @@ describe('money: rates + accrued cost', () => {
     const project = await prisma.project.findUnique({ where: { key: 'RTE' } });
     expect(projRes.statusCode).toBe(201);
 
-    const clientRate = await setRate(admin.cookie, { scope: 'client', clientId: client.id, hourlyCents: 8000, currency: 'EUR' });
+    const clientRate = await setRate(admin.cookie, {
+      scope: 'client',
+      clientId: client.id,
+      hourlyCents: 8000,
+      currency: 'EUR',
+    });
     expect(clientRate.statusCode).toBe(201);
-    const projectRate = await setRate(admin.cookie, { scope: 'project', projectId: project!.id, hourlyCents: 7000, currency: 'EUR' });
+    const projectRate = await setRate(admin.cookie, {
+      scope: 'project',
+      projectId: project!.id,
+      hourlyCents: 7000,
+      currency: 'EUR',
+    });
     expect(projectRate.statusCode).toBe(201);
 
     // Re-upserting the same scope updates rather than duplicating.
-    const again = await setRate(admin.cookie, { scope: 'project', projectId: project!.id, hourlyCents: 7500, currency: 'EUR' });
+    const again = await setRate(admin.cookie, {
+      scope: 'project',
+      projectId: project!.id,
+      hourlyCents: 7500,
+      currency: 'EUR',
+    });
     expect(again.statusCode).toBe(201);
     expect(await prisma.rate.count({ where: { projectId: project!.id } })).toBe(1);
 
-    const del = await app.inject({ method: 'DELETE', url: `/rates/${projectRate.json().id}`, headers: { cookie: admin.cookie } });
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/rates/${projectRate.json().id}`,
+      headers: { cookie: admin.cookie },
+    });
     expect(del.statusCode).toBe(204);
-    expect((await app.inject({ method: 'DELETE', url: `/rates/${projectRate.json().id}`, headers: { cookie: admin.cookie } })).statusCode).toBe(404);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: `/rates/${projectRate.json().id}`,
+          headers: { cookie: admin.cookie },
+        })
+      ).statusCode,
+    ).toBe(404);
   });
 
   it('forbids client users from configuring rates', async () => {
@@ -132,16 +183,45 @@ describe('money: rates + accrued cost', () => {
     const { user, cookie } = await actingAs({ role: 'member' });
     const { projectKey } = await seedProject({ reporterId: user.id });
     await setRate(cookie, { scope: 'default', hourlyCents: 6000 }); // €60/h
-    const created = await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey, title: 'Maint' } });
+    const created = await app.inject({
+      method: 'POST',
+      url: '/issues',
+      headers: { cookie },
+      payload: { projectKey, title: 'Maint' },
+    });
     const issueId = created.json().id as string;
 
     // Two worklogs in different calendar months (loggedAt set directly).
-    await prisma.worklog.create({ data: { issueId, userId: user.id, minutes: 120, billable: true, loggedAt: new Date('2026-03-10T09:00:00Z') } });
-    await prisma.worklog.create({ data: { issueId, userId: user.id, minutes: 60, billable: true, loggedAt: new Date('2026-04-02T09:00:00Z') } });
+    await prisma.worklog.create({
+      data: {
+        issueId,
+        userId: user.id,
+        minutes: 120,
+        billable: true,
+        loggedAt: new Date('2026-03-10T09:00:00Z'),
+      },
+    });
+    await prisma.worklog.create({
+      data: {
+        issueId,
+        userId: user.id,
+        minutes: 60,
+        billable: true,
+        loggedAt: new Date('2026-04-02T09:00:00Z'),
+      },
+    });
 
-    const res = await app.inject({ method: 'GET', url: `/projects/${projectKey}/monthly`, headers: { cookie } });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/projects/${projectKey}/monthly`,
+      headers: { cookie },
+    });
     expect(res.statusCode).toBe(200);
-    const months = res.json().months as Array<{ month: string; billableMinutes: number; accruedCents: number }>;
+    const months = res.json().months as Array<{
+      month: string;
+      billableMinutes: number;
+      accruedCents: number;
+    }>;
     expect(months.map((m) => m.month)).toEqual(['2026-04', '2026-03']); // most recent first
     expect(months[0]).toMatchObject({ billableMinutes: 60, accruedCents: 6000 }); // 1h @ 60
     expect(months[1]).toMatchObject({ billableMinutes: 120, accruedCents: 12000 }); // 2h @ 60
@@ -153,21 +233,46 @@ describe('money: rates + accrued cost', () => {
     const { user, cookie } = await actingAs({ role: 'member' });
     const { projectKey } = await seedProject({ reporterId: user.id });
     await setRate(cookie, { scope: 'default', hourlyCents: 6000 });
-    const created = await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey, title: 'LateNight' } });
+    const created = await app.inject({
+      method: 'POST',
+      url: '/issues',
+      headers: { cookie },
+      payload: { projectKey, title: 'LateNight' },
+    });
     const issueId = created.json().id as string;
     await prisma.worklog.create({
-      data: { issueId, userId: user.id, minutes: 60, billable: true, loggedAt: new Date('2026-05-31T23:30:00+02:00') },
+      data: {
+        issueId,
+        userId: user.id,
+        minutes: 60,
+        billable: true,
+        loggedAt: new Date('2026-05-31T23:30:00+02:00'),
+      },
     });
-    const res = await app.inject({ method: 'GET', url: `/projects/${projectKey}/monthly`, headers: { cookie } });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/projects/${projectKey}/monthly`,
+      headers: { cookie },
+    });
     const months = res.json().months as Array<{ month: string }>;
     expect(months.map((m) => m.month)).toEqual(['2026-05']);
   });
 
   it('persists project cadence (sprints | monthly)', async () => {
     const { cookie } = await actingAs({ role: 'admin' });
-    const made = await app.inject({ method: 'POST', url: '/projects', headers: { cookie }, payload: { key: 'MNT', name: 'Maintenance', cadence: 'monthly' } });
+    const made = await app.inject({
+      method: 'POST',
+      url: '/projects',
+      headers: { cookie },
+      payload: { key: 'MNT', name: 'Maintenance', cadence: 'monthly' },
+    });
     expect(made.json().cadence).toBe('monthly');
-    const patched = await app.inject({ method: 'PATCH', url: '/projects/MNT', headers: { cookie }, payload: { cadence: 'sprints' } });
+    const patched = await app.inject({
+      method: 'PATCH',
+      url: '/projects/MNT',
+      headers: { cookie },
+      payload: { cadence: 'sprints' },
+    });
     expect(patched.json().cadence).toBe('sprints');
   });
 
@@ -177,14 +282,33 @@ describe('money: rates + accrued cost', () => {
       method: 'POST',
       url: '/projects',
       headers: { cookie },
-      payload: { key: 'RET', name: 'Retainer', cadence: 'monthly', monthlyBudgetMinutes: 2400, monthlyBudgetCents: 240000 },
+      payload: {
+        key: 'RET',
+        name: 'Retainer',
+        cadence: 'monthly',
+        monthlyBudgetMinutes: 2400,
+        monthlyBudgetCents: 240000,
+      },
     });
-    const res = await app.inject({ method: 'GET', url: '/projects/RET/monthly', headers: { cookie } });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/projects/RET/monthly',
+      headers: { cookie },
+    });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ budgetMinutes: 2400, budgetCents: 240000 });
 
     // Clearing the budget sticks.
-    await app.inject({ method: 'PATCH', url: '/projects/RET', headers: { cookie }, payload: { monthlyBudgetMinutes: null } });
-    expect((await app.inject({ method: 'GET', url: '/projects/RET/monthly', headers: { cookie } })).json().budgetMinutes).toBeNull();
+    await app.inject({
+      method: 'PATCH',
+      url: '/projects/RET',
+      headers: { cookie },
+      payload: { monthlyBudgetMinutes: null },
+    });
+    expect(
+      (
+        await app.inject({ method: 'GET', url: '/projects/RET/monthly', headers: { cookie } })
+      ).json().budgetMinutes,
+    ).toBeNull();
   });
 });

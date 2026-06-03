@@ -46,7 +46,16 @@ describe('InvoiceDetailPage', () => {
       createdAt: '2026-06-01T00:00:00Z',
       externalInvoiceRef: null,
       notes: null,
-      lines: [{ id: 'l1', issueKey: 'GIRA-1', description: 'work', minutes: 60, hourlyCents: 6000, amountCents: 6000 }],
+      lines: [
+        {
+          id: 'l1',
+          issueKey: 'GIRA-1',
+          description: 'work',
+          minutes: 60,
+          hourlyCents: 6000,
+          amountCents: 6000,
+        },
+      ],
     });
     renderAt('inv1');
     expect(await screen.findByText('ANX-2026-0001')).toBeInTheDocument();

@@ -41,7 +41,9 @@ function CreateIssueModal({
   const [title, setTitle] = useState('');
   const [statusId, setStatusId] = useState(defaultStatusId ?? '');
   const [type, setType] = useState<'task' | 'bug' | 'story' | 'epic'>('task');
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent' | 'emergency'>('medium');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent' | 'emergency'>(
+    'medium',
+  );
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -60,28 +62,46 @@ function CreateIssueModal({
       onClose();
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al crear · Create failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al crear · Create failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
   return (
     <div
       className="gs-scrim"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Crear ticket"
     >
-      <div style={{
-        margin: 'auto',
-        width: 480,
-        background: 'var(--eg-paper)',
-        border: '2px solid var(--eg-iron)',
-        boxShadow: '4px 4px 0 var(--eg-iron)',
-      }}>
-        <div className="tag-head" style={{ background: 'var(--eg-iron)', color: 'var(--eg-yellow)' }}>
+      <div
+        style={{
+          margin: 'auto',
+          width: 480,
+          background: 'var(--eg-paper)',
+          border: '2px solid var(--eg-iron)',
+          boxShadow: '4px 4px 0 var(--eg-iron)',
+        }}
+      >
+        <div
+          className="tag-head"
+          style={{ background: 'var(--eg-iron)', color: 'var(--eg-yellow)' }}
+        >
           <span>// nuevo ticket · new issue</span>
-          <button type="button" className="b-btn b-btn--ghost" onClick={onClose} style={{ color: 'var(--eg-yellow)', fontSize: 14 }}>✕</button>
+          <button
+            type="button"
+            className="b-btn b-btn--ghost"
+            onClick={onClose}
+            style={{ color: 'var(--eg-yellow)', fontSize: 14 }}
+          >
+            ✕
+          </button>
         </div>
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <input
@@ -90,37 +110,82 @@ function CreateIssueModal({
             placeholder="Título · Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && title.trim()) createMutation.mutate(); }}
-            style={{ padding: '8px 10px', border: '1.5px solid var(--eg-iron)', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em', background: 'var(--eg-paper)' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && title.trim()) createMutation.mutate();
+            }}
+            style={{
+              padding: '8px 10px',
+              border: '1.5px solid var(--eg-iron)',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 700,
+              fontSize: 16,
+              textTransform: 'uppercase',
+              letterSpacing: '0.02em',
+              background: 'var(--eg-paper)',
+            }}
           />
           <div style={{ display: 'flex', gap: 8 }}>
             <select
               value={type}
               onChange={(e) => setType(e.target.value as typeof type)}
-              style={{ flex: 1, padding: '6px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                border: '1.5px solid var(--eg-iron)',
+                background: 'var(--eg-paper)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+              }}
             >
-              {(['task', 'bug', 'story', 'epic'] as const).map((t) => <option key={t} value={t}>{t}</option>)}
+              {(['task', 'bug', 'story', 'epic'] as const).map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as typeof priority)}
-              style={{ flex: 1, padding: '6px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+              style={{
+                flex: 1,
+                padding: '6px 8px',
+                border: '1.5px solid var(--eg-iron)',
+                background: 'var(--eg-paper)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+              }}
             >
-              {(['low', 'medium', 'high', 'urgent', 'emergency'] as const).map((p) => <option key={p} value={p}>{p}</option>)}
+              {(['low', 'medium', 'high', 'urgent', 'emergency'] as const).map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
             </select>
           </div>
           {statuses.length > 0 && (
             <select
               value={statusId}
               onChange={(e) => setStatusId(e.target.value)}
-              style={{ padding: '6px 8px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 11 }}
+              style={{
+                padding: '6px 8px',
+                border: '1.5px solid var(--eg-iron)',
+                background: 'var(--eg-paper)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+              }}
             >
               <option value="">— columna por defecto · default column</option>
-              {statuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {statuses.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
             </select>
           )}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button type="button" className="b-btn b-btn--ghost" onClick={onClose}>Cancelar</button>
+            <button type="button" className="b-btn b-btn--ghost" onClick={onClose}>
+              Cancelar
+            </button>
             <button
               type="button"
               className="b-btn b-btn--ink"
@@ -138,13 +203,7 @@ function CreateIssueModal({
 
 // ── Sprint header strip ───────────────────────────────────────────────────────
 
-function SprintStrip({
-  sprint,
-  projectKey,
-}: {
-  sprint: SprintRecord;
-  projectKey: string;
-}) {
+function SprintStrip({ sprint, projectKey }: { sprint: SprintRecord; projectKey: string }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [editingGoal, setEditingGoal] = useState(false);
@@ -157,7 +216,11 @@ function SprintStrip({
       toast({ tone: 'ok', title: 'Sprint cerrado · Sprint closed', body: sprint.name });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al cerrar sprint · Close failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al cerrar sprint · Close failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -169,7 +232,11 @@ function SprintStrip({
       setEditingGoal(false);
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al guardar objetivo · Goal save failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al guardar objetivo · Goal save failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
@@ -226,14 +293,47 @@ function SprintStrip({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-5)', letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+          <span
+            className="mono"
+            style={{
+              fontSize: 10,
+              color: 'var(--eg-fg-5)',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+            }}
+          >
             Día {dayNum} / {totalDays}
           </span>
-          <div style={{ position: 'relative', height: 8, background: 'var(--eg-iron-2)', border: '1px solid var(--eg-fg-3)', flex: 1, maxWidth: 320 }}>
-            <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: 'var(--eg-yellow)' }} />
+          <div
+            style={{
+              position: 'relative',
+              height: 8,
+              background: 'var(--eg-iron-2)',
+              border: '1px solid var(--eg-fg-3)',
+              flex: 1,
+              maxWidth: 320,
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: `${pct}%`,
+                background: 'var(--eg-yellow)',
+              }}
+            />
           </div>
           {committed > 0 && (
-            <span className="mono" style={{ fontSize: 10, color: 'var(--eg-paper)', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+            <span
+              className="mono"
+              style={{
+                fontSize: 10,
+                color: 'var(--eg-paper)',
+                letterSpacing: '0.1em',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {committed} PTS
             </span>
           )}
@@ -272,7 +372,16 @@ function SprintStrip({
           minHeight: 36,
         }}
       >
-        <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)', letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+        <span
+          className="mono"
+          style={{
+            fontSize: 10,
+            color: 'var(--eg-fg-4)',
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+          }}
+        >
           // objetivo · goal
         </span>
 
@@ -334,7 +443,10 @@ function SprintStrip({
               textAlign: 'left',
             }}
             title="Haz clic para editar · Click to edit goal"
-            onClick={() => { setGoalDraft(sprint.goal ?? ''); setEditingGoal(true); }}
+            onClick={() => {
+              setGoalDraft(sprint.goal ?? '');
+              setEditingGoal(true);
+            }}
           >
             {sprint.goal}
           </button>
@@ -352,7 +464,10 @@ function SprintStrip({
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
             }}
-            onClick={() => { setGoalDraft(''); setEditingGoal(true); }}
+            onClick={() => {
+              setGoalDraft('');
+              setEditingGoal(true);
+            }}
           >
             + Añadir objetivo · Add goal
           </button>
@@ -376,7 +491,8 @@ function EmergencyBanner({
   return (
     <div
       style={{
-        background: 'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 14px, var(--eg-iron) 14px 28px)',
+        background:
+          'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 14px, var(--eg-iron) 14px 28px)',
         padding: 6,
         borderBottom: '2px solid var(--eg-iron)',
         flexShrink: 0,
@@ -394,20 +510,37 @@ function EmergencyBanner({
       >
         <span
           className="plate"
-          style={{ background: 'var(--eg-paper)', color: 'var(--eg-iron)', borderColor: 'var(--eg-paper)' }}
+          style={{
+            background: 'var(--eg-paper)',
+            color: 'var(--eg-iron)',
+            borderColor: 'var(--eg-paper)',
+          }}
         >
           !! EMERGENCIA
         </span>
         <span className="disp" style={{ color: 'var(--eg-paper)', fontSize: 18 }}>
           {issue.key} · {issue.title}
         </span>
-        <span className="mono" style={{ marginLeft: 'auto', fontSize: 11, letterSpacing: '0.12em', opacity: 0.8, whiteSpace: 'nowrap' }}>
+        <span
+          className="mono"
+          style={{
+            marginLeft: 'auto',
+            fontSize: 11,
+            letterSpacing: '0.12em',
+            opacity: 0.8,
+            whiteSpace: 'nowrap',
+          }}
+        >
           PRIORIDAD MÁXIMA · P0
         </span>
         <button
           type="button"
           className="b-btn"
-          style={{ background: 'var(--eg-iron)', color: 'var(--eg-yellow)', border: '1.5px solid var(--eg-yellow)' }}
+          style={{
+            background: 'var(--eg-iron)',
+            color: 'var(--eg-yellow)',
+            border: '1.5px solid var(--eg-yellow)',
+          }}
           onClick={onOpen}
         >
           Abrir
@@ -445,15 +578,15 @@ function ColHeader({
   const isInProgress = status.category === 'in_progress';
 
   const colNames: Record<string, { es: string; en: string }> = {
-    'Pendientes': { es: 'Pendientes', en: 'Backlog' },
+    Pendientes: { es: 'Pendientes', en: 'Backlog' },
     'Por Hacer': { es: 'Por Hacer', en: 'To Do' },
     'To Do': { es: 'Por Hacer', en: 'To Do' },
     'In Progress': { es: 'En Curso', en: 'In Progress' },
     'En Curso': { es: 'En Curso', en: 'In Progress' },
     'In Review': { es: 'En Revisión', en: 'In Review' },
     'En Revisión': { es: 'En Revisión', en: 'In Review' },
-    'Done': { es: 'Hecho', en: 'Done' },
-    'Hecho': { es: 'Hecho', en: 'Done' },
+    Done: { es: 'Hecho', en: 'Done' },
+    Hecho: { es: 'Hecho', en: 'Done' },
   };
 
   const names = colNames[status.name] ?? { es: status.name, en: status.name };
@@ -462,7 +595,11 @@ function ColHeader({
     <div style={{ padding: '0 6px 8px' }}>
       <div
         style={{
-          background: isDone ? 'var(--eg-green)' : isInProgress ? 'var(--eg-yellow)' : 'var(--eg-paper-3)',
+          background: isDone
+            ? 'var(--eg-green)'
+            : isInProgress
+              ? 'var(--eg-yellow)'
+              : 'var(--eg-paper-3)',
           color: isDone ? 'var(--eg-paper)' : 'var(--eg-iron)',
           border: '1.5px solid var(--eg-iron)',
           padding: '6px 10px',
@@ -497,7 +634,8 @@ function ColHeader({
           />
         </span>
         <span className="mono" style={{ fontSize: 11, fontWeight: 600 }}>
-          {count}{wipLimit != null ? `/${wipLimit}` : ''}
+          {count}
+          {wipLimit != null ? `/${wipLimit}` : ''}
         </span>
       </div>
 
@@ -506,7 +644,8 @@ function ColHeader({
           style={{
             marginTop: 4,
             padding: '6px 10px',
-            background: 'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 8px, var(--eg-iron) 8px 16px)',
+            background:
+              'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 8px, var(--eg-iron) 8px 16px)',
           }}
         >
           <div
@@ -524,10 +663,18 @@ function ColHeader({
               color: 'var(--eg-iron)',
             }}
           >
-            <span>!! WIP {count}/{wipLimit} · límite excedido · cap exceeded</span>
+            <span>
+              !! WIP {count}/{wipLimit} · límite excedido · cap exceeded
+            </span>
             <button
               type="button"
-              style={{ cursor: 'pointer', color: 'var(--eg-fg-3)', background: 'none', border: 'none', fontSize: 12 }}
+              style={{
+                cursor: 'pointer',
+                color: 'var(--eg-fg-3)',
+                background: 'none',
+                border: 'none',
+                fontSize: 12,
+              }}
               onClick={onWipDismiss}
             >
               ✕
@@ -593,7 +740,9 @@ function BoardColumn({
         onWipDismiss={onWipDismiss}
       />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 6px 6px', flex: 1 }}>
+      <div
+        style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 6px 6px', flex: 1 }}
+      >
         {columnIssues.map((issue) => (
           <div
             key={issue.key}
@@ -711,23 +860,37 @@ export function BoardPage() {
 
   // Mutations
   const moveMutation = useMutation({
-    mutationFn: ({ issueKey, data }: { issueKey: string; data: Parameters<typeof issuesApi.move>[1] }) =>
-      issuesApi.move(issueKey, data),
+    mutationFn: ({
+      issueKey,
+      data,
+    }: {
+      issueKey: string;
+      data: Parameters<typeof issuesApi.move>[1];
+    }) => issuesApi.move(issueKey, data),
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: ['board', projectKey] });
-      const status = board?.columns.find((c) => c.issues.some((i) => i.key === updated.key))?.status.name;
-      if (status) toast({ tone: 'ok', title: `Movido · Moved`, body: `${updated.key} → ${status}` });
+      const status = board?.columns.find((c) => c.issues.some((i) => i.key === updated.key))?.status
+        .name;
+      if (status)
+        toast({ tone: 'ok', title: `Movido · Moved`, body: `${updated.key} → ${status}` });
     },
     onError: (err) => {
       void queryClient.invalidateQueries({ queryKey: ['board', projectKey] }); // revert optimistic
-      toast({ tone: 'danger', title: 'Error al mover · Move failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al mover · Move failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
   // Handlers
-  const openDrawer = useCallback((issueKey: string) => {
-    navigate(`?issue=${issueKey}`, { replace: true });
-  }, [navigate]);
+  const openDrawer = useCallback(
+    (issueKey: string) => {
+      navigate(`?issue=${issueKey}`, { replace: true });
+    },
+    [navigate],
+  );
 
   const closeDrawer = useCallback(() => {
     navigate(location.pathname, { replace: true });
@@ -814,7 +977,8 @@ export function BoardPage() {
 
   // Emergency: first emergency priority issue
   const emergencyIssue = allIssues.find((i) => i.priority === 'emergency') ?? null;
-  const openIncident = incidentsQuery.data?.find((inc) => inc.issueKey === emergencyIssue?.key) ?? null;
+  const openIncident =
+    incidentsQuery.data?.find((inc) => inc.issueKey === emergencyIssue?.key) ?? null;
 
   // Filtered columns
   const filteredColumns = (board?.columns ?? []).map((col) => ({
@@ -836,7 +1000,7 @@ export function BoardPage() {
     <div className="body">
       <h1 className="sr-only">Tablero · Board · {projectKey}</h1>
       <Subbar
-        tabs={boardTabs.map((t, i) => i === 0 ? { ...t, count: totalIssues } : t)}
+        tabs={boardTabs.map((t, i) => (i === 0 ? { ...t, count: totalIssues } : t))}
         right={
           <>
             {/* Label filter pill */}
@@ -861,7 +1025,9 @@ export function BoardPage() {
                 >
                   <option value="">cualquiera</option>
                   {labels.map((l) => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
                   ))}
                 </select>
               </span>
@@ -882,7 +1048,10 @@ export function BoardPage() {
             <button
               type="button"
               className="b-btn b-btn--ink"
-              onClick={() => { setCreateStatusId(undefined); setShowCreate(true); }}
+              onClick={() => {
+                setCreateStatusId(undefined);
+                setShowCreate(true);
+              }}
             >
               + Nuevo ticket
             </button>
@@ -891,9 +1060,7 @@ export function BoardPage() {
       />
 
       {/* Sprint strip */}
-      {activeSprint && (
-        <SprintStrip sprint={activeSprint} projectKey={projectKey} />
-      )}
+      {activeSprint && <SprintStrip sprint={activeSprint} projectKey={projectKey} />}
 
       {/* Emergency banner */}
       {emergencyIssue && !emergencyDismissed && (
@@ -923,7 +1090,9 @@ export function BoardPage() {
 
       {/* Columns */}
       {board && (
-        <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px', background: 'var(--eg-paper)' }}>
+        <div
+          style={{ flex: 1, overflow: 'auto', padding: '16px 20px', background: 'var(--eg-paper)' }}
+        >
           <div style={{ display: 'flex', gap: 0, height: '100%', alignItems: 'flex-start' }}>
             {filteredColumns.map((col, ci) => (
               <div key={col.status.id} style={{ display: 'contents' }}>
@@ -939,7 +1108,10 @@ export function BoardPage() {
                   onDragStart={onDragStart}
                   onDragEnd={onDragEnd}
                   onCardClick={openDrawer}
-                  onNewIssue={(sid) => { setCreateStatusId(sid); setShowCreate(true); }}
+                  onNewIssue={(sid) => {
+                    setCreateStatusId(sid);
+                    setShowCreate(true);
+                  }}
                 />
 
                 {/* Hazard divider between columns */}
@@ -949,7 +1121,8 @@ export function BoardPage() {
                       width: 12,
                       flexShrink: 0,
                       alignSelf: 'stretch',
-                      background: 'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 6px, var(--eg-iron) 6px 12px)',
+                      background:
+                        'repeating-linear-gradient(-45deg, var(--eg-yellow) 0 6px, var(--eg-iron) 6px 12px)',
                       marginInline: 6,
                     }}
                   />
@@ -962,11 +1135,7 @@ export function BoardPage() {
 
       {/* Issue drawer (query-param driven) */}
       {drawerKey && (
-        <IssueDrawer
-          issueKey={drawerKey}
-          projectKey={projectKey}
-          onClose={closeDrawer}
-        />
+        <IssueDrawer issueKey={drawerKey} projectKey={projectKey} onClose={closeDrawer} />
       )}
 
       {/* Create issue modal */}

@@ -9,7 +9,15 @@ import {
 
 describe('ssrf guard', () => {
   it('flags loopback, private, and link-local hosts', () => {
-    for (const h of ['localhost', '127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.5', '169.254.1.1', '::1']) {
+    for (const h of [
+      'localhost',
+      '127.0.0.1',
+      '10.1.2.3',
+      '172.16.0.1',
+      '192.168.1.5',
+      '169.254.1.1',
+      '::1',
+    ]) {
       expect(isPrivateHost(h)).toBe(true);
     }
   });
@@ -38,9 +46,13 @@ describe('ssrf guard', () => {
   });
 
   it('rejects mapped-IPv6 metadata literals through the URL guards (write + delivery time)', async () => {
-    expect(() => assertSafeWebhookUrl('http://[::ffff:169.254.169.254]/latest/meta-data/')).toThrow();
+    expect(() =>
+      assertSafeWebhookUrl('http://[::ffff:169.254.169.254]/latest/meta-data/'),
+    ).toThrow();
     expect(() => assertSafeWebhookUrl('http://[::ffff:127.0.0.1]/hook')).toThrow();
-    await expect(assertResolvedHostSafe('http://[::ffff:169.254.169.254]/latest')).rejects.toThrow();
+    await expect(
+      assertResolvedHostSafe('http://[::ffff:169.254.169.254]/latest'),
+    ).rejects.toThrow();
   });
 
   it('rejects private targets by default and non-http schemes', () => {

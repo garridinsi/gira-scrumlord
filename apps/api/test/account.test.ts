@@ -44,11 +44,21 @@ describe('account self-service', () => {
         { clientId: 'x' },
         { email: 'evil@example.test' },
       ]) {
-        const res = await app.inject({ method: 'PATCH', url: '/auth/me', headers: { cookie }, payload });
+        const res = await app.inject({
+          method: 'PATCH',
+          url: '/auth/me',
+          headers: { cookie },
+          payload,
+        });
         expect(res.statusCode).toBe(400); // .strict() rejects unknown keys
       }
       const row = await prisma.user.findUnique({ where: { id: user.id } });
-      expect(row).toMatchObject({ role: 'member', kind: 'staff', isActive: true, email: user.email });
+      expect(row).toMatchObject({
+        role: 'member',
+        kind: 'staff',
+        isActive: true,
+        email: user.email,
+      });
     });
 
     it('requires authentication', async () => {
@@ -80,9 +90,12 @@ describe('account self-service', () => {
       expect(revoke.statusCode).toBe(200);
       expect(revoke.json().revoked).toBe(1);
       // current still works, other is dead
-      expect((await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie } })).statusCode).toBe(200);
       expect(
-        (await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: otherCookie } })).statusCode,
+        (await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie } })).statusCode,
+      ).toBe(200);
+      expect(
+        (await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: otherCookie } }))
+          .statusCode,
       ).toBe(401);
     });
   });
@@ -172,7 +185,10 @@ describe('account self-service', () => {
 
     it('confirm switches email + identity, revokes sessions, and re-keys magic-link', async () => {
       const { user, cookie } = await actingAs({ email: 'old@example.test' });
-      const { rawToken } = await requestEmailChange({ id: user.id, email: 'old@example.test' }, 'new@example.test');
+      const { rawToken } = await requestEmailChange(
+        { id: user.id, email: 'old@example.test' },
+        'new@example.test',
+      );
 
       const res = await app.inject({
         method: 'POST',
@@ -183,12 +199,21 @@ describe('account self-service', () => {
       expect(res.json().email).toBe('new@example.test');
 
       // user + magic-link identity now carry the new email
-      const row = await prisma.user.findUnique({ where: { id: user.id }, include: { identities: true } });
+      const row = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: { identities: true },
+      });
       expect(row?.email).toBe('new@example.test');
-      expect(row?.identities[0]).toMatchObject({ provider: 'magic-link', subject: 'new@example.test', email: 'new@example.test' });
+      expect(row?.identities[0]).toMatchObject({
+        provider: 'magic-link',
+        subject: 'new@example.test',
+        email: 'new@example.test',
+      });
 
       // every session was revoked → the old cookie no longer authenticates
-      expect((await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie } })).statusCode).toBe(401);
+      expect(
+        (await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie } })).statusCode,
+      ).toBe(401);
 
       // sign-in now works for the new email, not the old one
       expect((await createMagicLink('new@example.test')).sent).toBe(true);
@@ -197,22 +222,44 @@ describe('account self-service', () => {
 
     it('confirm rejects a reused or invalid token', async () => {
       const { user } = await actingAs({ email: 'a@example.test' });
-      const { rawToken } = await requestEmailChange({ id: user.id, email: 'a@example.test' }, 'b@example.test');
+      const { rawToken } = await requestEmailChange(
+        { id: user.id, email: 'a@example.test' },
+        'b@example.test',
+      );
 
-      const first = await app.inject({ method: 'POST', url: '/auth/email-change/confirm', payload: { token: rawToken } });
+      const first = await app.inject({
+        method: 'POST',
+        url: '/auth/email-change/confirm',
+        payload: { token: rawToken },
+      });
       expect(first.statusCode).toBe(200);
-      const second = await app.inject({ method: 'POST', url: '/auth/email-change/confirm', payload: { token: rawToken } });
+      const second = await app.inject({
+        method: 'POST',
+        url: '/auth/email-change/confirm',
+        payload: { token: rawToken },
+      });
       expect(second.statusCode).toBe(401);
-      const bogus = await app.inject({ method: 'POST', url: '/auth/email-change/confirm', payload: { token: 'nope' } });
+      const bogus = await app.inject({
+        method: 'POST',
+        url: '/auth/email-change/confirm',
+        payload: { token: 'nope' },
+      });
       expect(bogus.statusCode).toBe(401);
     });
 
     it('confirm refuses if the target email got taken in the meantime', async () => {
       const { user } = await actingAs({ email: 'race@example.test' });
-      const { rawToken } = await requestEmailChange({ id: user.id, email: 'race@example.test' }, 'contested@example.test');
+      const { rawToken } = await requestEmailChange(
+        { id: user.id, email: 'race@example.test' },
+        'contested@example.test',
+      );
       // someone else grabs the target before confirm
       await makeUser({ email: 'contested@example.test' });
-      const res = await app.inject({ method: 'POST', url: '/auth/email-change/confirm', payload: { token: rawToken } });
+      const res = await app.inject({
+        method: 'POST',
+        url: '/auth/email-change/confirm',
+        payload: { token: rawToken },
+      });
       expect(res.statusCode).toBe(409);
       const row = await prisma.user.findUnique({ where: { id: user.id } });
       expect(row?.email).toBe('race@example.test'); // unchanged
@@ -226,7 +273,10 @@ describe('account self-service', () => {
       const target = await actingAs({ role: 'member' });
 
       // target is active and authenticated
-      expect((await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: target.cookie } })).statusCode).toBe(200);
+      expect(
+        (await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: target.cookie } }))
+          .statusCode,
+      ).toBe(200);
 
       const deact = await app.inject({
         method: 'PATCH',
@@ -240,7 +290,10 @@ describe('account self-service', () => {
       expect(row?.deactivatedAt).not.toBeNull();
 
       // their cookie is dead immediately
-      expect((await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: target.cookie } })).statusCode).toBe(401);
+      expect(
+        (await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: target.cookie } }))
+          .statusCode,
+      ).toBe(401);
 
       // reactivate — old sessions stay revoked (no silent resurrection)
       const react = await app.inject({
@@ -250,8 +303,13 @@ describe('account self-service', () => {
         payload: { isActive: true },
       });
       expect(react.statusCode).toBe(200);
-      expect((await prisma.user.findUnique({ where: { id: target.user.id } }))?.deactivatedAt).toBeNull();
-      expect((await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: target.cookie } })).statusCode).toBe(401);
+      expect(
+        (await prisma.user.findUnique({ where: { id: target.user.id } }))?.deactivatedAt,
+      ).toBeNull();
+      expect(
+        (await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie: target.cookie } }))
+          .statusCode,
+      ).toBe(401);
     });
   });
 });

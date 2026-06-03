@@ -58,12 +58,22 @@ describe('client portal (M2)', () => {
     });
 
     const viewer = await actingAs({ kind: 'client', role: 'viewer', clientId: client.id });
-    const res = await app.inject({ method: 'GET', url: '/portal', headers: { cookie: viewer.cookie } });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/portal',
+      headers: { cookie: viewer.cookie },
+    });
     expect(res.statusCode).toBe(200);
     const ov = res.json();
     expect(ov.client.name).toBe('Acme Corp');
     expect(ov.projects.map((p: { key: string }) => p.key)).toEqual(['ACME']);
-    expect(ov.totals).toMatchObject({ open: 1, inProgress: 1, done: 1, totalMinutes: 120, billableMinutes: 120 });
+    expect(ov.totals).toMatchObject({
+      open: 1,
+      inProgress: 1,
+      done: 1,
+      totalMinutes: 120,
+      billableMinutes: 120,
+    });
     expect(ov.totals.accruedCents).toBe(12000); // 120min @ 6000/h
   });
 
@@ -85,7 +95,11 @@ describe('client portal (M2)', () => {
   it('is client-only and client-scoped', async () => {
     const { client, staff } = await setup();
     // staff can't use the portal
-    const staffRes = await app.inject({ method: 'GET', url: '/portal', headers: { cookie: staff.cookie } });
+    const staffRes = await app.inject({
+      method: 'GET',
+      url: '/portal',
+      headers: { cookie: staff.cookie },
+    });
     expect(staffRes.statusCode).toBe(403);
 
     // a client can't file into another client's project

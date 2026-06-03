@@ -17,7 +17,14 @@ function exportAnnexCsv(inv: InvoiceView): void {
     ['Moneda · Currency', inv.currency],
     ['Factura TicketBAI · TicketBAI invoice', inv.externalInvoiceRef ?? ''],
     [],
-    ['Issue', 'Descripción · Description', 'Minutos · Minutes', 'Horas · Hours', 'Tarifa/h · Rate/h', 'Importe · Amount'],
+    [
+      'Issue',
+      'Descripción · Description',
+      'Minutos · Minutes',
+      'Horas · Hours',
+      'Tarifa/h · Rate/h',
+      'Importe · Amount',
+    ],
     ...inv.lines.map((l) => [
       l.issueKey,
       l.description,
@@ -218,8 +225,7 @@ export function InvoiceDetailPage() {
 
   // ── Error / 404 ───────────────────────────────────────────────────────────
   if (invoiceQ.isError || !invoiceQ.data) {
-    const is404 =
-      invoiceQ.error instanceof ApiError && invoiceQ.error.status === 404;
+    const is404 = invoiceQ.error instanceof ApiError && invoiceQ.error.status === 404;
     return (
       <div className="body">
         <div style={{ flex: 1, overflow: 'auto', padding: '18px 22px' }}>
@@ -351,7 +357,11 @@ export function InvoiceDetailPage() {
                   className="b-btn b-btn--ink"
                   onClick={() => payMut.mutate()}
                   disabled={anyPending}
-                  style={{ fontSize: 12, background: 'var(--eg-green)', borderColor: 'var(--eg-green)' }}
+                  style={{
+                    fontSize: 12,
+                    background: 'var(--eg-green)',
+                    borderColor: 'var(--eg-green)',
+                  }}
                 >
                   {payMut.isPending ? '...' : 'Marcar pagado · Mark paid'}
                 </button>
@@ -386,14 +396,14 @@ export function InvoiceDetailPage() {
 
               <span style={{ flex: 1 }} />
 
-              <button className="b-btn" onClick={() => exportAnnexCsv(inv)} style={{ fontSize: 12 }}>
-                CSV
-              </button>
               <button
                 className="b-btn"
-                onClick={() => window.print()}
+                onClick={() => exportAnnexCsv(inv)}
                 style={{ fontSize: 12 }}
               >
+                CSV
+              </button>
+              <button className="b-btn" onClick={() => window.print()} style={{ fontSize: 12 }}>
                 Imprimir · Print
               </button>
             </div>
@@ -402,10 +412,7 @@ export function InvoiceDetailPage() {
 
         {/* External TicketBAI ref editor — staff only, hidden in print */}
         {!isViewer && (
-          <div
-            className="invoice-action-bar"
-            style={{ marginBottom: 20 }}
-          >
+          <div className="invoice-action-bar" style={{ marginBottom: 20 }}>
             <div
               style={{
                 padding: '10px 16px',

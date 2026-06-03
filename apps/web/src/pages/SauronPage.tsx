@@ -32,7 +32,12 @@ function diffNote(before: unknown, after: unknown): string {
     if (JSON.stringify(b[k]) !== JSON.stringify(a[k])) changed.push(k);
   }
   if (changed.length === 0) return '—';
-  return changed.slice(0, 3).map((k) => `~${k}`).join(', ') + (changed.length > 3 ? ` +${changed.length - 3}` : '');
+  return (
+    changed
+      .slice(0, 3)
+      .map((k) => `~${k}`)
+      .join(', ') + (changed.length > 3 ? ` +${changed.length - 3}` : '')
+  );
 }
 
 function actionParts(action: string): [string, string] {
@@ -167,9 +172,7 @@ function AuditRow({ entry, i }: { entry: AuditEntry; i: number }) {
             DAEMON
           </span>
         ) : (
-          <span style={{ color: 'var(--eg-yellow)', fontWeight: 700 }}>
-            {actorInitials(entry)}
-          </span>
+          <span style={{ color: 'var(--eg-yellow)', fontWeight: 700 }}>{actorInitials(entry)}</span>
         )}
       </span>
 
@@ -186,13 +189,9 @@ function AuditRow({ entry, i }: { entry: AuditEntry; i: number }) {
 
       {/* Note */}
       <span style={{ color: 'var(--eg-fg-5)' }}>
-        {isDaemon && (
-          <span style={{ color: 'var(--eg-fg-4)', marginRight: 6 }}>scrumlord ·</span>
-        )}
+        {isDaemon && <span style={{ color: 'var(--eg-fg-4)', marginRight: 6 }}>scrumlord ·</span>}
         {!isDaemon && entry.actor && (
-          <span style={{ color: 'var(--eg-fg-4)', marginRight: 6 }}>
-            {entry.actor.name} ·
-          </span>
+          <span style={{ color: 'var(--eg-fg-4)', marginRight: 6 }}>{entry.actor.name} ·</span>
         )}
         {entry.entityType} {entry.entityId}
       </span>
@@ -200,7 +199,11 @@ function AuditRow({ entry, i }: { entry: AuditEntry; i: number }) {
       {/* Diff */}
       <span
         style={{
-          color: diff.startsWith('+') ? 'var(--eg-green)' : diff.startsWith('-') ? 'var(--eg-red)' : 'var(--eg-fg-5)',
+          color: diff.startsWith('+')
+            ? 'var(--eg-green)'
+            : diff.startsWith('-')
+              ? 'var(--eg-red)'
+              : 'var(--eg-fg-5)',
         }}
       >
         {diff}
@@ -232,16 +235,11 @@ export function SauronPage() {
   const filterActions = [
     'ALL',
     ...KNOWN_ACTIONS.filter((a) => a !== 'ALL' && seenActions.has(a)),
-    ...[...seenActions].filter(
-      (a) => !(KNOWN_ACTIONS as readonly string[]).includes(a),
-    ),
+    ...[...seenActions].filter((a) => !(KNOWN_ACTIONS as readonly string[]).includes(a)),
   ];
 
   return (
-    <div
-      className="body"
-      style={{ background: 'var(--eg-iron)', color: 'var(--eg-paper)' }}
-    >
+    <div className="body" style={{ background: 'var(--eg-iron)', color: 'var(--eg-paper)' }}>
       <Subbar
         tabs={[
           {
@@ -253,7 +251,14 @@ export function SauronPage() {
         ]}
         right={
           <>
-            <span className="f-pill" style={{ background: 'var(--eg-iron-2)', color: 'var(--eg-paper)', borderColor: 'var(--eg-iron-3)' }}>
+            <span
+              className="f-pill"
+              style={{
+                background: 'var(--eg-iron-2)',
+                color: 'var(--eg-paper)',
+                borderColor: 'var(--eg-iron-3)',
+              }}
+            >
               ENTIDAD <b>cualquiera</b>
             </span>
             <span
@@ -336,8 +341,7 @@ export function SauronPage() {
               maxWidth: 460,
             }}
           >
-            "Sólo observa." ·{' '}
-            <span style={{ color: 'var(--eg-fg-4)' }}>"it only watches."</span>
+            "Sólo observa." · <span style={{ color: 'var(--eg-fg-4)' }}>"it only watches."</span>
             <br />
             <span style={{ fontSize: 12, color: 'var(--eg-fg-4)' }}>
               append-only · API de sólo lectura · proceso separado
@@ -387,7 +391,11 @@ export function SauronPage() {
             />
             <span
               className="disp"
-              style={{ fontSize: 'clamp(20px, 6vw, 28px)', color: 'var(--eg-paper)', lineHeight: 1 }}
+              style={{
+                fontSize: 'clamp(20px, 6vw, 28px)',
+                color: 'var(--eg-paper)',
+                lineHeight: 1,
+              }}
             >
               {auditQ.isError ? 'ERROR' : 'VIGILANDO'}
             </span>
@@ -452,81 +460,84 @@ export function SauronPage() {
         }}
       >
         <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '880px' }}>
-        {/* Column headers */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '140px 70px 220px 1fr 200px',
-            gap: 0,
-            padding: '6px 24px',
-            background: 'var(--eg-iron-2)',
-            borderBottom: '1px solid var(--eg-iron-3)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 10,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: 'var(--eg-fg-5)',
-          }}
-        >
-          <span>// fecha · at</span>
-          <span>// actor</span>
-          <span>// acción · entidad</span>
-          <span>// nota · note</span>
-          <span>// diff</span>
-        </div>
-
-        {/* Loading */}
-        {auditQ.isLoading && (
-          <div className="gs-state" style={{ background: 'var(--eg-iron)' }}>
-            <span className="gs-loading" style={{ color: 'var(--eg-fg-5)' }}>
-              cargando auditoría · loading audit
-            </span>
+          {/* Column headers */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '140px 70px 220px 1fr 200px',
+              gap: 0,
+              padding: '6px 24px',
+              background: 'var(--eg-iron-2)',
+              borderBottom: '1px solid var(--eg-iron-3)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              color: 'var(--eg-fg-5)',
+            }}
+          >
+            <span>// fecha · at</span>
+            <span>// actor</span>
+            <span>// acción · entidad</span>
+            <span>// nota · note</span>
+            <span>// diff</span>
           </div>
-        )}
 
-        {/* Error */}
-        {auditQ.isError && (
-          <div className="gs-state" style={{ background: 'var(--eg-iron)' }}>
-            <span
-              className="mono"
-              style={{ color: 'var(--eg-red)', fontSize: 12, letterSpacing: '0.12em' }}
+          {/* Loading */}
+          {auditQ.isLoading && (
+            <div className="gs-state" style={{ background: 'var(--eg-iron)' }}>
+              <span className="gs-loading" style={{ color: 'var(--eg-fg-5)' }}>
+                cargando auditoría · loading audit
+              </span>
+            </div>
+          )}
+
+          {/* Error */}
+          {auditQ.isError && (
+            <div className="gs-state" style={{ background: 'var(--eg-iron)' }}>
+              <span
+                className="mono"
+                style={{ color: 'var(--eg-red)', fontSize: 12, letterSpacing: '0.12em' }}
+              >
+                // error al cargar auditoría · failed to load
+              </span>
+            </div>
+          )}
+
+          {/* Empty */}
+          {!auditQ.isLoading && !auditQ.isError && entries.length === 0 && (
+            <div
+              className="gs-state"
+              style={{ background: 'var(--eg-iron)', flexDirection: 'column', gap: 16 }}
             >
-              // error al cargar auditoría · failed to load
-            </span>
-          </div>
-        )}
-
-        {/* Empty */}
-        {!auditQ.isLoading && !auditQ.isError && entries.length === 0 && (
-          <div className="gs-state" style={{ background: 'var(--eg-iron)', flexDirection: 'column', gap: 16 }}>
-            <EyeGlyph size={32} />
-            <div>
-              <div
-                className="mono"
-                style={{
-                  color: 'var(--eg-fg-5)',
-                  fontSize: 12,
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  marginBottom: 6,
-                }}
-              >
-                // sin eventos · no events
-              </div>
-              <div
-                className="mono"
-                style={{ color: 'var(--eg-fg-4)', fontSize: 11, fontStyle: 'italic' }}
-              >
-                "the eye only watches — nothing to report."
+              <EyeGlyph size={32} />
+              <div>
+                <div
+                  className="mono"
+                  style={{
+                    color: 'var(--eg-fg-5)',
+                    fontSize: 12,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  // sin eventos · no events
+                </div>
+                <div
+                  className="mono"
+                  style={{ color: 'var(--eg-fg-4)', fontSize: 11, fontStyle: 'italic' }}
+                >
+                  "the eye only watches — nothing to report."
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Rows */}
-        {entries.map((entry, i) => (
-          <AuditRow key={entry.id} entry={entry} i={i} />
-        ))}
+          {/* Rows */}
+          {entries.map((entry, i) => (
+            <AuditRow key={entry.id} entry={entry} i={i} />
+          ))}
         </div>
 
         {/* Footer cmdline */}
@@ -539,8 +550,7 @@ export function SauronPage() {
               fontSize: 11,
             }}
           >
-            <span style={{ color: 'var(--eg-yellow)' }}>sauron $</span>{' '}
-            tail -f /audit --limit=100
+            <span style={{ color: 'var(--eg-yellow)' }}>sauron $</span> tail -f /audit --limit=100
             {actionFilter !== 'ALL' ? ` --action=${actionFilter}` : ''}
             <br />
             <span style={{ color: 'var(--eg-fg-4)' }}>

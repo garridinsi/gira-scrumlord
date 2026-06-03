@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { type Prisma, prisma } from '@gira/db';
-import { createCommentSchema, createIssueSchema, issueFilterSchema, updateIssueSchema } from '@gira/shared';
+import {
+  createCommentSchema,
+  createIssueSchema,
+  issueFilterSchema,
+  updateIssueSchema,
+} from '@gira/shared';
 import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
@@ -87,11 +92,17 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
     // assignee to this project's client) — otherwise you could graft another
     // client's sprint/parent/labels/assignee onto the issue.
     if (input.sprintId) {
-      const s = await prisma.sprint.findUnique({ where: { id: input.sprintId }, select: { projectId: true } });
+      const s = await prisma.sprint.findUnique({
+        where: { id: input.sprintId },
+        select: { projectId: true },
+      });
       if (!s || s.projectId !== before.projectId) throw badRequest('invalid sprintId');
     }
     if (input.parentId) {
-      const p = await prisma.issue.findUnique({ where: { id: input.parentId }, select: { projectId: true } });
+      const p = await prisma.issue.findUnique({
+        where: { id: input.parentId },
+        select: { projectId: true },
+      });
       if (!p || p.projectId !== before.projectId) throw badRequest('invalid parentId');
     }
     if (input.labelIds?.length) {
@@ -99,7 +110,10 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
         where: { id: { in: input.labelIds } },
         select: { projectId: true },
       });
-      if (labels.length !== input.labelIds.length || labels.some((l) => l.projectId !== before.projectId)) {
+      if (
+        labels.length !== input.labelIds.length ||
+        labels.some((l) => l.projectId !== before.projectId)
+      ) {
         throw badRequest('invalid labelIds');
       }
     }
@@ -109,14 +123,16 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
         select: { isActive: true, kind: true, clientId: true },
       });
       if (!a || !a.isActive) throw badRequest('invalid assigneeId');
-      if (a.kind === 'client' && a.clientId !== before.project.clientId) throw badRequest('invalid assigneeId');
+      if (a.kind === 'client' && a.clientId !== before.project.clientId)
+        throw badRequest('invalid assigneeId');
     }
 
     // A fixed-price issue must carry a price. createIssue enforces this; mirror it
     // here over the MERGED state so a PATCH can't leave the issue fixed-with-null
     // (which only blows up later at invoice time).
     const effectiveMode = input.billingMode ?? before.billingMode;
-    const effectivePrice = 'fixedPriceCents' in input ? input.fixedPriceCents : before.fixedPriceCents;
+    const effectivePrice =
+      'fixedPriceCents' in input ? input.fixedPriceCents : before.fixedPriceCents;
     if (effectiveMode === 'fixed' && effectivePrice == null) {
       throw badRequest('fixedPriceCents is required when billingMode is fixed');
     }
@@ -140,7 +156,9 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
     if (input.statusId) data.status = { connect: { id: input.statusId } };
     if (closedAt !== undefined) data.closedAt = closedAt;
     if ('assigneeId' in input) {
-      data.assignee = input.assigneeId ? { connect: { id: input.assigneeId } } : { disconnect: true };
+      data.assignee = input.assigneeId
+        ? { connect: { id: input.assigneeId } }
+        : { disconnect: true };
     }
     if ('sprintId' in input) {
       data.sprint = input.sprintId ? { connect: { id: input.sprintId } } : { disconnect: true };
@@ -159,7 +177,13 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
         await tx.outbox.create({
           data: {
             type: 'issue.assigned',
-            payload: { issueKey: u.key, projectKey: before.project.key, assigneeId: u.assigneeId, title: u.title, actorId: user.id },
+            payload: {
+              issueKey: u.key,
+              projectKey: before.project.key,
+              assigneeId: u.assigneeId,
+              title: u.title,
+              actorId: user.id,
+            },
           },
         });
       }

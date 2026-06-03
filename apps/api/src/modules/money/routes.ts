@@ -58,7 +58,9 @@ export async function moneyRoutes(app: FastifyInstance): Promise<void> {
     const input = upsertRateSchema.parse(req.body);
     const clientCurrency = await clientCurrencyForRate(input);
     if (clientCurrency && input.currency !== clientCurrency) {
-      throw badRequest(`rate currency ${input.currency} must match the client currency ${clientCurrency}`);
+      throw badRequest(
+        `rate currency ${input.currency} must match the client currency ${clientCurrency}`,
+      );
     }
     const fields = { hourlyCents: input.hourlyCents, currency: input.currency };
 

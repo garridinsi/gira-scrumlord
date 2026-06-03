@@ -15,7 +15,12 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
       app.log.error({ err }, 'health check: database unreachable');
       db = false;
     }
-    const body = { status: db ? 'ok' : 'degraded', db, name: 'gira-scrumlord', version: APP_VERSION };
+    const body = {
+      status: db ? 'ok' : 'degraded',
+      db,
+      name: 'gira-scrumlord',
+      version: APP_VERSION,
+    };
     return db ? body : reply.code(503).send(body);
   });
 }

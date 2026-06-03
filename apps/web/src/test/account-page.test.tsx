@@ -11,7 +11,14 @@ const { updateMe, sessions, revokeOtherSessions, requestEmailChange, user } = vi
   requestEmailChange: vi.fn(),
   // A STABLE reference — the page seeds its form in a useEffect keyed on me.data,
   // so a fresh object each render would re-seed and clobber typed input.
-  user: { id: 'u1', name: 'Ada', email: 'ada@example.test', role: 'admin', kind: 'staff', locale: 'es' },
+  user: {
+    id: 'u1',
+    name: 'Ada',
+    email: 'ada@example.test',
+    role: 'admin',
+    kind: 'staff',
+    locale: 'es',
+  },
 }));
 vi.mock('../api/client', () => ({
   auth: {
@@ -43,7 +50,14 @@ describe('AccountPage', () => {
   });
 
   it('saves the profile when the name changes', async () => {
-    updateMe.mockResolvedValue({ id: 'u1', name: 'Ada Lovelace', email: 'ada@example.test', role: 'admin', kind: 'staff', locale: 'es' });
+    updateMe.mockResolvedValue({
+      id: 'u1',
+      name: 'Ada Lovelace',
+      email: 'ada@example.test',
+      role: 'admin',
+      kind: 'staff',
+      locale: 'es',
+    });
     renderWithProviders(<AccountPage />);
     const nameInput = await screen.findByDisplayValue('Ada');
     await userEvent.clear(nameInput);
@@ -63,8 +77,22 @@ describe('AccountPage', () => {
 
   it('lists active sessions and revokes the others', async () => {
     sessions.mockResolvedValue([
-      { id: 's1', current: true, userAgent: 'Chrome', ip: '1.2.3.4', createdAt: '2026-01-01T00:00:00Z', lastSeenAt: '2026-06-01T00:00:00Z' },
-      { id: 's2', current: false, userAgent: 'Safari', ip: '5.6.7.8', createdAt: '2026-01-01T00:00:00Z', lastSeenAt: '2026-05-01T00:00:00Z' },
+      {
+        id: 's1',
+        current: true,
+        userAgent: 'Chrome',
+        ip: '1.2.3.4',
+        createdAt: '2026-01-01T00:00:00Z',
+        lastSeenAt: '2026-06-01T00:00:00Z',
+      },
+      {
+        id: 's2',
+        current: false,
+        userAgent: 'Safari',
+        ip: '5.6.7.8',
+        createdAt: '2026-01-01T00:00:00Z',
+        lastSeenAt: '2026-05-01T00:00:00Z',
+      },
     ]);
     revokeOtherSessions.mockResolvedValue({ revoked: 1 });
     renderWithProviders(<AccountPage />);

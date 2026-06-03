@@ -5,7 +5,10 @@ import { Routes, Route } from 'react-router-dom';
 import { renderWithProviders } from './render';
 
 const { useMeFn, overview } = vi.hoisted(() => ({ useMeFn: vi.fn(), overview: vi.fn() }));
-vi.mock('../hooks/useAuth', () => ({ useMe: () => useMeFn(), useLogout: () => ({ mutate: vi.fn() }) }));
+vi.mock('../hooks/useAuth', () => ({
+  useMe: () => useMeFn(),
+  useLogout: () => ({ mutate: vi.fn() }),
+}));
 vi.mock('../api/client', () => ({ portal: { overview: () => overview() } }));
 
 import { ClientPortalLayout } from '../components/layout/ClientPortalLayout';
@@ -30,7 +33,10 @@ describe('ClientPortalLayout', () => {
   });
 
   it('renders the portal shell + outlet for a client user', async () => {
-    useMeFn.mockReturnValue({ data: { id: 'u1', name: 'Client User', kind: 'client' }, isLoading: false });
+    useMeFn.mockReturnValue({
+      data: { id: 'u1', name: 'Client User', kind: 'client' },
+      isLoading: false,
+    });
     renderApp('/portal');
     expect(await screen.findByText('portal content')).toBeInTheDocument();
     expect(screen.getByText('GIRA')).toBeInTheDocument();

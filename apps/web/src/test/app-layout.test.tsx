@@ -42,7 +42,10 @@ describe('AppLayout', () => {
   });
 
   it('redirects a client user to the portal', () => {
-    useMeFn.mockReturnValue({ data: { id: 'u1', role: 'viewer', kind: 'client' }, isLoading: false });
+    useMeFn.mockReturnValue({
+      data: { id: 'u1', role: 'viewer', kind: 'client' },
+      isLoading: false,
+    });
     renderApp('/');
     expect(screen.queryByText('protected content')).not.toBeInTheDocument();
   });

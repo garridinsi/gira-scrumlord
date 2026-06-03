@@ -25,8 +25,7 @@ export function PortalRequestPage() {
   const projects = overviewQ.data?.projects ?? [];
 
   // Auto-select the only project when there's exactly one
-  const effectiveProjectKey =
-    projectKey || (projects.length === 1 ? projects[0]!.key : '');
+  const effectiveProjectKey = projectKey || (projects.length === 1 ? projects[0]!.key : '');
 
   const createRequest = useMutation({
     mutationFn: () =>
@@ -53,8 +52,7 @@ export function PortalRequestPage() {
     },
   });
 
-  const canSubmit =
-    !!effectiveProjectKey && title.trim().length > 0 && !createRequest.isPending;
+  const canSubmit = !!effectiveProjectKey && title.trim().length > 0 && !createRequest.isPending;
 
   return (
     <div className="cp-request">
@@ -186,7 +184,9 @@ export function PortalRequestPage() {
 
         {/* Type selector */}
         <div className="cp-field">
-          <label>Tipo · Type <span>*</span></label>
+          <label>
+            Tipo · Type <span>*</span>
+          </label>
           <div className="cp-type-group">
             <button
               type="button"
@@ -240,8 +240,7 @@ export function PortalRequestPage() {
         {/* Description */}
         <div className="cp-field">
           <label htmlFor="cp-req-desc">
-            Descripción · Description{' '}
-            <span>opcional · optional</span>
+            Descripción · Description <span>opcional · optional</span>
           </label>
           <textarea
             id="cp-req-desc"
@@ -263,9 +262,7 @@ export function PortalRequestPage() {
             disabled={!canSubmit}
             style={{ fontSize: 14, padding: '12px 24px' }}
           >
-            {createRequest.isPending
-              ? 'Enviando · Sending…'
-              : 'Enviar solicitud · Submit request'}
+            {createRequest.isPending ? 'Enviando · Sending…' : 'Enviar solicitud · Submit request'}
           </button>
           <button
             type="button"

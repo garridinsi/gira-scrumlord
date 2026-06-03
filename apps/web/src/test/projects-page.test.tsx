@@ -49,6 +49,10 @@ describe('ProjectsPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /Crear/ }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    expect(create.mock.calls[0]![0]).toMatchObject({ key: 'NEW', name: 'Newbie', cadence: 'sprints' });
+    expect(create.mock.calls[0]![0]).toMatchObject({
+      key: 'NEW',
+      name: 'Newbie',
+      cadence: 'sprints',
+    });
   });
 });

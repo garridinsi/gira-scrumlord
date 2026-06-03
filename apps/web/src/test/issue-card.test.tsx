@@ -37,7 +37,14 @@ describe('IssueCard', () => {
   });
 
   it('shows the assignee first name and story points when present', () => {
-    render(<IssueCard issue={makeIssue({ assignee: { id: 'u1', name: 'Ada Lovelace' } as IssueView['assignee'], storyPoints: 5 })} />);
+    render(
+      <IssueCard
+        issue={makeIssue({
+          assignee: { id: 'u1', name: 'Ada Lovelace' } as IssueView['assignee'],
+          storyPoints: 5,
+        })}
+      />,
+    );
     expect(screen.getByText('Ada')).toBeInTheDocument();
     expect(screen.getByText(/5 pts/)).toBeInTheDocument();
   });
@@ -49,14 +56,18 @@ describe('IssueCard', () => {
 
   it('marks an overdue, not-done issue with a due badge', () => {
     const past = new Date(Date.now() - 86_400_000).toISOString();
-    const { container } = render(<IssueCard issue={makeIssue({ dueAt: past, statusCategory: 'todo' })} />);
+    const { container } = render(
+      <IssueCard issue={makeIssue({ dueAt: past, statusCategory: 'todo' })} />,
+    );
     const badge = container.querySelector('[title^="Vencimiento"]');
     expect(badge).not.toBeNull();
     expect(badge!.textContent).toContain('!!'); // overdue prefix
   });
 
   it('shows a Blocked badge when the issue has a blockedReason (D1)', () => {
-    render(<IssueCard issue={makeIssue({ blockedReason: 'waiting on client' } as Partial<IssueView>)} />);
+    render(
+      <IssueCard issue={makeIssue({ blockedReason: 'waiting on client' } as Partial<IssueView>)} />,
+    );
     expect(screen.getByText(/BLOCKED/)).toBeInTheDocument();
   });
 

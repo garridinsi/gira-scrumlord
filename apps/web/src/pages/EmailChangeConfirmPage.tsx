@@ -57,7 +57,16 @@ export function EmailChangeConfirmPage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <div style={{ width: 40, height: 40, background: 'var(--eg-yellow)', border: '2px solid var(--eg-iron)', display: 'grid', placeItems: 'center' }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              background: 'var(--eg-yellow)',
+              border: '2px solid var(--eg-iron)',
+              display: 'grid',
+              placeItems: 'center',
+            }}
+          >
             <Glyph />
           </div>
           <span className="caps" style={{ color: 'var(--eg-fg-3)' }}>
@@ -73,14 +82,26 @@ export function EmailChangeConfirmPage() {
 
         {state === 'ok' && (
           <>
-            <h1 className="disp" style={{ fontSize: 30, color: 'var(--eg-iron)', margin: '0 0 10px', lineHeight: 1.05 }}>
+            <h1
+              className="disp"
+              style={{
+                fontSize: 30,
+                color: 'var(--eg-iron)',
+                margin: '0 0 10px',
+                lineHeight: 1.05,
+              }}
+            >
               Correo actualizado.
             </h1>
             <p className="mono" style={{ fontSize: 13, color: 'var(--eg-fg-2)', lineHeight: 1.6 }}>
               Tu cuenta usa ahora <strong>{message}</strong>. Por seguridad cerramos las sesiones
               abiertas · for security all sessions were closed. Inicia sesión de nuevo.
             </p>
-            <Link to="/login" className="btn btn--yellow" style={{ marginTop: 22, display: 'inline-flex' }}>
+            <Link
+              to="/login"
+              className="btn btn--yellow"
+              style={{ marginTop: 22, display: 'inline-flex' }}
+            >
               Iniciar sesión · Sign in →
             </Link>
           </>
@@ -88,11 +109,15 @@ export function EmailChangeConfirmPage() {
 
         {state === 'error' && (
           <>
-            <h1 className="disp" style={{ fontSize: 30, color: 'var(--eg-red)', margin: '0 0 10px', lineHeight: 1.05 }}>
+            <h1
+              className="disp"
+              style={{ fontSize: 30, color: 'var(--eg-red)', margin: '0 0 10px', lineHeight: 1.05 }}
+            >
               No se pudo confirmar.
             </h1>
             <p className="mono" style={{ fontSize: 13, color: 'var(--eg-fg-2)', lineHeight: 1.6 }}>
-              {message}. El enlace pudo caducar o ya se usó · the link may have expired or been used.
+              {message}. El enlace pudo caducar o ya se usó · the link may have expired or been
+              used.
             </p>
             <Link to="/login" className="b-btn" style={{ marginTop: 22, display: 'inline-flex' }}>
               ← Volver · Back

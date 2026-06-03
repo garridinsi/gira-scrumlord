@@ -67,9 +67,7 @@ function BigStat({
           letterSpacing: '-0.02em',
         }}
       >
-        {prefix && (
-          <span style={{ fontSize: 20, marginRight: 4, color: subColor }}>{prefix}</span>
-        )}
+        {prefix && <span style={{ fontSize: 20, marginRight: 4, color: subColor }}>{prefix}</span>}
         {children ?? value}
         {unit && (
           <span
@@ -103,9 +101,7 @@ function BigStat({
 // ── Velocity bar chart built from real sprint data ────────────────────────────
 function VelocityChart({ sprintsData }: { sprintsData: SprintRecord[] }) {
   // Only sprints with any points data
-  const data = sprintsData.filter(
-    (s) => (s.committedPoints ?? 0) > 0 || s.state === 'closed',
-  );
+  const data = sprintsData.filter((s) => (s.committedPoints ?? 0) > 0 || s.state === 'closed');
 
   if (data.length === 0) {
     return (
@@ -125,7 +121,10 @@ function VelocityChart({ sprintsData }: { sprintsData: SprintRecord[] }) {
           <span>COMPROMETIDO / COMPLETADO · PUNTOS</span>
         </div>
         <div className="gs-state" style={{ minHeight: 160 }}>
-          <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-4)', letterSpacing: '0.1em' }}>
+          <span
+            className="mono"
+            style={{ fontSize: 11, color: 'var(--eg-fg-4)', letterSpacing: '0.1em' }}
+          >
             SIN DATOS · NO SPRINT DATA YET
           </span>
         </div>
@@ -151,9 +150,7 @@ function VelocityChart({ sprintsData }: { sprintsData: SprintRecord[] }) {
   const barW = bw * 0.36;
 
   // Avg velocity from closed sprints
-  const closedWithData = recent.filter(
-    (s) => s.state === 'closed' && (s.committedPoints ?? 0) > 0,
-  );
+  const closedWithData = recent.filter((s) => s.state === 'closed' && (s.committedPoints ?? 0) > 0);
   const avgVelocity =
     closedWithData.length > 0
       ? Math.round(
@@ -194,7 +191,14 @@ function VelocityChart({ sprintsData }: { sprintsData: SprintRecord[] }) {
               height="6"
               patternTransform="rotate(45)"
             >
-              <line x1="0" y1="0" x2="0" y2="6" stroke="var(--eg-rule, var(--eg-paper-3))" strokeWidth="1.5" />
+              <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="6"
+                stroke="var(--eg-rule, var(--eg-paper-3))"
+                strokeWidth="1.5"
+              />
             </pattern>
           </defs>
 
@@ -407,10 +411,7 @@ function SprintVelocityTable({ sprintsData }: { sprintsData: SprintRecord[] }) {
 
   return (
     <section style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)' }}>
-      <div
-        className="tag-head"
-        style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}
-      >
+      <div className="tag-head" style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}>
         <span>// SPRINTS · HISTORIAL</span>
         <span>{sprintsData.length} SPRINTS</span>
       </div>
@@ -427,7 +428,8 @@ function SprintVelocityTable({ sprintsData }: { sprintsData: SprintRecord[] }) {
                 gap: 12,
                 alignItems: 'center',
                 padding: '10px 14px',
-                borderBottom: i < rows.length - 1 ? '1px dashed var(--eg-rule, var(--eg-paper-3))' : 'none',
+                borderBottom:
+                  i < rows.length - 1 ? '1px dashed var(--eg-rule, var(--eg-paper-3))' : 'none',
                 background: isActive ? 'var(--eg-yellow)' : 'transparent',
                 fontSize: 13,
               }}
@@ -439,16 +441,17 @@ function SprintVelocityTable({ sprintsData }: { sprintsData: SprintRecord[] }) {
                   fontWeight: 700,
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
-                  color: isActive ? 'var(--eg-iron)' : isClosed ? 'var(--eg-fg-3)' : 'var(--eg-fg-3)',
+                  color: isActive
+                    ? 'var(--eg-iron)'
+                    : isClosed
+                      ? 'var(--eg-fg-3)'
+                      : 'var(--eg-fg-3)',
                 }}
               >
                 {s.state === 'active' ? 'ACTIVO' : s.state === 'future' ? 'FUTURO' : 'CERRADO'}
               </span>
               <span style={{ color: 'var(--eg-iron)', fontWeight: 500 }}>{s.name}</span>
-              <span
-                className="mono"
-                style={{ fontSize: 11, color: 'var(--eg-fg-3)' }}
-              >
+              <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)' }}>
                 {s.startDate && s.endDate
                   ? `${new Date(s.startDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} → ${new Date(s.endDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}`
                   : '—'}
@@ -471,11 +474,7 @@ function SprintVelocityTable({ sprintsData }: { sprintsData: SprintRecord[] }) {
 }
 
 // ── Active sprint velocity details ────────────────────────────────────────────
-function ActiveSprintPanel({
-  summary,
-}: {
-  summary: ProjectSummaryView;
-}) {
+function ActiveSprintPanel({ summary }: { summary: ProjectSummaryView }) {
   const { activeSprint } = summary;
   if (!activeSprint) return null;
 
@@ -587,7 +586,11 @@ function ProjectSettingsStrip({ projectKey }: { projectKey: string }) {
     enabled: !!projectKey,
     staleTime: 60_000,
   });
-  const clientsQ = useQuery({ queryKey: ['clients'], queryFn: () => clients.list(), staleTime: 60_000 });
+  const clientsQ = useQuery({
+    queryKey: ['clients'],
+    queryFn: () => clients.list(),
+    staleTime: 60_000,
+  });
 
   const [name, setName] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
@@ -615,17 +618,30 @@ function ProjectSettingsStrip({ projectKey }: { projectKey: string }) {
       toast({ tone: 'ok', title: 'Proyecto actualizado · Project updated' });
     },
     onError: (err) => {
-      toast({ tone: 'danger', title: 'Error al guardar · Save failed', body: err instanceof ApiError ? err.message : 'Error' });
+      toast({
+        tone: 'danger',
+        title: 'Error al guardar · Save failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      });
     },
   });
 
   const isWriter = me.data?.role === 'admin' || me.data?.role === 'member';
   if (!p || !isWriter) return null;
 
-  const dirty = nameVal.trim() !== p.name || descVal !== (p.description ?? '') || clientVal !== (p.clientId ?? '');
+  const dirty =
+    nameVal.trim() !== p.name ||
+    descVal !== (p.description ?? '') ||
+    clientVal !== (p.clientId ?? '');
 
   return (
-    <section style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)', marginBottom: 18 }}>
+    <section
+      style={{
+        border: '2px solid var(--eg-iron)',
+        background: 'var(--eg-paper)',
+        marginBottom: 18,
+      }}
+    >
       <div className="tag-head" style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}>
         <span>// AJUSTES · PROJECT SETTINGS</span>
         <span className="mono" style={{ fontSize: 10, letterSpacing: '0.1em' }}>
@@ -643,18 +659,36 @@ function ProjectSettingsStrip({ projectKey }: { projectKey: string }) {
               value={nameVal}
               onChange={(e) => setName(e.target.value)}
               maxLength={120}
-              style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1.5px solid var(--eg-iron)',
+                background: 'var(--eg-paper)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 13,
+              }}
             />
           </div>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <label className="caps" htmlFor="ps-client" style={{ display: 'block', marginBottom: 4 }}>
+            <label
+              className="caps"
+              htmlFor="ps-client"
+              style={{ display: 'block', marginBottom: 4 }}
+            >
               cliente · client {p.clientId ? '' : '(necesario para facturar)'}
             </label>
             <select
               id="ps-client"
               value={clientVal}
               onChange={(e) => setClientId(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1.5px solid var(--eg-iron)',
+                background: 'var(--eg-paper)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 13,
+              }}
             >
               <option value="">— sin cliente · none —</option>
               {(clientsQ.data ?? []).map((c) => (
@@ -675,7 +709,15 @@ function ProjectSettingsStrip({ projectKey }: { projectKey: string }) {
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
             maxLength={5000}
-            style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--eg-iron)', background: 'var(--eg-paper)', fontFamily: 'var(--font-mono)', fontSize: 13, resize: 'vertical' }}
+            style={{
+              width: '100%',
+              padding: '8px 10px',
+              border: '1.5px solid var(--eg-iron)',
+              background: 'var(--eg-paper)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 13,
+              resize: 'vertical',
+            }}
           />
         </div>
         <button
@@ -779,7 +821,12 @@ function BudgetEditorStrip({ projectKey }: { projectKey: string }) {
       >
         <span
           className="mono"
-          style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.08em', alignSelf: 'center' }}
+          style={{
+            fontSize: 11,
+            color: 'var(--eg-fg-3)',
+            letterSpacing: '0.08em',
+            alignSelf: 'center',
+          }}
         >
           Límite mensual del retainer · Monthly retainer cap
         </span>
@@ -903,8 +950,7 @@ function CadenceStrip({ projectKey }: { projectKey: string }) {
   });
 
   const updateMut = useMutation({
-    mutationFn: (cadence: 'sprints' | 'monthly') =>
-      projects.update(projectKey, { cadence }),
+    mutationFn: (cadence: 'sprints' | 'monthly') => projects.update(projectKey, { cadence }),
     onSuccess: (p) => {
       void qc.invalidateQueries({ queryKey: ['project', projectKey] });
       const label = p.cadence === 'monthly' ? 'Mensual · Monthly' : 'Sprints';
@@ -923,7 +969,13 @@ function CadenceStrip({ projectKey }: { projectKey: string }) {
   const current = projectQ.data.cadence ?? 'sprints';
 
   return (
-    <section style={{ border: '2px solid var(--eg-iron)', background: 'var(--eg-paper)', marginBottom: 18 }}>
+    <section
+      style={{
+        border: '2px solid var(--eg-iron)',
+        background: 'var(--eg-paper)',
+        marginBottom: 18,
+      }}
+    >
       <div className="tag-head" style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}>
         <span>// CADENCIA · CADENCE</span>
         <span className="mono" style={{ fontSize: 10, letterSpacing: '0.1em' }}>
@@ -931,15 +983,27 @@ function CadenceStrip({ projectKey }: { projectKey: string }) {
         </span>
       </div>
       <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 16 }}>
-        <span className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}>
+        <span
+          className="mono"
+          style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.08em' }}
+        >
           Modo de seguimiento del proyecto · Project tracking cadence
         </span>
-        <div style={{ display: 'flex', gap: 0, border: '1.5px solid var(--eg-iron)', marginLeft: 'auto' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 0,
+            border: '1.5px solid var(--eg-iron)',
+            marginLeft: 'auto',
+          }}
+        >
           {(['sprints', 'monthly'] as const).map((c) => (
             <button
               key={c}
               type="button"
-              onClick={() => { if (current !== c) updateMut.mutate(c); }}
+              onClick={() => {
+                if (current !== c) updateMut.mutate(c);
+              }}
               disabled={updateMut.isPending}
               style={{
                 fontFamily: 'var(--font-mono)',
@@ -1022,10 +1086,7 @@ export function ProjectSummaryPage() {
       : 0;
 
   const velocity = summary.activeSprint?.velocity;
-  const avgVelocity =
-    velocity != null
-      ? velocity.committedPoints
-      : null;
+  const avgVelocity = velocity != null ? velocity.committedPoints : null;
 
   // Money split into integer + decimal parts for display
   const moneyStr = formatMoney(summary.accruedCents, summary.currency);

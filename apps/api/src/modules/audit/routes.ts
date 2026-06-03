@@ -8,7 +8,12 @@ import { requireAuth, requireRole } from '../../lib/auth.js';
 
 export async function auditRoutes(app: FastifyInstance): Promise<void> {
   app.get('/audit', { preHandler: [requireAuth, requireRole('admin')] }, async (req) => {
-    const q = req.query as { entityType?: string; entityId?: string; action?: string; limit?: string };
+    const q = req.query as {
+      entityType?: string;
+      entityId?: string;
+      action?: string;
+      limit?: string;
+    };
     const limit = Math.min(Math.max(Number(q.limit ?? 60), 1), 200);
     const where: Prisma.AuditLogWhereInput = {};
     if (q.entityType) where.entityType = q.entityType;

@@ -11,12 +11,20 @@ export function Placeholder({ es, en, tabs }: { es: string; en: string; tabs?: S
           <span className="plate" style={{ marginBottom: 18, display: 'inline-flex' }}>
             EN OBRAS · WIP
           </span>
-          <h2 className="disp" style={{ fontSize: 44, color: 'var(--eg-iron)', margin: '0 0 8px', lineHeight: 0.95 }}>
+          <h2
+            className="disp"
+            style={{ fontSize: 44, color: 'var(--eg-iron)', margin: '0 0 8px', lineHeight: 0.95 }}
+          >
             {es}
           </h2>
           <div
             className="mono"
-            style={{ fontSize: 11, color: 'var(--eg-fg-3)', letterSpacing: '0.14em', textTransform: 'uppercase' }}
+            style={{
+              fontSize: 11,
+              color: 'var(--eg-fg-3)',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+            }}
           >
             — {en} · building —
           </div>

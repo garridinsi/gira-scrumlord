@@ -21,7 +21,13 @@ function InvoiceStatusBadge({ status }: { status: InvoiceListItemView['status'] 
     draft: { es: 'Borrador', en: 'Draft', bg: 'var(--eg-paper-3)', color: 'var(--eg-iron)' },
     issued: { es: 'Emitida', en: 'Issued', bg: 'var(--eg-yellow)', color: 'var(--eg-iron)' },
     paid: { es: 'Pagada', en: 'Paid', bg: 'var(--eg-green)', color: 'var(--eg-paper)' },
-    void: { es: 'Anulada', en: 'Void', bg: 'var(--eg-paper-2)', color: 'var(--eg-fg-4)', strike: true },
+    void: {
+      es: 'Anulada',
+      en: 'Void',
+      bg: 'var(--eg-paper-2)',
+      color: 'var(--eg-fg-4)',
+      strike: true,
+    },
   };
   const cfg = map[status];
   return (
@@ -202,142 +208,140 @@ function InvoiceList({ clientId }: { clientId: string }) {
 
   return (
     <section style={{ border: '2px solid var(--eg-iron)' }}>
-      <div
-        className="tag-head"
-        style={{ background: 'var(--eg-yellow)', padding: '8px 14px' }}
-      >
+      <div className="tag-head" style={{ background: 'var(--eg-yellow)', padding: '8px 14px' }}>
         <span>// ANEXOS DE FACTURACIÓN · BILLING ANNEXES · {data.length}</span>
         <span>IMPORTE CONGELADO EN EMISIÓN · RATE FROZEN AT GENERATION</span>
       </div>
 
       <div className="gs-tablewrap" style={{ ['--gs-tw-min' as string]: '900px' }}>
-      {/* Header row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '150px 165px minmax(160px, 1fr) 150px 150px 110px',
-          gap: 0,
-          background: 'var(--eg-paper-3)',
-          borderBottom: '1.5px solid var(--eg-iron)',
-          padding: '8px 14px',
-          fontFamily: 'var(--font-mono)',
-          fontSize: 10,
-          letterSpacing: '0.12em',
-          textTransform: 'uppercase',
-          color: 'var(--eg-fg-3)',
-        }}
-      >
-        <span>// ref. anexo · annex ref</span>
-        <span>// estado · status</span>
-        <span>// período · period</span>
-        <span>// importe · amount</span>
-        <span>// ticketbai</span>
-        <span>// creada · created</span>
-      </div>
-
-      {data.length === 0 && (
+        {/* Header row */}
         <div
-          style={{
-            padding: '40px',
-            textAlign: 'center',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-            color: 'var(--eg-fg-4)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.12em',
-          }}
-        >
-          // sin anexos · no annexes yet
-        </div>
-      )}
-
-      {data.map((inv, i) => (
-        <Link
-          key={inv.id}
-          to={`/invoices/${inv.id}`}
           style={{
             display: 'grid',
             gridTemplateColumns: '150px 165px minmax(160px, 1fr) 150px 150px 110px',
             gap: 0,
-            alignItems: 'center',
-            padding: '12px 14px',
-            borderBottom: i < data.length - 1 ? '1px dashed var(--eg-rule)' : 'none',
-            background: i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)',
-            textDecoration: 'none',
-            transition: 'background var(--dur-1)',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLAnchorElement).style.background = 'var(--eg-yellow-soft, var(--eg-paper-3))';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLAnchorElement).style.background =
-              i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)';
+            background: 'var(--eg-paper-3)',
+            borderBottom: '1.5px solid var(--eg-iron)',
+            padding: '8px 14px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color: 'var(--eg-fg-3)',
           }}
         >
-          <span>
+          <span>// ref. anexo · annex ref</span>
+          <span>// estado · status</span>
+          <span>// período · period</span>
+          <span>// importe · amount</span>
+          <span>// ticketbai</span>
+          <span>// creada · created</span>
+        </div>
+
+        {data.length === 0 && (
+          <div
+            style={{
+              padding: '40px',
+              textAlign: 'center',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              color: 'var(--eg-fg-4)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+            }}
+          >
+            // sin anexos · no annexes yet
+          </div>
+        )}
+
+        {data.map((inv, i) => (
+          <Link
+            key={inv.id}
+            to={`/invoices/${inv.id}`}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '150px 165px minmax(160px, 1fr) 150px 150px 110px',
+              gap: 0,
+              alignItems: 'center',
+              padding: '12px 14px',
+              borderBottom: i < data.length - 1 ? '1px dashed var(--eg-rule)' : 'none',
+              background: i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)',
+              textDecoration: 'none',
+              transition: 'background var(--dur-1)',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.background =
+                'var(--eg-yellow-soft, var(--eg-paper-3))';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.background =
+                i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)';
+            }}
+          >
+            <span>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 700,
+                  fontSize: 13,
+                  color: 'var(--eg-iron)',
+                  letterSpacing: '0.06em',
+                }}
+              >
+                {inv.number}
+              </span>
+            </span>
+            <span>
+              <InvoiceStatusBadge status={inv.status} />
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                color: 'var(--eg-fg-3)',
+              }}
+            >
+              {inv.periodStart || inv.periodEnd ? (
+                <>
+                  {inv.periodStart ? formatDate(inv.periodStart) : '—'}
+                  {' – '}
+                  {inv.periodEnd ? formatDate(inv.periodEnd) : '—'}
+                </>
+              ) : (
+                <span>todo el trabajo · all work</span>
+              )}
+            </span>
             <span
               style={{
                 fontFamily: 'var(--font-mono)',
                 fontWeight: 700,
                 fontSize: 13,
                 color: 'var(--eg-iron)',
-                letterSpacing: '0.06em',
               }}
             >
-              {inv.number}
+              {formatMoney(inv.subtotalCents, inv.currency)}
             </span>
-          </span>
-          <span>
-            <InvoiceStatusBadge status={inv.status} />
-          </span>
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--eg-fg-3)',
-            }}
-          >
-            {inv.periodStart || inv.periodEnd ? (
-              <>
-                {inv.periodStart ? formatDate(inv.periodStart) : '—'}
-                {' – '}
-                {inv.periodEnd ? formatDate(inv.periodEnd) : '—'}
-              </>
-            ) : (
-              <span>todo el trabajo · all work</span>
-            )}
-          </span>
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 700,
-              fontSize: 13,
-              color: 'var(--eg-iron)',
-            }}
-          >
-            {formatMoney(inv.subtotalCents, inv.currency)}
-          </span>
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: inv.externalInvoiceRef ? 'var(--eg-iron)' : 'var(--eg-fg-4)',
-              letterSpacing: '0.04em',
-            }}
-          >
-            {inv.externalInvoiceRef ?? '—'}
-          </span>
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--eg-fg-3)',
-            }}
-          >
-            {formatDate(inv.createdAt)}
-          </span>
-        </Link>
-      ))}
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                color: inv.externalInvoiceRef ? 'var(--eg-iron)' : 'var(--eg-fg-4)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {inv.externalInvoiceRef ?? '—'}
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 11,
+                color: 'var(--eg-fg-3)',
+              }}
+            >
+              {formatDate(inv.createdAt)}
+            </span>
+          </Link>
+        ))}
       </div>
     </section>
   );
@@ -371,7 +375,9 @@ export function BillingPage() {
 
   return (
     <div className="body">
-      <div style={{ flex: 1, overflow: 'auto', padding: '18px 22px', background: 'var(--eg-paper)' }}>
+      <div
+        style={{ flex: 1, overflow: 'auto', padding: '18px 22px', background: 'var(--eg-paper)' }}
+      >
         {/* Page header */}
         <div
           className="summary-head"

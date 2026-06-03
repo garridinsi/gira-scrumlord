@@ -12,11 +12,7 @@ import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
 import { conflict, notFound } from '../../lib/http-error.js';
 import { toLabelView, toStatusView } from '../../lib/views.js';
-import {
-  assertCanAccessProject,
-  assertCanWrite,
-  projectScopeWhere,
-} from '../../lib/scope.js';
+import { assertCanAccessProject, assertCanWrite, projectScopeWhere } from '../../lib/scope.js';
 import { createProject, getProjectByKeyOr404 } from './service.js';
 
 export async function projectRoutes(app: FastifyInstance): Promise<void> {
@@ -66,7 +62,9 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
         where: { projectId: before.id, state: { in: ['active', 'future'] } },
       });
       if (live > 0) {
-        throw conflict('close or delete the active/future sprints before switching to monthly cadence');
+        throw conflict(
+          'close or delete the active/future sprints before switching to monthly cadence',
+        );
       }
     }
     return prisma.$transaction(async (tx) => {

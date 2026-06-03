@@ -28,7 +28,13 @@ describe('M4 intake + auto-assign', () => {
       headers: { cookie },
       payload: { name: 'grafana', kind, projectId: project!.id },
     });
-    return { cookie, projectKey, projectId: project!.id, token: res.json().token, sourceId: res.json().id };
+    return {
+      cookie,
+      projectKey,
+      projectId: project!.id,
+      token: res.json().token,
+      sourceId: res.json().id,
+    };
   }
 
   it('issues a one-time token and rejects a bad one', async () => {
@@ -76,19 +82,47 @@ describe('M4 intake + auto-assign', () => {
       payload,
     });
     expect(again.json().results[0].action).toBe('duplicate');
-    expect(await prisma.issue.count({ where: { projectId: (await prisma.project.findUnique({ where: { key: projectKey } }))!.id } })).toBe(1);
+    expect(
+      await prisma.issue.count({
+        where: { projectId: (await prisma.project.findUnique({ where: { key: projectKey } }))!.id },
+      }),
+    ).toBe(1);
   });
 
   it('closes the issue when Grafana resolves the alert', async () => {
     const { sourceId, token } = await setupSource('grafana');
     const fire = {
-      alerts: [{ status: 'firing', fingerprint: 'fp-2', labels: { alertname: 'X', severity: 'warning' }, annotations: { summary: 'warn' } }],
+      alerts: [
+        {
+          status: 'firing',
+          fingerprint: 'fp-2',
+          labels: { alertname: 'X', severity: 'warning' },
+          annotations: { summary: 'warn' },
+        },
+      ],
     };
-    await app.inject({ method: 'POST', url: `/intake/${sourceId}`, headers: { 'x-gira-token': token }, payload: fire });
+    await app.inject({
+      method: 'POST',
+      url: `/intake/${sourceId}`,
+      headers: { 'x-gira-token': token },
+      payload: fire,
+    });
     const resolved = {
-      alerts: [{ status: 'resolved', fingerprint: 'fp-2', labels: { alertname: 'X', severity: 'warning' }, annotations: { summary: 'warn' } }],
+      alerts: [
+        {
+          status: 'resolved',
+          fingerprint: 'fp-2',
+          labels: { alertname: 'X', severity: 'warning' },
+          annotations: { summary: 'warn' },
+        },
+      ],
     };
-    const res = await app.inject({ method: 'POST', url: `/intake/${sourceId}`, headers: { 'x-gira-token': token }, payload: resolved });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/intake/${sourceId}`,
+      headers: { 'x-gira-token': token },
+      payload: resolved,
+    });
     expect(res.json().results[0].action).toBe('resolved');
     const issue = await prisma.issue.findFirst({ where: { externalRef: 'fp-2' } });
     expect(issue?.closedAt).not.toBeNull();
@@ -108,7 +142,16 @@ describe('M4 intake + auto-assign', () => {
       method: 'POST',
       url: `/intake/${sourceId}`,
       headers: { 'x-gira-token': token },
-      payload: { alerts: [{ status: 'firing', fingerprint: 'fp-3', labels: { alertname: 'Y', severity: 'critical' }, annotations: { summary: 'boom' } }] },
+      payload: {
+        alerts: [
+          {
+            status: 'firing',
+            fingerprint: 'fp-3',
+            labels: { alertname: 'Y', severity: 'critical' },
+            annotations: { summary: 'boom' },
+          },
+        ],
+      },
     });
     const issue = await prisma.issue.findFirst({ where: { externalRef: 'fp-3' } });
     expect(issue?.assigneeId).toBe(dev.id);
@@ -131,26 +174,73 @@ describe('M4 intake + auto-assign', () => {
     expect(gen.json().results[0].action).toBe('created');
 
     // missing token entirely → 401 (distinct from the wrong-token path)
-    const noToken = await app.inject({ method: 'POST', url: `/intake/${sourceId}`, payload: { title: 'x' } });
+    const noToken = await app.inject({
+      method: 'POST',
+      url: `/intake/${sourceId}`,
+      payload: { title: 'x' },
+    });
     expect(noToken.statusCode).toBe(401);
 
     // assignment rules: create → list → delete (audited)
     const dev = await makeUser({ name: 'Dev', role: 'member' });
     const rule = (
-      await app.inject({ method: 'POST', url: `/projects/${projectKey}/assignment-rules`, headers: { cookie }, payload: { assigneeId: dev.id, matchPriority: 'high' } })
+      await app.inject({
+        method: 'POST',
+        url: `/projects/${projectKey}/assignment-rules`,
+        headers: { cookie },
+        payload: { assigneeId: dev.id, matchPriority: 'high' },
+      })
     ).json();
-    const rules = await app.inject({ method: 'GET', url: `/projects/${projectKey}/assignment-rules`, headers: { cookie } });
+    const rules = await app.inject({
+      method: 'GET',
+      url: `/projects/${projectKey}/assignment-rules`,
+      headers: { cookie },
+    });
     expect(rules.json().map((r: { id: string }) => r.id)).toContain(rule.id);
-    expect((await app.inject({ method: 'DELETE', url: `/assignment-rules/${rule.id}`, headers: { cookie } })).statusCode).toBe(204);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: `/assignment-rules/${rule.id}`,
+          headers: { cookie },
+        })
+      ).statusCode,
+    ).toBe(204);
 
     // disable the source → intake is refused with 403
-    await app.inject({ method: 'PATCH', url: `/intake-sources/${sourceId}`, headers: { cookie }, payload: { active: false } });
-    const disabled = await app.inject({ method: 'POST', url: `/intake/${sourceId}`, headers: { 'x-gira-token': token }, payload: { title: 'x' } });
+    await app.inject({
+      method: 'PATCH',
+      url: `/intake-sources/${sourceId}`,
+      headers: { cookie },
+      payload: { active: false },
+    });
+    const disabled = await app.inject({
+      method: 'POST',
+      url: `/intake/${sourceId}`,
+      headers: { 'x-gira-token': token },
+      payload: { title: 'x' },
+    });
     expect(disabled.statusCode).toBe(403);
 
     // delete the source (audited) then a second delete 404s
-    expect((await app.inject({ method: 'DELETE', url: `/intake-sources/${sourceId}`, headers: { cookie } })).statusCode).toBe(204);
-    expect((await app.inject({ method: 'DELETE', url: `/intake-sources/${sourceId}`, headers: { cookie } })).statusCode).toBe(404);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: `/intake-sources/${sourceId}`,
+          headers: { cookie },
+        })
+      ).statusCode,
+    ).toBe(204);
+    expect(
+      (
+        await app.inject({
+          method: 'DELETE',
+          url: `/intake-sources/${sourceId}`,
+          headers: { cookie },
+        })
+      ).statusCode,
+    ).toBe(404);
   });
 
   it('caps the issues one webhook payload can mint and signals the overflow', async () => {
