@@ -124,6 +124,51 @@ describe('issues', () => {
     expect(res.statusCode).toBe(403);
   });
 
+  it('reports SLA clocks from the ledger (B2): a fresh issue is unmet but not yet breached', async () => {
+    const { cookie, projectKey } = await setup();
+    await create(app, cookie, { projectKey, title: 'SLA' });
+    const sla = (
+      await app.inject({ method: 'GET', url: '/issues/GIRA-1/sla', headers: { cookie } })
+    ).json();
+    expect(sla.response).toMatchObject({ targetMinutes: 480, met: false, breached: false }); // 8 business h
+    expect(sla.resolution).toMatchObject({ targetMinutes: 2400, met: false, breached: false }); // 40 business h
+    expect(sla.response.elapsedMinutes).toBeLessThan(5);
+  });
+
+  it('marks response + resolution met once the issue moves and reaches done', async () => {
+    const { cookie, projectKey, byName } = await setup();
+    await create(app, cookie, { projectKey, title: 'SLA' });
+    await app.inject({
+      method: 'PATCH',
+      url: '/issues/GIRA-1',
+      headers: { cookie },
+      payload: { statusId: byName.Done!.id },
+    });
+    const sla = (
+      await app.inject({ method: 'GET', url: '/issues/GIRA-1/sla', headers: { cookie } })
+    ).json();
+    expect(sla.response.met).toBe(true);
+    expect(sla.resolution.met).toBe(true);
+    expect(sla.resolution.breached).toBe(false); // resolved within seconds of creation
+  });
+
+  it('breaches when the issue sits unresolved past the business-hours target', async () => {
+    const { cookie, projectKey } = await setup();
+    await create(app, cookie, { projectKey, title: 'SLA' });
+    // Backdate creation ~20 calendar days (well past the 8h response / 40h resolution targets).
+    await prisma.issue.update({
+      where: { key: 'GIRA-1' },
+      data: { createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000) },
+    });
+    const sla = (
+      await app.inject({ method: 'GET', url: '/issues/GIRA-1/sla', headers: { cookie } })
+    ).json();
+    expect(sla.response.met).toBe(false);
+    expect(sla.response.breached).toBe(true);
+    expect(sla.resolution.breached).toBe(true);
+    expect(sla.response.elapsedMinutes).toBeGreaterThan(480);
+  });
+
   it('moving to a done status sets closedAt', async () => {
     const { cookie, projectKey, byName } = await setup();
     await create(app, cookie, { projectKey, title: 'Finish me' });

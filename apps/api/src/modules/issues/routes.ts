@@ -20,6 +20,7 @@ import {
   loadIssueOr404,
   recordIssueEvent,
 } from './service.js';
+import { computeSla } from './sla.js';
 
 export async function issueRoutes(app: FastifyInstance): Promise<void> {
   // ── list / search / filter ─────────────────────────────────────────────
@@ -262,6 +263,14 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
       orderBy: { createdAt: 'asc' },
     });
     return events.map(toIssueEventView);
+  });
+
+  // ── SLA status (B2) ───────────────────────────────────────────────────────
+  app.get('/issues/:key/sla', { preHandler: requireAuth }, async (req) => {
+    const { key } = req.params as { key: string };
+    const issue = await loadIssueOr404(key);
+    assertCanAccessProject(currentUser(req), { clientId: issue.project.clientId });
+    return computeSla(key);
   });
 
   // ── comments ──────────────────────────────────────────────────────────

@@ -122,6 +122,22 @@ export interface CommentView {
   visibility: 'client' | 'internal';
 }
 
+// B2: an issue's SLA status — elapsed business minutes vs target for response + resolution.
+export interface SlaClockView {
+  targetMinutes: number;
+  elapsedMinutes: number;
+  /** true once the milestone is reached (responded / resolved); false = clock still running. */
+  met: boolean;
+  /** elapsed business minutes exceed the target (whether or not the milestone is reached). */
+  breached: boolean;
+}
+export interface SlaView {
+  issueKey: string;
+  businessTimeZone: string;
+  response: SlaClockView;
+  resolution: SlaClockView;
+}
+
 // A1: one entry in an issue's transition ledger (the lifecycle timeline).
 export type IssueEventKind = 'created' | 'status_changed' | 'reopened';
 export interface IssueEventView {

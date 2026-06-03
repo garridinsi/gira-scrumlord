@@ -5,3 +5,4 @@ export * from './rank.js';
 export * from './rate.js';
 export * from './velocity.js';
 export * from './token.js';
+export * from './business-hours.js';

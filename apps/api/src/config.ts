@@ -48,6 +48,14 @@ const envSchema = z.object({
   // maintenance rollup + billing. Defaults to the maintainer's locale; self-hosters
   // in other regions should set this so late-night work lands in the right month.
   BILLING_TIMEZONE: z.string().default('Europe/Madrid'),
+  // B1/B2 SLA: the business-hours window (in BILLING_TIMEZONE, Mon–Fri) the breach clock
+  // counts within, the optional holiday list (comma-separated YYYY-MM-DD), and the default
+  // response/resolution targets in BUSINESS hours.
+  BUSINESS_DAY_START_HOUR: z.coerce.number().int().min(0).max(23).default(9),
+  BUSINESS_DAY_END_HOUR: z.coerce.number().int().min(1).max(24).default(17),
+  BUSINESS_HOLIDAYS: z.string().default(''),
+  SLA_RESPONSE_HOURS: z.coerce.number().min(0).default(8),
+  SLA_RESOLUTION_HOURS: z.coerce.number().min(0).default(40),
   // Number of trusted reverse-proxy hops in front of the API, so `req.ip` is the
   // real client (rate-limiting + audit). 1 = single nginx (local compose); behind a
   // cloudflared tunnel + nginx set 2. Never higher than your real proxy depth, or
