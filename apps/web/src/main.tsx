@@ -62,3 +62,11 @@ createRoot(rootEl).render(
     </ErrorBoundary>
   </StrictMode>,
 );
+
+// PWA: register the service worker (production only — the dev server has no /sw.js and a
+// SW would cache the HMR shell). Failure is non-fatal; the app works without it.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}

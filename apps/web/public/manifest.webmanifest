@@ -1,0 +1,19 @@
+{
+  "name": "gira-scrumlord",
+  "short_name": "gira",
+  "description": "Self-hostable issue tracking, time & money — agile, but make it dizzy.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1620",
+  "theme_color": "#f5c400",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}
