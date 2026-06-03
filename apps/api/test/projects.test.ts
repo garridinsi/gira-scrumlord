@@ -199,6 +199,30 @@ describe('clients + projects + isolation', () => {
     expect(await prisma.invoice.count({ where: { clientId: client.id } })).toBe(1);
   });
 
+  it('reads + patches a project, lists labels, and patches a status', async () => {
+    const { cookie } = await actingAs({ role: 'member' });
+    await app.inject({ method: 'POST', url: '/projects', headers: { cookie }, payload: { key: 'PCH', name: 'Patchable' } });
+
+    const one = await app.inject({ method: 'GET', url: '/projects/PCH', headers: { cookie } });
+    expect(one.statusCode).toBe(200);
+    expect(one.json().key).toBe('PCH');
+
+    const patched = await app.inject({ method: 'PATCH', url: '/projects/PCH', headers: { cookie }, payload: { name: 'Renamed' } });
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().name).toBe('Renamed');
+
+    await app.inject({ method: 'POST', url: '/projects/PCH/labels', headers: { cookie }, payload: { name: 'bug' } });
+    const labels = await app.inject({ method: 'GET', url: '/projects/PCH/labels', headers: { cookie } });
+    expect(labels.json().map((l: { name: string }) => l.name)).toContain('bug');
+
+    const st = (
+      await app.inject({ method: 'POST', url: '/projects/PCH/statuses', headers: { cookie }, payload: { name: 'QA', category: 'in_progress' } })
+    ).json();
+    const stp = await app.inject({ method: 'PATCH', url: `/statuses/${st.id}`, headers: { cookie }, payload: { name: 'QA Review' } });
+    expect(stp.statusCode).toBe(200);
+    expect(stp.json().name).toBe('QA Review');
+  });
+
   it('records an audit entry when deleting a status or label (parity with create)', async () => {
     const { user, cookie } = await actingAs({ role: 'member' });
     await app.inject({ method: 'POST', url: '/projects', headers: { cookie }, payload: { key: 'AUD', name: 'Audited' } });

@@ -94,6 +94,33 @@ describe('money: rates + accrued cost', () => {
     expect(body.accruedCents).toBe(35000);
   });
 
+  it('upserts project- and client-scoped rates and deletes one (audited, 404 when gone)', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const client = await prisma.client.create({ data: { name: 'Acme', slug: 'acme', currency: 'EUR' } });
+    const projRes = await app.inject({
+      method: 'POST',
+      url: '/projects',
+      headers: { cookie: admin.cookie },
+      payload: { key: 'RTE', name: 'Rated', clientId: client.id },
+    });
+    const project = await prisma.project.findUnique({ where: { key: 'RTE' } });
+    expect(projRes.statusCode).toBe(201);
+
+    const clientRate = await setRate(admin.cookie, { scope: 'client', clientId: client.id, hourlyCents: 8000, currency: 'EUR' });
+    expect(clientRate.statusCode).toBe(201);
+    const projectRate = await setRate(admin.cookie, { scope: 'project', projectId: project!.id, hourlyCents: 7000, currency: 'EUR' });
+    expect(projectRate.statusCode).toBe(201);
+
+    // Re-upserting the same scope updates rather than duplicating.
+    const again = await setRate(admin.cookie, { scope: 'project', projectId: project!.id, hourlyCents: 7500, currency: 'EUR' });
+    expect(again.statusCode).toBe(201);
+    expect(await prisma.rate.count({ where: { projectId: project!.id } })).toBe(1);
+
+    const del = await app.inject({ method: 'DELETE', url: `/rates/${projectRate.json().id}`, headers: { cookie: admin.cookie } });
+    expect(del.statusCode).toBe(204);
+    expect((await app.inject({ method: 'DELETE', url: `/rates/${projectRate.json().id}`, headers: { cookie: admin.cookie } })).statusCode).toBe(404);
+  });
+
   it('forbids client users from configuring rates', async () => {
     const client = await prisma.client.create({ data: { name: 'C', slug: 'c' } });
     const { cookie } = await actingAs({ kind: 'client', role: 'viewer', clientId: client.id });

@@ -103,6 +103,68 @@ describe('notifications + incidents API', () => {
     }
   });
 
+  it('lists, project-scopes, patches, and deletes channels; test/ack/resolve 404 cleanly', async () => {
+    const { user, cookie } = await actingAs({ role: 'member' });
+    const { projectKey } = await seedProject({ reporterId: user.id });
+    const project = await prisma.project.findUnique({ where: { key: projectKey } });
+
+    const ch = (
+      await app.inject({ method: 'POST', url: '/channels', headers: { cookie }, payload: { name: 'oncall', kind: 'email', target: 'a@b.test', events: ['issue.emergency'] } })
+    ).json();
+
+    // list
+    const list = await app.inject({ method: 'GET', url: '/channels', headers: { cookie } });
+    expect(list.json().map((c: { id: string }) => c.id)).toContain(ch.id);
+
+    // a project-scoped channel resolves its project…
+    const scoped = await app.inject({
+      method: 'POST',
+      url: '/channels',
+      headers: { cookie },
+      payload: { name: 'proj', kind: 'email', target: 'p@x.test', scope: 'project', projectId: project!.id, events: ['issue.status_changed'] },
+    });
+    expect(scoped.statusCode).toBe(201);
+    // …and rejects an unknown project (well-formed cuid that doesn't exist → 404).
+    const badProj = await app.inject({
+      method: 'POST',
+      url: '/channels',
+      headers: { cookie },
+      payload: {
+        name: 'np',
+        kind: 'email',
+        target: 'p@x.test',
+        scope: 'project',
+        projectId: 'claaaaaaaaaaaaaaaaaaaaaaaa',
+        events: ['issue.status_changed'],
+      },
+    });
+    expect(badProj.statusCode).toBe(404);
+
+    // patch (name) then delete (audited); a second delete 404s.
+    expect((await app.inject({ method: 'PATCH', url: `/channels/${ch.id}`, headers: { cookie }, payload: { name: 'renamed' } })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'DELETE', url: `/channels/${ch.id}`, headers: { cookie } })).statusCode).toBe(204);
+    expect((await app.inject({ method: 'DELETE', url: `/channels/${ch.id}`, headers: { cookie } })).statusCode).toBe(404);
+
+    // missing ids 404 across the verbs.
+    expect((await app.inject({ method: 'POST', url: '/channels/nope/test', headers: { cookie } })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'POST', url: '/incidents/nope/ack', headers: { cookie } })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'POST', url: '/incidents/nope/resolve', headers: { cookie } })).statusCode).toBe(404);
+  });
+
+  it('scopes the incident list to the client’s own projects', async () => {
+    const { user, cookie } = await actingAs({ role: 'member' });
+    const { projectKey } = await seedProject({ reporterId: user.id });
+    const created = await app.inject({ method: 'POST', url: '/issues', headers: { cookie }, payload: { projectKey, title: 'DOWN', priority: 'emergency' } });
+    await prisma.incident.create({ data: { issueId: created.json().id, status: 'open' } });
+
+    // A client of an unrelated client sees no incidents (the client-scoped where-branch).
+    const other = await prisma.client.create({ data: { name: 'Other', slug: 'other' } });
+    const outsider = await actingAs({ kind: 'client', role: 'viewer', clientId: other.id });
+    const list = await app.inject({ method: 'GET', url: '/incidents', headers: { cookie: outsider.cookie } });
+    expect(list.statusCode).toBe(200);
+    expect(list.json()).toHaveLength(0);
+  });
+
   it('refuses cross-origin mutations (CSRF guard)', async () => {
     const evil = await app.inject({
       method: 'POST',

@@ -114,6 +114,45 @@ describe('M4 intake + auto-assign', () => {
     expect(issue?.assigneeId).toBe(dev.id);
   });
 
+  it('admin manages sources + rules; missing token 401, disabled source 403, generic parse', async () => {
+    const { cookie, projectKey, sourceId, token } = await setupSource('generic');
+
+    // list sources
+    const list = await app.inject({ method: 'GET', url: '/intake-sources', headers: { cookie } });
+    expect(list.json().some((s: { id: string }) => s.id === sourceId)).toBe(true);
+
+    // generic parse → a single created issue
+    const gen = await app.inject({
+      method: 'POST',
+      url: `/intake/${sourceId}`,
+      headers: { 'x-gira-token': token },
+      payload: { title: 'Generic ticket', description: 'from a form' },
+    });
+    expect(gen.json().results[0].action).toBe('created');
+
+    // missing token entirely → 401 (distinct from the wrong-token path)
+    const noToken = await app.inject({ method: 'POST', url: `/intake/${sourceId}`, payload: { title: 'x' } });
+    expect(noToken.statusCode).toBe(401);
+
+    // assignment rules: create → list → delete (audited)
+    const dev = await makeUser({ name: 'Dev', role: 'member' });
+    const rule = (
+      await app.inject({ method: 'POST', url: `/projects/${projectKey}/assignment-rules`, headers: { cookie }, payload: { assigneeId: dev.id, matchPriority: 'high' } })
+    ).json();
+    const rules = await app.inject({ method: 'GET', url: `/projects/${projectKey}/assignment-rules`, headers: { cookie } });
+    expect(rules.json().map((r: { id: string }) => r.id)).toContain(rule.id);
+    expect((await app.inject({ method: 'DELETE', url: `/assignment-rules/${rule.id}`, headers: { cookie } })).statusCode).toBe(204);
+
+    // disable the source → intake is refused with 403
+    await app.inject({ method: 'PATCH', url: `/intake-sources/${sourceId}`, headers: { cookie }, payload: { active: false } });
+    const disabled = await app.inject({ method: 'POST', url: `/intake/${sourceId}`, headers: { 'x-gira-token': token }, payload: { title: 'x' } });
+    expect(disabled.statusCode).toBe(403);
+
+    // delete the source (audited) then a second delete 404s
+    expect((await app.inject({ method: 'DELETE', url: `/intake-sources/${sourceId}`, headers: { cookie } })).statusCode).toBe(204);
+    expect((await app.inject({ method: 'DELETE', url: `/intake-sources/${sourceId}`, headers: { cookie } })).statusCode).toBe(404);
+  });
+
   it('creates a task from a WordPress submission', async () => {
     const { sourceId, token } = await setupSource('wordpress');
     const res = await app.inject({
