@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { IssueView } from '@gira/shared';
 import { renderWithProviders } from './render';
 
@@ -81,5 +82,23 @@ describe('IssueDrawer', () => {
     expect(await screen.findByText('My issue title')).toBeInTheDocument();
     expect(screen.getByText('GIRA-1')).toBeInTheDocument();
     expect(h.get).toHaveBeenCalledWith('GIRA-1');
+  });
+
+  it('switches to the Comments tab and loads comments', async () => {
+    h.get.mockResolvedValue(issue({}));
+    renderWithProviders(<IssueDrawer issueKey="GIRA-1" projectKey="PRJ" onClose={vi.fn()} />);
+    await screen.findByText('My issue title');
+
+    await userEvent.click(screen.getByText('Comentarios'));
+    await waitFor(() => expect(h.commentsList).toHaveBeenCalledWith('GIRA-1'));
+  });
+
+  it('switches to the Worklogs tab and loads worklogs', async () => {
+    h.get.mockResolvedValue(issue({}));
+    renderWithProviders(<IssueDrawer issueKey="GIRA-1" projectKey="PRJ" onClose={vi.fn()} />);
+    await screen.findByText('My issue title');
+
+    await userEvent.click(screen.getByText('Registros'));
+    await waitFor(() => expect(h.worklogsList).toHaveBeenCalledWith('GIRA-1'));
   });
 });
