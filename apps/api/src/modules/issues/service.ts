@@ -24,6 +24,10 @@ export async function loadIssueOr404(key: string): Promise<IssueWithRelations> {
 export async function createIssue(
   input: CreateIssue,
   reporterId: string,
+  // Intake writes the dedup key (intakeSourceId, externalRef) here so it lands
+  // atomically with the row — never in a follow-up update that a crash could skip,
+  // leaving a null ref that re-duplicates on retry.
+  opts?: { externalRef?: string | null; intakeSourceId?: string | null },
 ): Promise<IssueWithRelations> {
   return prisma.$transaction(async (tx) => {
     const project = await tx.project.findUnique({
@@ -107,6 +111,8 @@ export async function createIssue(
         rank,
         billingMode: input.billingMode,
         fixedPriceCents: input.fixedPriceCents ?? null,
+        externalRef: opts?.externalRef ?? null,
+        intakeSourceId: opts?.intakeSourceId ?? null,
         labels: input.labelIds?.length
           ? { connect: input.labelIds.map((id) => ({ id })) }
           : undefined,

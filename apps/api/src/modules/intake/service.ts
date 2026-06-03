@@ -51,7 +51,7 @@ async function resolveAssignee(
 }
 
 export interface IntakeResult {
-  action: 'created' | 'resolved' | 'duplicate' | 'ignored';
+  action: 'created' | 'resolved' | 'duplicate' | 'ignored' | 'error';
   key?: string;
 }
 
@@ -68,58 +68,64 @@ export async function runIntake(
   const results: IntakeResult[] = [];
 
   for (const n of intakes) {
-    const type = n.type ?? source.defaultType;
-    const priority = n.priority ?? source.defaultPriority;
-    const labelIds = await ensureLabels(project.id, n.labels ?? []);
+    // Per-item isolation: a single malformed event must not abort the whole batch
+    // (and, with dedup written atomically, a retried batch re-dedups cleanly).
+    try {
+      const type = n.type ?? source.defaultType;
+      const priority = n.priority ?? source.defaultPriority;
+      const labelIds = await ensureLabels(project.id, n.labels ?? []);
 
-    // dedup on (source, externalRef)
-    const existing = n.externalRef
-      ? await prisma.issue.findUnique({
-          where: { intakeSourceId_externalRef: { intakeSourceId: source.id, externalRef: n.externalRef } },
-        })
-      : null;
+      // dedup on (source, externalRef)
+      const existing = n.externalRef
+        ? await prisma.issue.findUnique({
+            where: { intakeSourceId_externalRef: { intakeSourceId: source.id, externalRef: n.externalRef } },
+          })
+        : null;
 
-    if (existing) {
-      if (n.resolved && !existing.closedAt) {
-        const done = await prisma.status.findFirst({
-          where: { projectId: project.id, category: 'done' },
-          orderBy: { order: 'asc' },
-        });
-        await prisma.issue.update({
-          where: { id: existing.id },
-          data: { closedAt: new Date(), ...(done ? { statusId: done.id } : {}) },
-        });
-        results.push({ action: 'resolved', key: existing.key });
-      } else {
-        results.push({ action: 'duplicate', key: existing.key });
+      if (existing) {
+        if (n.resolved && !existing.closedAt) {
+          const done = await prisma.status.findFirst({
+            where: { projectId: project.id, category: 'done' },
+            orderBy: { order: 'asc' },
+          });
+          await prisma.issue.update({
+            where: { id: existing.id },
+            data: { closedAt: new Date(), ...(done ? { statusId: done.id } : {}) },
+          });
+          results.push({ action: 'resolved', key: existing.key });
+        } else {
+          results.push({ action: 'duplicate', key: existing.key });
+        }
+        continue;
       }
-      continue;
-    }
 
-    if (n.resolved) {
-      results.push({ action: 'ignored' }); // resolved event for an unknown issue
-      continue;
-    }
+      if (n.resolved) {
+        results.push({ action: 'ignored' }); // resolved event for an unknown issue
+        continue;
+      }
 
-    const assigneeId = await resolveAssignee(project.id, { type, priority, labelIds });
-    const issue = await createIssue(
-      {
-        projectKey: project.key,
-        title: n.title,
-        description: n.description,
-        type,
-        priority,
-        billingMode: 'hourly',
-        assigneeId: assigneeId ?? undefined,
-        labelIds,
-      },
-      reporter.id,
-    );
-    await prisma.issue.update({
-      where: { id: issue.id },
-      data: { externalRef: n.externalRef ?? null, intakeSourceId: source.id },
-    });
-    results.push({ action: 'created', key: issue.key });
+      const assigneeId = await resolveAssignee(project.id, { type, priority, labelIds });
+      // The dedup key is written inside createIssue's tx, so the (source, ref) row is
+      // never momentarily null between create and a follow-up update.
+      const issue = await createIssue(
+        {
+          projectKey: project.key,
+          title: n.title,
+          description: n.description,
+          type,
+          priority,
+          billingMode: 'hourly',
+          assigneeId: assigneeId ?? undefined,
+          labelIds,
+        },
+        reporter.id,
+        { externalRef: n.externalRef ?? null, intakeSourceId: source.id },
+      );
+      results.push({ action: 'created', key: issue.key });
+    } catch (err) {
+      console.error('[intake] item failed', { sourceId: source.id, externalRef: n.externalRef, err });
+      results.push({ action: 'error' });
+    }
   }
 
   return results;

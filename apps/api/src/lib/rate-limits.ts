@@ -18,3 +18,9 @@ export const intakeRateLimit = {
   max: isTest ? 10_000 : 120,
   timeWindow: '1 minute',
 };
+
+/** Unauthenticated crash-report sink — strict; a fire-and-forget public endpoint. */
+export const clientErrorRateLimit = {
+  max: isTest ? 10_000 : 30,
+  timeWindow: '1 minute',
+};

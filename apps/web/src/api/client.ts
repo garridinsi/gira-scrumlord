@@ -134,6 +134,30 @@ function json(body: unknown): RequestInit {
   return { body: JSON.stringify(body) };
 }
 
+/**
+ * Fire-and-forget crash report to the server log sink (`POST /client-errors`).
+ * Never throws and never blocks the error UI — reporting a fault must not itself
+ * become a fault. `keepalive` lets it survive an immediate unload/reload.
+ */
+export function reportClientError(payload: {
+  message: string;
+  stack?: string;
+  componentStack?: string;
+  url?: string;
+}): void {
+  try {
+    void fetch(`${BASE_URL}/client-errors`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* swallow — reporting must never break the boundary */
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Users
 // ---------------------------------------------------------------------------

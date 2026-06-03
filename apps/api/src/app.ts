@@ -20,6 +20,7 @@ import { timeRoutes } from './modules/time/routes.js';
 import { userRoutes } from './modules/users/routes.js';
 import { registerErrorHandler } from './plugins/errors.js';
 import { registerSecurity } from './plugins/security.js';
+import { clientErrorRoutes } from './routes/client-errors.js';
 import { healthRoutes } from './routes/health.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -37,6 +38,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   registerErrorHandler(app);
 
   await app.register(healthRoutes);
+  await app.register(clientErrorRoutes);
   await app.register(authRoutes);
   await app.register(clientRoutes);
   await app.register(userRoutes);

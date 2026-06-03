@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportClientError } from '../api/client';
 
 interface Props {
   children: ReactNode;
@@ -20,8 +21,14 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
-    // Log to console in development; a real setup would forward to Sauron / Sentry.
     console.error('[ErrorBoundary]', error, info.componentStack);
+    // Forward to the server log sink so a crash the user never reports is still seen.
+    reportClientError({
+      message: error.message || String(error),
+      stack: error.stack ?? undefined,
+      componentStack: info.componentStack ?? undefined,
+      url: typeof window !== 'undefined' ? window.location.href : undefined,
+    });
   }
 
   override render() {
