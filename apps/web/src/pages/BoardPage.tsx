@@ -701,6 +701,7 @@ function BoardColumn({
   onDragEnd,
   onCardClick,
   onNewIssue,
+  onKeyMove,
 }: {
   status: StatusView;
   columnIssues: IssueView[];
@@ -714,6 +715,7 @@ function BoardColumn({
   onDragEnd: () => void;
   onCardClick: (key: string) => void;
   onNewIssue: (statusId: string) => void;
+  onKeyMove: (issueKey: string, dir: -1 | 1) => void;
 }) {
   const wipLimit = WIP_LIMITS[status.name];
 
@@ -752,6 +754,20 @@ function BoardColumn({
             draggable
             onDragStart={(e) => onDragStart(e, issue.key)}
             onDragEnd={onDragEnd}
+            // G1: keyboard-accessible alternative to drag. The card is focusable; Enter/Space
+            // opens it, Alt+←/→ moves it to the previous/next column (announced for SRs).
+            tabIndex={0}
+            role="button"
+            aria-label={`${issue.key}: ${issue.title}. Enter para abrir · open; Alt+flechas para mover · move`}
+            onKeyDown={(e) => {
+              if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+                e.preventDefault();
+                onKeyMove(issue.key, e.key === 'ArrowRight' ? 1 : -1);
+              } else if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onCardClick(issue.key);
+              }
+            }}
           >
             <IssueCard
               issue={issue}
@@ -831,6 +847,8 @@ export function BoardPage() {
   const [createStatusId, setCreateStatusId] = useState<string | undefined>(undefined);
   const [showCreate, setShowCreate] = useState(false);
   const [filter, setFilter] = useState<FilterState>({ labelId: null, assigneeId: null });
+  // G1: screen-reader announcement of a keyboard move (an aria-live region reads it).
+  const [announce, setAnnounce] = useState('');
 
   const queryClient = useQueryClient();
 
@@ -883,6 +901,23 @@ export function BoardPage() {
       });
     },
   });
+
+  // G1: keyboard-accessible move — shift a focused card to the previous/next column
+  // (Alt+Arrow), the non-pointer alternative to drag. Appends to the target column and
+  // announces the move for screen readers. dir = -1 (left) | +1 (right).
+  const moveToColumn = useCallback(
+    (issueKey: string, dir: -1 | 1) => {
+      const cols = boardQuery.data?.columns ?? [];
+      const fromIdx = cols.findIndex((c) => c.issues.some((i) => i.key === issueKey));
+      if (fromIdx === -1) return;
+      const toIdx = fromIdx + dir;
+      if (toIdx < 0 || toIdx >= cols.length) return; // already at an edge
+      const target = cols[toIdx]!.status;
+      moveMutation.mutate({ issueKey, data: { statusId: target.id } });
+      setAnnounce(`${issueKey} movido a · moved to ${target.name}`);
+    },
+    [boardQuery.data, moveMutation],
+  );
 
   // Handlers
   const openDrawer = useCallback(
@@ -1093,6 +1128,20 @@ export function BoardPage() {
         <div
           style={{ flex: 1, overflow: 'auto', padding: '16px 20px', background: 'var(--eg-paper)' }}
         >
+          {/* G1: screen-reader-only live region announcing keyboard moves. */}
+          <div
+            aria-live="polite"
+            style={{
+              position: 'absolute',
+              width: 1,
+              height: 1,
+              overflow: 'hidden',
+              clip: 'rect(0 0 0 0)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {announce}
+          </div>
           <div style={{ display: 'flex', gap: 0, height: '100%', alignItems: 'flex-start' }}>
             {filteredColumns.map((col, ci) => (
               <div key={col.status.id} style={{ display: 'contents' }}>
@@ -1112,6 +1161,7 @@ export function BoardPage() {
                     setCreateStatusId(sid);
                     setShowCreate(true);
                   }}
+                  onKeyMove={moveToColumn}
                 />
 
                 {/* Hazard divider between columns */}

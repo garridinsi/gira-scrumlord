@@ -339,6 +339,37 @@ describe('BoardPage', () => {
     expect(statusSelect.value).toBe('s1');
   });
 
+  // ── keyboard move (G1 a11y) ──────────────────────────────────────────────────
+
+  it('moves a focused card to the next column with Alt+ArrowRight, announced for SRs', async () => {
+    board.mockResolvedValue(twoColBoard());
+    issueMove.mockResolvedValue({ key: 'GIRA-1' });
+    renderAt();
+    const card = await screen.findByRole('button', { name: /GIRA-1: First card/ });
+    card.focus();
+    await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    await waitFor(() => expect(issueMove).toHaveBeenCalledWith('GIRA-1', { statusId: 's2' }));
+    expect(await screen.findByText(/GIRA-1 movido a · moved to Done/)).toBeInTheDocument();
+  });
+
+  it('does not move a card past the last column', async () => {
+    board.mockResolvedValue({
+      projectKey: 'PRJ',
+      columns: [
+        { status: { id: 's1', name: 'To Do', category: 'todo', order: 0 }, issues: [] },
+        {
+          status: { id: 's2', name: 'Done', category: 'done', order: 4 },
+          issues: [issue({ key: 'GIRA-9', title: 'Last card', statusId: 's2' })],
+        },
+      ],
+    });
+    renderAt();
+    const card = await screen.findByRole('button', { name: /GIRA-9: Last card/ });
+    card.focus();
+    await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    expect(issueMove).not.toHaveBeenCalled();
+  });
+
   // ── drag & drop move ─────────────────────────────────────────────────────────
 
   it('moves a card across columns via drag-and-drop with an optimistic update', async () => {
