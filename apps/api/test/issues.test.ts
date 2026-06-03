@@ -46,6 +46,84 @@ describe('issues', () => {
     expect(events).toBe(1);
   });
 
+  it('records a transition ledger: created → status_changed → reopened (A1)', async () => {
+    const { cookie, projectKey, byName } = await setup();
+    await create(app, cookie, { projectKey, title: 'Lifecycle' });
+    const getEvents = async () =>
+      (
+        await app.inject({ method: 'GET', url: '/issues/GIRA-1/events', headers: { cookie } })
+      ).json();
+
+    // createIssue opens the ledger with the birth status + its frozen category.
+    let events = await getEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      kind: 'created',
+      fromStatusId: null,
+      toStatusId: byName.Backlog!.id,
+      statusCategory: byName.Backlog!.category,
+    });
+
+    // → Done (status_changed, category frozen), then back → Backlog (reopened).
+    await app.inject({
+      method: 'PATCH',
+      url: '/issues/GIRA-1',
+      headers: { cookie },
+      payload: { statusId: byName.Done!.id },
+    });
+    await app.inject({
+      method: 'PATCH',
+      url: '/issues/GIRA-1',
+      headers: { cookie },
+      payload: { statusId: byName.Backlog!.id },
+    });
+
+    events = await getEvents();
+    expect(events.map((e: { kind: string }) => e.kind)).toEqual([
+      'created',
+      'status_changed',
+      'reopened',
+    ]);
+    expect(events[1]).toMatchObject({
+      kind: 'status_changed',
+      fromStatusId: byName.Backlog!.id,
+      toStatusId: byName.Done!.id,
+      statusCategory: byName.Done!.category,
+    });
+    expect(events[2]).toMatchObject({ kind: 'reopened', toStatusId: byName.Backlog!.id });
+    expect(events[2].actorId).toBeTruthy();
+  });
+
+  it('does not append a ledger entry when a PATCH leaves the status unchanged', async () => {
+    const { cookie, projectKey } = await setup();
+    await create(app, cookie, { projectKey, title: 'Title only' });
+    await app.inject({
+      method: 'PATCH',
+      url: '/issues/GIRA-1',
+      headers: { cookie },
+      payload: { title: 'Renamed' },
+    });
+    const events = (
+      await app.inject({ method: 'GET', url: '/issues/GIRA-1/events', headers: { cookie } })
+    ).json();
+    expect(events).toHaveLength(1); // just the 'created' entry
+  });
+
+  it("forbids a different tenant's client from reading an issue's ledger", async () => {
+    const { cookie, projectKey } = await setup();
+    await create(app, cookie, { projectKey, title: 'Private' });
+    const other = await prisma.client.create({
+      data: { name: 'Other', slug: 'other-evt', currency: 'EUR' },
+    });
+    const clientUser = await actingAs({ kind: 'client', role: 'viewer', clientId: other.id });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/issues/GIRA-1/events',
+      headers: { cookie: clientUser.cookie },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
   it('moving to a done status sets closedAt', async () => {
     const { cookie, projectKey, byName } = await setup();
     await create(app, cookie, { projectKey, title: 'Finish me' });

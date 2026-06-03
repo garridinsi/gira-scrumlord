@@ -122,6 +122,19 @@ export interface CommentView {
   visibility: 'client' | 'internal';
 }
 
+// A1: one entry in an issue's transition ledger (the lifecycle timeline).
+export type IssueEventKind = 'created' | 'status_changed' | 'reopened';
+export interface IssueEventView {
+  id: string;
+  issueId: string;
+  kind: IssueEventKind;
+  fromStatusId: string | null;
+  toStatusId: string | null;
+  statusCategory: string | null;
+  actorId: string | null;
+  createdAt: string;
+}
+
 // ── Client portal (M2) ───────────────────────────────────────────────────
 export interface PortalProjectRollup {
   key: string;

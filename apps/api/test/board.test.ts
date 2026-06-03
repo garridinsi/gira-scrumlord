@@ -147,8 +147,22 @@ describe('board + move', () => {
     expect(event).not.toBeNull();
     expect((event!.payload as { issueKey: string }).issueKey).toBe('GIRA-1');
 
-    // A pure reorder within a column changes no status → no event.
+    // A1: the same drag also appends a status_changed entry to the issue's ledger.
+    const g1 = await prisma.issue.findUnique({ where: { key: 'GIRA-1' }, select: { id: true } });
+    const ledger = await prisma.issueEvent.findMany({
+      where: { issueId: g1!.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(ledger.map((e) => e.kind)).toEqual(['created', 'status_changed']);
+    expect(ledger[1]).toMatchObject({
+      toStatusId: byName.Done!.id,
+      statusCategory: byName.Done!.category,
+    });
+
+    // A pure reorder within a column changes no status → no event (outbox OR ledger).
     await prisma.outbox.deleteMany({});
+    const g2 = await prisma.issue.findUnique({ where: { key: 'GIRA-2' }, select: { id: true } });
+    const before = await prisma.issueEvent.count({ where: { issueId: g2!.id } });
     await app.inject({
       method: 'POST',
       url: '/issues/GIRA-2/move',
@@ -156,6 +170,7 @@ describe('board + move', () => {
       payload: { afterId: 'GIRA-3' },
     });
     expect(await prisma.outbox.count({ where: { type: 'issue.status_changed' } })).toBe(0);
+    expect(await prisma.issueEvent.count({ where: { issueId: g2!.id } })).toBe(before);
   });
 
   it('moves across columns and sets closedAt when entering Done', async () => {

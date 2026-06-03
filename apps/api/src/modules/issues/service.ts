@@ -21,6 +21,34 @@ export async function loadIssueOr404(key: string): Promise<IssueWithRelations> {
   return issue;
 }
 
+/**
+ * A1: append a row to an issue's transition ledger, inside the same tx as the change it
+ * records (so the ledger can never diverge from the issue's real state). statusCategory
+ * is frozen here from the target status's category at write time.
+ */
+export async function recordIssueEvent(
+  tx: Prisma.TransactionClient,
+  args: {
+    issueId: string;
+    kind: 'created' | 'status_changed' | 'reopened';
+    fromStatusId?: string | null;
+    toStatusId?: string | null;
+    statusCategory?: string | null;
+    actorId?: string | null;
+  },
+): Promise<void> {
+  await tx.issueEvent.create({
+    data: {
+      issueId: args.issueId,
+      kind: args.kind,
+      fromStatusId: args.fromStatusId ?? null,
+      toStatusId: args.toStatusId ?? null,
+      statusCategory: args.statusCategory ?? null,
+      actorId: args.actorId ?? null,
+    },
+  });
+}
+
 export async function createIssue(
   input: CreateIssue,
   reporterId: string,
@@ -155,6 +183,14 @@ export async function createIssue(
       entityType: 'Issue',
       entityId: issue.id,
       after: { key, title: issue.title, priority: issue.priority },
+    });
+    // A1: open the transition ledger with the birth status (its category frozen now).
+    await recordIssueEvent(tx, {
+      issueId: issue.id,
+      kind: 'created',
+      toStatusId: statusId,
+      statusCategory: project.statuses.find((s) => s.id === statusId)?.category ?? null,
+      actorId: reporterId,
     });
     return issue;
   });

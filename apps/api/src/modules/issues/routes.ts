@@ -11,9 +11,15 @@ import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
 import { badRequest } from '../../lib/http-error.js';
 import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
-import { toCommentView, toIssueView } from '../../lib/views.js';
+import { toCommentView, toIssueEventView, toIssueView } from '../../lib/views.js';
 import { getProjectByKeyOr404 } from '../projects/service.js';
-import { createIssue, emitEmergency, issueInclude, loadIssueOr404 } from './service.js';
+import {
+  createIssue,
+  emitEmergency,
+  issueInclude,
+  loadIssueOr404,
+  recordIssueEvent,
+} from './service.js';
 
 export async function issueRoutes(app: FastifyInstance): Promise<void> {
   // ── list / search / filter ─────────────────────────────────────────────
@@ -81,11 +87,13 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
     // Moving across status categories drives closedAt; a done → not-done move is a reopen.
     let closedAt: Date | null | undefined;
     let reopened = false;
+    let toCategory: string | null = null;
     if (input.statusId && input.statusId !== before.statusId) {
       const status = await prisma.status.findUnique({ where: { id: input.statusId } });
       if (!status || status.projectId !== before.projectId) throw badRequest('invalid statusId');
       closedAt = status.category === 'done' ? (before.closedAt ?? new Date()) : null;
       reopened = before.status.category === 'done' && status.category !== 'done';
+      toCategory = status.category;
     }
 
     // Every connected entity must belong to this issue's project (and a client
@@ -201,6 +209,15 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
             },
           },
         });
+        // A1: append the transition to the issue's ledger (reopen = done → not-done).
+        await recordIssueEvent(tx, {
+          issueId: before.id,
+          kind: reopened ? 'reopened' : 'status_changed',
+          fromStatusId: before.statusId,
+          toStatusId: u.statusId,
+          statusCategory: toCategory,
+          actorId: user.id,
+        });
       }
       await recordAudit(tx, {
         actorId: user.id,
@@ -233,6 +250,18 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
       });
     });
     return reply.code(204).send();
+  });
+
+  // ── transition ledger (A1) ───────────────────────────────────────────────
+  app.get('/issues/:key/events', { preHandler: requireAuth }, async (req) => {
+    const { key } = req.params as { key: string };
+    const issue = await loadIssueOr404(key);
+    assertCanAccessProject(currentUser(req), { clientId: issue.project.clientId });
+    const events = await prisma.issueEvent.findMany({
+      where: { issueId: issue.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    return events.map(toIssueEventView);
   });
 
   // ── comments ──────────────────────────────────────────────────────────

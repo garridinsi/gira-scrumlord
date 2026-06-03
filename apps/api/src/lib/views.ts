@@ -7,6 +7,7 @@ import type {
   Incident,
   IntakeSource,
   Issue,
+  IssueEvent,
   Label,
   NotificationChannel,
   Sprint,
@@ -20,6 +21,8 @@ import type {
   CommentView,
   IncidentView,
   IntakeSourceView,
+  IssueEventKind,
+  IssueEventView,
   IssueView,
   LabelView,
   PublicUserView,
@@ -83,6 +86,24 @@ export function toCommentView(c: Comment & { author?: User | null }): CommentVie
     author: c.author ? toPublicUserView(c.author) : null,
     createdAt: c.createdAt.toISOString(),
     visibility: c.visibility === 'internal' ? 'internal' : 'client',
+  };
+}
+
+const ISSUE_EVENT_KINDS: readonly IssueEventKind[] = ['created', 'status_changed', 'reopened'];
+export function toIssueEventView(e: IssueEvent): IssueEventView {
+  return {
+    id: e.id,
+    issueId: e.issueId,
+    // The column is a free String; clamp to the known union, defaulting unknowns to
+    // 'status_changed' so an out-of-band write can never break the typed view.
+    kind: (ISSUE_EVENT_KINDS as readonly string[]).includes(e.kind)
+      ? (e.kind as IssueEventKind)
+      : 'status_changed',
+    fromStatusId: e.fromStatusId,
+    toStatusId: e.toStatusId,
+    statusCategory: e.statusCategory,
+    actorId: e.actorId,
+    createdAt: e.createdAt.toISOString(),
   };
 }
 

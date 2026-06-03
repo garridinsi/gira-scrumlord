@@ -9,7 +9,7 @@ import { badRequest } from '../../lib/http-error.js';
 import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
 import { runSerializable } from '../../lib/tx.js';
 import { toIssueView, toStatusView } from '../../lib/views.js';
-import { issueInclude, loadIssueOr404 } from '../issues/service.js';
+import { issueInclude, loadIssueOr404, recordIssueEvent } from '../issues/service.js';
 import { getProjectByKeyOr404 } from '../projects/service.js';
 
 /** A spread of distinct, strictly-ascending ranks for a freshly rebalanced column. */
@@ -215,6 +215,15 @@ export async function boardRoutes(app: FastifyInstance): Promise<void> {
               actorId: user.id,
             },
           },
+        });
+        // A1: same transition ledger entry as the PATCH path (a drag is a status change too).
+        await recordIssueEvent(tx, {
+          issueId: issue.id,
+          kind: reopened ? 'reopened' : 'status_changed',
+          fromStatusId: issue.statusId,
+          toStatusId: u.statusId,
+          statusCategory: targetStatus.category,
+          actorId: user.id,
         });
       }
       await recordAudit(tx, {

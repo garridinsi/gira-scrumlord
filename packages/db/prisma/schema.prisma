@@ -369,6 +369,7 @@ model Issue {
   timers       Timer[]
   rate         Rate?
   incidents    Incident[]
+  events       IssueEvent[]
   intakeSource IntakeSource?  @relation(fields: [intakeSourceId], references: [id], onDelete: SetNull)
 
   @@unique([intakeSourceId, externalRef])
@@ -376,6 +377,25 @@ model Issue {
   @@index([projectId, rank])
   @@index([assigneeId])
   @@index([sprintId])
+}
+
+/// A1: append-only transition ledger for an issue. Distinct from AuditLog (which is the
+/// global who-changed-what trail): this is the per-issue lifecycle timeline that A2/D2
+/// cycle-time reporting and B2 SLA breach-clocks compute over. statusCategory is frozen
+/// at write time (the status's category then) so reporting never re-derives from a status
+/// that may have been re-categorized or deleted later.
+model IssueEvent {
+  id             String   @id @default(cuid())
+  issueId        String
+  issue          Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  kind           String // 'created' | 'status_changed' | 'reopened'
+  fromStatusId   String?
+  toStatusId     String?
+  statusCategory String? // category of toStatus, frozen at write time (todo|in_progress|done)
+  actorId        String? // snapshot of the actor (no FK — survives user deletion, like AuditLog)
+  createdAt      DateTime @default(now())
+
+  @@index([issueId, createdAt])
 }
 
 model Comment {
