@@ -199,6 +199,25 @@ describe('clients + projects + isolation', () => {
     expect(await prisma.invoice.count({ where: { clientId: client.id } })).toBe(1);
   });
 
+  it('records an audit entry when deleting a status or label (parity with create)', async () => {
+    const { user, cookie } = await actingAs({ role: 'member' });
+    await app.inject({ method: 'POST', url: '/projects', headers: { cookie }, payload: { key: 'AUD', name: 'Audited' } });
+    const label = (await app.inject({ method: 'POST', url: '/projects/AUD/labels', headers: { cookie }, payload: { name: 'temp' } })).json();
+    const extraStatus = (
+      await app.inject({ method: 'POST', url: '/projects/AUD/statuses', headers: { cookie }, payload: { name: 'Extra', category: 'todo' } })
+    ).json();
+
+    expect((await app.inject({ method: 'DELETE', url: `/labels/${label.id}`, headers: { cookie } })).statusCode).toBe(204);
+    expect((await app.inject({ method: 'DELETE', url: `/statuses/${extraStatus.id}`, headers: { cookie } })).statusCode).toBe(204);
+
+    const actions = (await prisma.auditLog.findMany({ where: { actorId: user.id } })).map((a) => a.action);
+    expect(actions).toContain('label.delete');
+    expect(actions).toContain('status.delete');
+
+    // Deleting a non-existent record is a clean 404, not an unaudited no-op.
+    expect((await app.inject({ method: 'DELETE', url: '/labels/cl00000000000000000000000', headers: { cookie } })).statusCode).toBe(404);
+  });
+
   it('client (viewer) cannot create a project', async () => {
     const client = await prisma.client.create({ data: { name: 'C', slug: 'c' } });
     const { cookie } = await actingAs({ kind: 'client', role: 'viewer', clientId: client.id });

@@ -335,18 +335,21 @@ export async function setInvoiceExternalRef(
   actorId: string,
 ): Promise<InvoiceView> {
   const invoice = await loadInvoiceOr404(id);
-  const updated = await prisma.invoice.update({
-    where: { id },
-    data: { externalInvoiceRef: externalInvoiceRef || null },
-    include: invoiceInclude,
-  });
-  await recordAudit(prisma, {
-    actorId,
-    action: 'invoice.external_ref',
-    entityType: 'Invoice',
-    entityId: id,
-    before: { externalInvoiceRef: invoice.externalInvoiceRef },
-    after: { externalInvoiceRef: updated.externalInvoiceRef },
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.invoice.update({
+      where: { id },
+      data: { externalInvoiceRef: externalInvoiceRef || null },
+      include: invoiceInclude,
+    });
+    await recordAudit(tx, {
+      actorId,
+      action: 'invoice.external_ref',
+      entityType: 'Invoice',
+      entityId: id,
+      before: { externalInvoiceRef: invoice.externalInvoiceRef },
+      after: { externalInvoiceRef: u.externalInvoiceRef },
+    });
+    return u;
   });
   return toInvoiceView(updated);
 }
@@ -354,18 +357,21 @@ export async function setInvoiceExternalRef(
 export async function issueInvoice(id: string, actorId: string): Promise<InvoiceView> {
   const invoice = await loadInvoiceOr404(id);
   if (invoice.status !== 'draft') throw badRequest('only a draft invoice can be issued');
-  const updated = await prisma.invoice.update({
-    where: { id },
-    data: { status: 'issued', issuedAt: new Date() },
-    include: invoiceInclude,
-  });
-  await recordAudit(prisma, {
-    actorId,
-    action: 'invoice.issue',
-    entityType: 'Invoice',
-    entityId: id,
-    before: { status: 'draft' },
-    after: { status: 'issued', number: updated.number },
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.invoice.update({
+      where: { id },
+      data: { status: 'issued', issuedAt: new Date() },
+      include: invoiceInclude,
+    });
+    await recordAudit(tx, {
+      actorId,
+      action: 'invoice.issue',
+      entityType: 'Invoice',
+      entityId: id,
+      before: { status: 'draft' },
+      after: { status: 'issued', number: u.number },
+    });
+    return u;
   });
   return toInvoiceView(updated);
 }
@@ -373,18 +379,21 @@ export async function issueInvoice(id: string, actorId: string): Promise<Invoice
 export async function payInvoice(id: string, actorId: string): Promise<InvoiceView> {
   const invoice = await loadInvoiceOr404(id);
   if (invoice.status !== 'issued') throw badRequest('only an issued invoice can be marked paid');
-  const updated = await prisma.invoice.update({
-    where: { id },
-    data: { status: 'paid', paidAt: new Date() },
-    include: invoiceInclude,
-  });
-  await recordAudit(prisma, {
-    actorId,
-    action: 'invoice.pay',
-    entityType: 'Invoice',
-    entityId: id,
-    before: { status: 'issued' },
-    after: { status: 'paid', number: updated.number },
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.invoice.update({
+      where: { id },
+      data: { status: 'paid', paidAt: new Date() },
+      include: invoiceInclude,
+    });
+    await recordAudit(tx, {
+      actorId,
+      action: 'invoice.pay',
+      entityType: 'Invoice',
+      entityId: id,
+      before: { status: 'issued' },
+      after: { status: 'paid', number: u.number },
+    });
+    return u;
   });
   return toInvoiceView(updated);
 }

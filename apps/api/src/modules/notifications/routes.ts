@@ -77,9 +77,21 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/channels/:id', { preHandler: requireAuth }, async (req, reply) => {
-    assertCanWrite(currentUser(req));
+    const user = currentUser(req);
+    assertCanWrite(user);
     const { id } = req.params as { id: string };
-    await prisma.notificationChannel.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      const before = await tx.notificationChannel.findUnique({ where: { id } });
+      if (!before) throw notFound('channel not found');
+      await tx.notificationChannel.delete({ where: { id } });
+      await recordAudit(tx, {
+        actorId: user.id,
+        action: 'channel.delete',
+        entityType: 'NotificationChannel',
+        entityId: id,
+        before: { name: before.name, kind: before.kind },
+      });
+    });
     return reply.code(204).send();
   });
 

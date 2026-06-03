@@ -111,9 +111,21 @@ export async function moneyRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/rates/:id', { preHandler: requireAuth }, async (req, reply) => {
-    assertCanWrite(currentUser(req));
+    const user = currentUser(req);
+    assertCanWrite(user);
     const { id } = req.params as { id: string };
-    await prisma.rate.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      const before = await tx.rate.findUnique({ where: { id } });
+      if (!before) throw notFound('rate not found');
+      await tx.rate.delete({ where: { id } });
+      await recordAudit(tx, {
+        actorId: user.id,
+        action: 'rate.delete',
+        entityType: 'Rate',
+        entityId: id,
+        before: { scope: before.scope, hourlyCents: before.hourlyCents, currency: before.currency },
+      });
+    });
     return reply.code(204).send();
   });
 

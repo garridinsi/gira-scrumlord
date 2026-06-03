@@ -78,8 +78,20 @@ export async function intakeRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/intake-sources/:id', adminOnly, async (req, reply) => {
+    const user = currentUser(req);
     const { id } = req.params as { id: string };
-    await prisma.intakeSource.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      const before = await tx.intakeSource.findUnique({ where: { id } });
+      if (!before) throw notFound('intake source not found');
+      await tx.intakeSource.delete({ where: { id } });
+      await recordAudit(tx, {
+        actorId: user.id,
+        action: 'intakeSource.delete',
+        entityType: 'IntakeSource',
+        entityId: id,
+        before: { name: before.name, kind: before.kind },
+      });
+    });
     return reply.code(204).send();
   });
 
@@ -103,9 +115,21 @@ export async function intakeRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/assignment-rules/:id', { preHandler: requireAuth }, async (req, reply) => {
-    assertCanWrite(currentUser(req));
+    const user = currentUser(req);
+    assertCanWrite(user);
     const { id } = req.params as { id: string };
-    await prisma.assignmentRule.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      const before = await tx.assignmentRule.findUnique({ where: { id } });
+      if (!before) throw notFound('assignment rule not found');
+      await tx.assignmentRule.delete({ where: { id } });
+      await recordAudit(tx, {
+        actorId: user.id,
+        action: 'assignmentRule.delete',
+        entityType: 'AssignmentRule',
+        entityId: id,
+        before: { projectId: before.projectId, order: before.order },
+      });
+    });
     return reply.code(204).send();
   });
 

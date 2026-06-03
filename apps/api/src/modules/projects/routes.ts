@@ -146,9 +146,21 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/statuses/:id', { preHandler: requireAuth }, async (req, reply) => {
-    assertCanWrite(currentUser(req));
+    const user = currentUser(req);
+    assertCanWrite(user);
     const { id } = req.params as { id: string };
-    await prisma.status.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      const before = await tx.status.findUnique({ where: { id } });
+      if (!before) throw notFound('status not found');
+      await tx.status.delete({ where: { id } });
+      await recordAudit(tx, {
+        actorId: user.id,
+        action: 'status.delete',
+        entityType: 'Status',
+        entityId: id,
+        before: { name: before.name, category: before.category },
+      });
+    });
     return reply.code(204).send();
   });
 
@@ -173,9 +185,21 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.delete('/labels/:id', { preHandler: requireAuth }, async (req, reply) => {
-    assertCanWrite(currentUser(req));
+    const user = currentUser(req);
+    assertCanWrite(user);
     const { id } = req.params as { id: string };
-    await prisma.label.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      const before = await tx.label.findUnique({ where: { id } });
+      if (!before) throw notFound('label not found');
+      await tx.label.delete({ where: { id } });
+      await recordAudit(tx, {
+        actorId: user.id,
+        action: 'label.delete',
+        entityType: 'Label',
+        entityId: id,
+        before: { name: before.name },
+      });
+    });
     return reply.code(204).send();
   });
 }
