@@ -14,6 +14,7 @@ const h = vi.hoisted(() => ({
   labelsList: vi.fn(),
   usersList: vi.fn(),
   auditList: vi.fn(),
+  commentsCreate: vi.fn(),
 }));
 vi.mock('../api/client', () => ({
   issues: {
@@ -21,7 +22,7 @@ vi.mock('../api/client', () => ({
     cost: (k: string) => h.cost(k),
     update: vi.fn(),
     move: vi.fn(),
-    comments: { list: (k: string) => h.commentsList(k), create: vi.fn() },
+    comments: { list: (k: string) => h.commentsList(k), create: (k: string, b: unknown) => h.commentsCreate(k, b) },
     worklogs: { list: (k: string) => h.worklogsList(k), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
   },
   projects: { statuses: { list: (k: string) => h.statusesList(k) }, labels: { list: (k: string) => h.labelsList(k) } },
@@ -111,5 +112,20 @@ describe('IssueDrawer', () => {
     expect(screen.getAllByRole('tab').length).toBeGreaterThanOrEqual(3); // G3: tabs are an ARIA tablist
     await userEvent.click(screen.getByRole('button', { name: /Cerrar · Close/ })); // G3: real button, not a span
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('posts a new comment from the Comments tab', async () => {
+    h.get.mockResolvedValue(issue({}));
+    h.commentsCreate.mockResolvedValue({ id: 'c1', body: 'looking into it' });
+    renderWithProviders(<IssueDrawer issueKey="GIRA-1" projectKey="PRJ" onClose={vi.fn()} />);
+    await screen.findByText('My issue title');
+
+    await userEvent.click(screen.getByText('Comentarios'));
+    const box = await screen.findByPlaceholderText(/Type a reply/i);
+    await userEvent.type(box, 'looking into it');
+    // Submit via Ctrl/Cmd+Enter (the textarea's keydown handler).
+    await userEvent.keyboard('{Control>}{Enter}{/Control}');
+
+    await waitFor(() => expect(h.commentsCreate).toHaveBeenCalledWith('GIRA-1', { body: 'looking into it' }));
   });
 });
