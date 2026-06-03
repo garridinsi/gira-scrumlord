@@ -6,6 +6,7 @@ import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth, requireRole } from '../../lib/auth.js';
 import { notFound } from '../../lib/http-error.js';
+import { revokeUserSessions } from '../auth/session.js';
 
 const adminOnly = { preHandler: [requireAuth, requireRole('admin')] };
 
@@ -101,9 +102,41 @@ export async function contractRoutes(app: FastifyInstance): Promise<void> {
         before: { status: before.status, retainerCents: before.retainerCents },
         after: { status: u.status, retainerCents: u.retainerCents },
       });
-      return u;
+
+      // R4: when ending this contract leaves the client with NO active contracts, offboard
+      // its portal users — deactivate them (login checks isActive) so their access lapses
+      // with the engagement. Ending one of several active contracts does NOT lock them out.
+      let offboarded: string[] = [];
+      if (before.status !== 'ended' && u.status === 'ended') {
+        const stillActive = await tx.contract.count({
+          where: { clientId: u.clientId, status: 'active' },
+        });
+        if (stillActive === 0) {
+          const portalUsers = await tx.user.findMany({
+            where: { clientId: u.clientId, kind: 'client', isActive: true },
+            select: { id: true },
+          });
+          offboarded = portalUsers.map((p) => p.id);
+          if (offboarded.length > 0) {
+            await tx.user.updateMany({
+              where: { id: { in: offboarded } },
+              data: { isActive: false, deactivatedAt: new Date() },
+            });
+            await recordAudit(tx, {
+              actorId: user.id,
+              action: 'contract.lapse_offboard',
+              entityType: 'Client',
+              entityId: u.clientId,
+              after: { deactivatedPortalUsers: offboarded.length, contractId: id },
+            });
+          }
+        }
+      }
+      return { contract: u, offboarded };
     });
-    return toContractView(updated);
+    // Revoke the offboarded users' live sessions (the deactivation blocks re-login).
+    for (const uid of updated.offboarded) await revokeUserSessions(uid);
+    return toContractView(updated.contract);
   });
 
   app.delete('/contracts/:id', adminOnly, async (req, reply) => {

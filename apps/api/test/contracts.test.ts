@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { actingAs } from './helpers/auth.js';
-import { resetDb } from './helpers/db.js';
+import { prisma, resetDb } from './helpers/db.js';
 
 describe('contracts CRUD (admin)', () => {
   let app: FastifyInstance;
@@ -164,5 +164,64 @@ describe('contracts CRUD (admin)', () => {
     });
     expect(del.statusCode).toBe(409);
     expect(del.json().error).toMatch(/contract/i);
+  });
+
+  // ── R4: portal-access revocation on contract lapse ───────────────────────────
+  const endContract = (cookie: string, id: string) =>
+    app.inject({
+      method: 'PATCH',
+      url: `/contracts/${id}`,
+      headers: { cookie },
+      payload: { status: 'ended' },
+    });
+  const portalReachable = async (cookie: string) =>
+    (await app.inject({ method: 'GET', url: '/portal', headers: { cookie } })).statusCode;
+
+  it('offboards the client’s portal users when its LAST active contract ends (R4)', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const clientId = await makeClient(admin.cookie, 'lapsing');
+    const portal = await actingAs({ kind: 'client', role: 'viewer', clientId });
+    const c = (
+      await app.inject({
+        method: 'POST',
+        url: '/contracts',
+        headers: { cookie: admin.cookie },
+        payload: { clientId, name: 'SOW' },
+      })
+    ).json();
+
+    expect(await portalReachable(portal.cookie)).toBe(200); // access before lapse
+
+    expect((await endContract(admin.cookie, c.id)).statusCode).toBe(200);
+
+    // The portal user is deactivated and their session revoked → no more access.
+    expect((await prisma.user.findUnique({ where: { id: portal.user.id } }))?.isActive).toBe(false);
+    expect(await portalReachable(portal.cookie)).toBe(401);
+  });
+
+  it('does NOT offboard while another active contract remains (R4)', async () => {
+    const admin = await actingAs({ role: 'admin' });
+    const clientId = await makeClient(admin.cookie, 'multi');
+    const portal = await actingAs({ kind: 'client', role: 'viewer', clientId });
+    const c1 = (
+      await app.inject({
+        method: 'POST',
+        url: '/contracts',
+        headers: { cookie: admin.cookie },
+        payload: { clientId, name: 'SOW 1' },
+      })
+    ).json();
+    await app.inject({
+      method: 'POST',
+      url: '/contracts',
+      headers: { cookie: admin.cookie },
+      payload: { clientId, name: 'SOW 2' },
+    });
+
+    expect((await endContract(admin.cookie, c1.id)).statusCode).toBe(200);
+
+    // SOW 2 is still active → access preserved.
+    expect((await prisma.user.findUnique({ where: { id: portal.user.id } }))?.isActive).toBe(true);
+    expect(await portalReachable(portal.cookie)).toBe(200);
   });
 });
