@@ -82,6 +82,15 @@ export function IssueCard({
 
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <PriorityChip priority={issue.priority} />
+          {issue.blockedReason && (
+            <span
+              className="chip"
+              title={issue.blockedReason}
+              style={{ background: 'var(--eg-red)', color: 'var(--eg-paper)', borderColor: 'var(--eg-iron)' }}
+            >
+              ⛔ BLOQUEADO · BLOCKED
+            </span>
+          )}
           {issue.labels.map((l) => (
             <LabelChip key={l.id} label={l} />
           ))}

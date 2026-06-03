@@ -339,6 +339,7 @@ model Issue {
   updatedAt       DateTime    @updatedAt
   closedAt        DateTime?
   resolution      String? // D2: how it was resolved — fixed / wontfix / duplicate / cannot-reproduce
+  blockedReason   String? // D1: non-null marks the issue Blocked (the reason); null = not blocked
 
   labels       Label[]        @relation("IssueLabels")
   comments     Comment[]

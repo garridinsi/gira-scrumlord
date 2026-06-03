@@ -108,6 +108,7 @@ export interface IssueView {
   updatedAt: string;
   closedAt: string | null;
   resolution: string | null;
+  blockedReason: string | null;
 }
 
 export interface CommentView {

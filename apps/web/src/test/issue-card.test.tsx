@@ -55,6 +55,11 @@ describe('IssueCard', () => {
     expect(badge!.textContent).toContain('!!'); // overdue prefix
   });
 
+  it('shows a Blocked badge when the issue has a blockedReason (D1)', () => {
+    render(<IssueCard issue={makeIssue({ blockedReason: 'waiting on client' } as Partial<IssueView>)} />);
+    expect(screen.getByText(/BLOCKED/)).toBeInTheDocument();
+  });
+
   it('renders emergency styling without crashing and fires onClick', async () => {
     const onClick = vi.fn();
     render(<IssueCard issue={makeIssue({ priority: 'emergency' })} onClick={onClick} />);

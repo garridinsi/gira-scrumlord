@@ -28,6 +28,7 @@ function makeIssue(key: string): IssueView {
     updatedAt: new Date().toISOString(),
     closedAt: null,
     resolution: null,
+    blockedReason: null,
   };
 }
 

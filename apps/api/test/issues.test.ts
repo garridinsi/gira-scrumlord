@@ -112,6 +112,16 @@ describe('issues', () => {
     expect((await prisma.auditLog.findMany({ where: { action: 'issue.delete' } })).length).toBe(1);
   });
 
+  it('marks and clears an issue as blocked (D1)', async () => {
+    const { cookie, projectKey } = await setup();
+    await create(app, cookie, { projectKey, title: 'Stuck' }); // GIRA-1
+    const blocked = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { blockedReason: 'waiting on client API key' } });
+    expect(blocked.statusCode).toBe(200);
+    expect(blocked.json().blockedReason).toBe('waiting on client API key');
+    const unblocked = await app.inject({ method: 'PATCH', url: '/issues/GIRA-1', headers: { cookie }, payload: { blockedReason: null } });
+    expect(unblocked.json().blockedReason).toBeNull();
+  });
+
   it('lets a client comment on their own project’s issue', async () => {
     const client = await prisma.client.create({ data: { name: 'Acme', slug: 'acme' } });
     const staff = await actingAs({ role: 'member' });

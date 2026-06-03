@@ -45,6 +45,7 @@ export const updateIssueSchema = z.object({
   billingMode: billingMode.optional(),
   fixedPriceCents: z.number().int().min(0).nullish(),
   resolution: z.string().trim().max(2000).nullish(), // D2: how the issue was resolved
+  blockedReason: z.string().trim().max(2000).nullish(), // D1: non-null marks the issue Blocked
 });
 export type UpdateIssue = z.infer<typeof updateIssueSchema>;
 
