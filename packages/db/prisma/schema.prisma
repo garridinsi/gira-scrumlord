@@ -122,11 +122,29 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users     User[]
-  projects  Project[]
-  rate      Rate?
-  invoices  Invoice[]
-  contracts Contract[]
+  users       User[]
+  projects    Project[]
+  rate        Rate?
+  invoices    Invoice[]
+  contracts   Contract[]
+  periodLocks PeriodLock[]
+}
+
+/// P1: a frozen billing month. Once a client's month is locked (typically right after its
+/// annex is issued), no worklog dated in that month can be created or edited — so a billed
+/// period can't be retroactively altered or back-dated into. monthKey is YYYY-MM evaluated
+/// in BILLING_TIMEZONE, matching the monthly rollup + annex period boundaries.
+model PeriodLock {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  monthKey   String // YYYY-MM in BILLING_TIMEZONE
+  lockedById String? // snapshot of who locked it
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@unique([clientId, monthKey])
+  @@index([clientId])
 }
 
 /// R1: a client engagement contract / SOW — anchors retainer billing and SLA coverage.

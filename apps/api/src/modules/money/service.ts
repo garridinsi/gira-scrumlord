@@ -7,23 +7,11 @@ import { type ResolvedRate, accruedCents, resolveRate } from '@gira/domain';
 import type { CostView, ProjectMonthlyView, ProjectSummaryView } from '@gira/shared';
 import { config } from '../../config.js';
 import { notFound } from '../../lib/http-error.js';
+import { monthKey } from '../../lib/period.js';
 import { computeVelocity } from '../sprints/service.js';
 
 const toResolved = (r: Rate | null | undefined): ResolvedRate | null =>
   r ? { hourlyCents: r.hourlyCents, currency: r.currency } : null;
-
-/** "YYYY-MM" for a timestamp, evaluated in the given IANA timezone. */
-function monthKey(d: Date, timeZone: string): string {
-  // en-CA formats as YYYY-MM-DD; slicing gives the timezone-correct calendar month.
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-    .format(d)
-    .slice(0, 7);
-}
 
 export async function computeIssueCost(issueKey: string): Promise<CostView> {
   const issue = await prisma.issue.findUnique({

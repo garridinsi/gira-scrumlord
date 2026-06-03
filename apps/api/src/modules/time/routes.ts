@@ -5,6 +5,7 @@ import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
 import { conflict, forbidden, notFound } from '../../lib/http-error.js';
+import { assertPeriodNotLocked } from '../../lib/period.js';
 import { assertCanAccessProject, assertCanWrite, assertStaff } from '../../lib/scope.js';
 import { toTimerView, toWorklogView } from '../../lib/views.js';
 import { loadIssueOr404 } from '../issues/service.js';
@@ -34,6 +35,9 @@ export async function timeRoutes(app: FastifyInstance): Promise<void> {
     const issue = await loadIssueOr404(key);
     assertCanAccessProject(user, { clientId: issue.project.clientId });
     const input = createWorklogSchema.parse(req.body);
+    const loggedAt = input.loggedAt ?? new Date();
+    // P1: can't log time into a frozen (already-billed) month for this client.
+    await assertPeriodNotLocked(issue.project.clientId, loggedAt);
     const worklog = await prisma.worklog.create({
       data: {
         issueId: issue.id,
@@ -41,7 +45,7 @@ export async function timeRoutes(app: FastifyInstance): Promise<void> {
         minutes: input.minutes,
         note: input.note,
         billable: input.billable,
-        loggedAt: input.loggedAt ?? new Date(),
+        loggedAt,
       },
       include: { user: true },
     });
@@ -58,7 +62,7 @@ export async function timeRoutes(app: FastifyInstance): Promise<void> {
       where: { id },
       include: {
         invoice: { select: { status: true } },
-        issue: { select: { key: true } },
+        issue: { select: { key: true, project: { select: { clientId: true } } } },
       },
     });
     if (!wl) throw notFound('worklog not found');
@@ -87,6 +91,13 @@ export async function timeRoutes(app: FastifyInstance): Promise<void> {
     const { id } = req.params as { id: string };
     const input = updateWorklogSchema.parse(req.body);
     const before = await loadEditableWorklog(id, user);
+    // P1: refuse edits to time in a locked month — both where it currently sits and,
+    // if loggedAt is moving, the target month.
+    await assertPeriodNotLocked(
+      before.issue.project.clientId,
+      before.loggedAt,
+      ...(input.loggedAt ? [input.loggedAt] : []),
+    );
     const updated = await prisma.$transaction(async (tx) => {
       const u = await tx.worklog.update({ where: { id }, data: input, include: { user: true } });
       await recordAudit(tx, {
@@ -107,6 +118,8 @@ export async function timeRoutes(app: FastifyInstance): Promise<void> {
     assertCanWrite(user);
     const { id } = req.params as { id: string };
     const before = await loadEditableWorklog(id, user);
+    // P1: deleting time out of a locked (billed) month is tampering — refuse.
+    await assertPeriodNotLocked(before.issue.project.clientId, before.loggedAt);
     await prisma.$transaction(async (tx) => {
       await tx.worklog.delete({ where: { id } });
       await recordAudit(tx, {
