@@ -128,6 +128,23 @@ model Client {
   invoices    Invoice[]
   contracts   Contract[]
   periodLocks PeriodLock[]
+  kbArticles  KbArticle[]
+}
+
+/// Q1: a lightweight internal runbook / knowledge-base article (Markdown body). Scoped to
+/// a client (per-client runbook) or org-wide (clientId null). STAFF-ONLY — never exposed
+/// to the portal; this is operational knowledge, not client-facing content.
+model KbArticle {
+  id          String   @id @default(cuid())
+  clientId    String?
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title       String
+  body        String   @default("") // Markdown
+  createdById String? // snapshot of the author
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clientId])
 }
 
 /// P1: a frozen billing month. Once a client's month is locked (typically right after its

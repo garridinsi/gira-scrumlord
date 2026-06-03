@@ -10,6 +10,7 @@ import { boardRoutes } from './modules/board/routes.js';
 import { clientRoutes } from './modules/clients/routes.js';
 import { contractRoutes } from './modules/contracts/routes.js';
 import { intakeRoutes } from './modules/intake/routes.js';
+import { kbRoutes } from './modules/kb/routes.js';
 import { invoiceRoutes } from './modules/invoices/routes.js';
 import { issueRoutes } from './modules/issues/routes.js';
 import { moneyRoutes } from './modules/money/routes.js';
@@ -56,6 +57,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(invoiceRoutes);
   await app.register(notificationRoutes);
   await app.register(intakeRoutes);
+  await app.register(kbRoutes);
   await app.register(auditRoutes);
   await app.register(portalRoutes);
   await app.register(slaRoutes);
