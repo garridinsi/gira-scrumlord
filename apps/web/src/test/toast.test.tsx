@@ -23,6 +23,8 @@ describe('Toast', () => {
     await userEvent.click(screen.getByText('fire'));
     expect(screen.getByText(/Saved/)).toBeInTheDocument();
     expect(screen.getByText('all good')).toBeInTheDocument();
+    // G3: a danger toast is announced assertively via role="alert".
+    expect(screen.getByRole('alert')).toBeInTheDocument();
 
     await userEvent.click(screen.getByLabelText('cerrar'));
     expect(screen.queryByText(/Saved/)).not.toBeInTheDocument();
@@ -36,5 +38,6 @@ describe('Toast', () => {
     );
     await userEvent.click(screen.getByText('fire'));
     expect(screen.getByText(/Saved/)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument(); // ok/warn stay polite
   });
 });

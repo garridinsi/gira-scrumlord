@@ -47,10 +47,13 @@ describe('atoms — components', () => {
     expect(av).toHaveAttribute('title', 'Grace Hopper');
   });
 
-  it('Bi renders both languages; Plate and Glyph render', () => {
+  it('Bi renders both languages but hides the EN line from screen readers; Plate and Glyph render', () => {
     render(<Bi es="hola" en="hello" />);
     expect(screen.getByText('hola')).toBeInTheDocument();
     expect(screen.getByText('hello')).toBeInTheDocument();
+    // G2: the secondary (EN) line is aria-hidden so a screen reader reads the label once.
+    expect(screen.getByText('hello')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('hola')).not.toHaveAttribute('aria-hidden');
     render(<Plate tone="yellow">BOARDING</Plate>);
     expect(screen.getByText('BOARDING')).toBeInTheDocument();
     const { container } = render(<Glyph />);

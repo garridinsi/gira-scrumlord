@@ -59,7 +59,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {items.map((t) => (
           <div
             key={t.id}
-            role="status"
+            // A danger toast is an error the user must notice → assertive 'alert';
+            // ok/warn stay polite 'status' so they don't interrupt the screen reader.
+            role={t.tone === 'danger' ? 'alert' : 'status'}
             style={{
               width: 360,
               background: 'var(--eg-iron)',

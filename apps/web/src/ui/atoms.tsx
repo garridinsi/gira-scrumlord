@@ -38,7 +38,10 @@ export function Bi({
       <span className="bi__es" lang="es">
         {es}
       </span>
-      <span className="bi__en" lang="en">
+      {/* The EN line is a visual translation of the same content; hide it from
+          assistive tech so a screen reader announces the label once (ES primary),
+          not the same thing twice in two languages. */}
+      <span className="bi__en" lang="en" aria-hidden="true">
         {en}
       </span>
     </span>
