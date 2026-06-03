@@ -423,6 +423,7 @@ model Issue {
   rate         Rate?
   incidents    Incident[]
   events       IssueEvent[]
+  attachments  Attachment[]
   intakeSource IntakeSource?  @relation(fields: [intakeSourceId], references: [id], onDelete: SetNull)
 
   @@unique([intakeSourceId, externalRef])
@@ -430,6 +431,24 @@ model Issue {
   @@index([projectId, rank])
   @@index([assigneeId])
   @@index([sprintId])
+}
+
+/// N2: a file attached to an issue. Bytes live in Postgres (BYTEA) so they're atomic with
+/// the row and captured by the DB backup — no separate blob store/volume to manage at this
+/// scale. contentType is the MAGIC-BYTE-sniffed type (never the client's claim); download
+/// forces Content-Disposition: attachment + nosniff so nothing renders inline.
+model Attachment {
+  id           String   @id @default(cuid())
+  issueId      String
+  issue        Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  filename     String
+  contentType  String
+  sizeBytes    Int
+  data         Bytes
+  uploadedById String? // snapshot of the uploader
+  createdAt    DateTime @default(now())
+
+  @@index([issueId])
 }
 
 /// A1: append-only transition ledger for an issue. Distinct from AuditLog (which is the

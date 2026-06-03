@@ -9,6 +9,7 @@ export * from './period-lock.js';
 export * from './sla.js';
 export * from './kb.js';
 export * from './inbox.js';
+export * from './attachment.js';
 export * from './project.js';
 export * from './issue.js';
 export * from './sprint.js';
