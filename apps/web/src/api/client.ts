@@ -21,6 +21,7 @@ import type {
   ContractView,
   SlaView,
   IssueEventView,
+  AttachmentView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -38,6 +39,7 @@ import type {
   UpdateClient,
   CreateContract,
   UpdateContract,
+  CreateAttachment,
   CreateProject,
   UpdateProject,
   CreateStatus,
@@ -386,6 +388,17 @@ export const issues = {
   cost: (key: string) => request<CostView>(`/issues/${key}/cost`),
   sla: (key: string) => request<SlaView>(`/issues/${key}/sla`),
   events: (key: string) => request<IssueEventView[]>(`/issues/${key}/events`),
+  attachments: {
+    list: (key: string) => request<AttachmentView[]>(`/issues/${key}/attachments`),
+    upload: (key: string, body: CreateAttachment) =>
+      request<AttachmentView>(`/issues/${key}/attachments`, { method: 'POST', ...json(body) }),
+  },
+};
+
+export const attachments = {
+  delete: (id: string) => request<void>(`/attachments/${id}`, { method: 'DELETE' }),
+  /** Same-origin download URL (cookie sent on navigation; forced as an attachment by the API). */
+  url: (id: string) => `${BASE_URL}/attachments/${id}`,
 };
 
 // ---------------------------------------------------------------------------

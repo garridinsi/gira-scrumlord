@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { IssueView, StatusView, LabelView, CostView } from '@gira/shared';
-import { issues, projects, audit, users, ApiError } from '../api/client';
+import { issues, projects, audit, users, attachments, ApiError } from '../api/client';
 import type { CommentRecord, WorklogRecord } from '../api/client';
+import { MAX_ATTACHMENT_BYTES } from '@gira/shared';
 import { Avatar, Bi, LabelChip, Plate, PriorityChip, SpinGlyph, TypeChip } from './atoms';
 import { formatMinutes, formatRelativeTime, formatDate } from '../lib/format';
 import { formatMoney, formatRatePerHour } from '../lib/money';
@@ -1080,6 +1081,121 @@ function AuditMiniTab({ issueId }: { issueId: string }) {
   );
 }
 
+// ── Attachments (N2) ─────────────────────────────────────────────────────────
+
+function readAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve((r.result as string).split(',')[1] ?? '');
+    r.onerror = () => reject(r.error ?? new Error('read failed'));
+    r.readAsDataURL(file);
+  });
+}
+
+function AttachmentsPanel({ issueKey }: { issueKey: string }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const listQuery = useQuery({
+    queryKey: ['attachments', issueKey],
+    queryFn: () => issues.attachments.list(issueKey),
+  });
+
+  const uploadMut = useMutation({
+    mutationFn: (file: File) =>
+      readAsBase64(file).then((dataBase64) =>
+        issues.attachments.upload(issueKey, { filename: file.name, dataBase64 }),
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['attachments', issueKey] });
+      toast({ tone: 'ok', title: 'Adjunto subido · Uploaded' });
+      if (fileRef.current) fileRef.current.value = '';
+    },
+    onError: (err) =>
+      toast({
+        tone: 'danger',
+        title: 'Error al subir · Upload failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      }),
+  });
+  const delMut = useMutation({
+    mutationFn: (id: string) => attachments.delete(id),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['attachments', issueKey] }),
+  });
+
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.currentTarget.files?.[0];
+    if (!f) return;
+    if (f.size > MAX_ATTACHMENT_BYTES) {
+      toast({
+        tone: 'danger',
+        title: 'Demasiado grande · too large',
+        body: `máx ${Math.floor(MAX_ATTACHMENT_BYTES / 1024)} KiB`,
+      });
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    uploadMut.mutate(f);
+  };
+
+  const items = listQuery.data ?? [];
+  const kib = (b: number) => `${Math.max(1, Math.round(b / 1024))} KiB`;
+
+  return (
+    <div style={{ marginTop: 16, borderTop: '1px dashed var(--eg-iron)', paddingTop: 12 }}>
+      <div className="caps" style={{ marginBottom: 8 }}>
+        // adjuntos · attachments
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        aria-label="Subir adjunto · upload attachment"
+        onChange={onPick}
+        disabled={uploadMut.isPending}
+        style={{ fontSize: 12, marginBottom: 10 }}
+      />
+      {items.length === 0 && (
+        <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-3)' }}>
+          sin adjuntos · no files
+        </div>
+      )}
+      {items.map((a) => (
+        <div
+          key={a.id}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 8,
+            padding: '4px 0',
+            fontSize: 12,
+          }}
+        >
+          <a href={attachments.url(a.id)} download style={{ color: 'var(--eg-iron)' }}>
+            {a.filename}
+          </a>
+          <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)' }}>
+              {kib(a.sizeBytes)}
+            </span>
+            <button
+              type="button"
+              className="b-btn b-btn--ghost"
+              style={{ fontSize: 10 }}
+              aria-label={`Borrar ${a.filename} · delete`}
+              onClick={() => {
+                if (window.confirm(`¿Borrar ${a.filename}? · Delete?`)) delMut.mutate(a.id);
+              }}
+            >
+              ✕
+            </button>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── SLA mini-panel (B2) ─────────────────────────────────────────────────────
 
 function fmtBizMins(m: number): string {
@@ -2012,11 +2128,14 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
               {/* Tab content */}
               <div role="tabpanel" id={`drawer-panel-${tab}`} aria-labelledby={`drawer-tab-${tab}`}>
                 {tab === 'details' && (
-                  <DetailsTab
-                    issue={issue}
-                    saving={updateMutation.isPending}
-                    onSave={(description) => updateMutation.mutateAsync({ description })}
-                  />
+                  <>
+                    <DetailsTab
+                      issue={issue}
+                      saving={updateMutation.isPending}
+                      onSave={(description) => updateMutation.mutateAsync({ description })}
+                    />
+                    <AttachmentsPanel issueKey={issue.key} />
+                  </>
                 )}
                 {tab === 'comments' && <CommentsTab issueKey={issue.key} />}
                 {tab === 'worklogs' && <WorklogsTab issueKey={issue.key} />}

@@ -10,6 +10,9 @@ const h = vi.hoisted(() => ({
   cost: vi.fn(),
   sla: vi.fn(),
   events: vi.fn(),
+  attachmentsList: vi.fn(),
+  attachmentsUpload: vi.fn(),
+  attachmentsDelete: vi.fn(),
   commentsList: vi.fn(),
   worklogsList: vi.fn(),
   statusesList: vi.fn(),
@@ -56,6 +59,14 @@ vi.mock('../api/client', () => ({
       update: (id: string, d: unknown) => h.worklogsUpdate(id, d),
       delete: (id: string) => h.worklogsDelete(id),
     },
+    attachments: {
+      list: (k: string) => h.attachmentsList(k),
+      upload: (k: string, b: unknown) => h.attachmentsUpload(k, b),
+    },
+  },
+  attachments: {
+    delete: (id: string) => h.attachmentsDelete(id),
+    url: (id: string) => `/attachments/${id}`,
   },
   projects: {
     statuses: { list: (k: string) => h.statusesList(k) },
@@ -131,6 +142,9 @@ describe('IssueDrawer', () => {
       resolution: { targetMinutes: 2400, elapsedMinutes: 3000, met: false, breached: true },
     });
     h.events.mockReset().mockResolvedValue([]);
+    h.attachmentsList.mockReset().mockResolvedValue([]);
+    h.attachmentsUpload.mockReset().mockResolvedValue({});
+    h.attachmentsDelete.mockReset().mockResolvedValue(undefined);
     h.commentsList.mockReset().mockResolvedValue([]);
     h.worklogsList.mockReset().mockResolvedValue([]);
     h.statusesList
@@ -171,6 +185,36 @@ describe('IssueDrawer', () => {
     expect(screen.getByText(/2h \/ 8h/)).toBeInTheDocument();
     expect(screen.getByText(/50h \/ 40h/)).toBeInTheDocument();
     expect(h.sla).toHaveBeenCalledWith('GIRA-1');
+  });
+
+  it('lists, uploads, and downloads attachments in the details tab (N2)', async () => {
+    h.attachmentsList.mockResolvedValue([
+      {
+        id: 'a1',
+        issueId: 'i1',
+        filename: 'doc.pdf',
+        contentType: 'application/pdf',
+        sizeBytes: 2048,
+        uploadedById: 'u1',
+        createdAt: '2026-06-01T00:00:00Z',
+      },
+    ]);
+    renderDrawer();
+
+    // Existing attachment renders with a download link + size.
+    const link = await screen.findByRole('link', { name: 'doc.pdf' });
+    expect(link).toHaveAttribute('href', '/attachments/a1');
+    expect(screen.getByText('2 KiB')).toBeInTheDocument();
+
+    // Upload a small text file → base64'd and posted.
+    const file = new File(['hi'], 'note.txt', { type: 'text/plain' });
+    await userEvent.upload(screen.getByLabelText(/Subir adjunto · upload/), file);
+    await waitFor(() => expect(h.attachmentsUpload).toHaveBeenCalled());
+    expect(h.attachmentsUpload.mock.calls[0]![0]).toBe('GIRA-1');
+    expect(h.attachmentsUpload.mock.calls[0]![1]).toMatchObject({
+      filename: 'note.txt',
+      dataBase64: 'aGk=',
+    });
   });
 
   it('shows the transition ledger timeline in the sidebar (A1)', async () => {
