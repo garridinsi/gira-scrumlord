@@ -2023,12 +2023,13 @@ function IntakeTab() {
               </label>
               <select
                 value={form.kind}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    kind: e.currentTarget.value as 'grafana' | 'wordpress' | 'generic',
-                  }))
-                }
+                onChange={(e) => {
+                  // Capture synchronously: React nulls e.currentTarget after the handler
+                  // returns, but the setForm updater runs later — reading currentTarget
+                  // inside it crashes when a concurrent re-render races the update.
+                  const value = e.currentTarget.value as 'grafana' | 'wordpress' | 'generic';
+                  setForm((f) => ({ ...f, kind: value }));
+                }}
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 12,
@@ -2076,12 +2077,10 @@ function IntakeTab() {
               </label>
               <select
                 value={form.defaultType}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    defaultType: e.currentTarget.value as 'task' | 'bug' | 'story' | 'epic',
-                  }))
-                }
+                onChange={(e) => {
+                  const value = e.currentTarget.value as 'task' | 'bug' | 'story' | 'epic';
+                  setForm((f) => ({ ...f, defaultType: value }));
+                }}
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 12,
@@ -2102,17 +2101,15 @@ function IntakeTab() {
               </label>
               <select
                 value={form.defaultPriority}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    defaultPriority: e.currentTarget.value as
-                      | 'low'
-                      | 'medium'
-                      | 'high'
-                      | 'urgent'
-                      | 'emergency',
-                  }))
-                }
+                onChange={(e) => {
+                  const value = e.currentTarget.value as
+                    | 'low'
+                    | 'medium'
+                    | 'high'
+                    | 'urgent'
+                    | 'emergency';
+                  setForm((f) => ({ ...f, defaultPriority: value }));
+                }}
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 12,
@@ -2456,13 +2453,13 @@ function TeamTab() {
               </label>
               <select
                 value={form.kind}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    kind: e.currentTarget.value as UserKind,
-                    clientId: '',
-                  }))
-                }
+                onChange={(e) => {
+                  // Capture synchronously (see IntakeTab note): the setForm updater runs
+                  // after React nulls e.currentTarget, so reading it inside the updater
+                  // crashes the form under a racing re-render.
+                  const value = e.currentTarget.value as UserKind;
+                  setForm((f) => ({ ...f, kind: value, clientId: '' }));
+                }}
                 style={SELECT_STYLE}
               >
                 <option value="staff">staff · equipo</option>
