@@ -153,6 +153,29 @@ describe('M4 intake + auto-assign', () => {
     expect((await app.inject({ method: 'DELETE', url: `/intake-sources/${sourceId}`, headers: { cookie } })).statusCode).toBe(404);
   });
 
+  it('caps the issues one webhook payload can mint and signals the overflow', async () => {
+    const { sourceId, token, projectId } = await setupSource('grafana');
+    // A single payload carrying far more alerts than the per-request cap.
+    const alerts = Array.from({ length: 105 }, (unused, i) => ({
+      status: 'firing',
+      fingerprint: `flood-${i}`,
+      labels: { alertname: 'Flood', severity: 'warning' },
+      annotations: { summary: `alert ${i}` },
+    }));
+    const res = await app.inject({
+      method: 'POST',
+      url: `/intake/${sourceId}`,
+      headers: { 'x-gira-token': token },
+      payload: { alerts },
+    });
+    expect(res.statusCode).toBe(202);
+    const results = res.json().results as Array<{ action: string; dropped?: number }>;
+    expect(results.filter((r) => r.action === 'created')).toHaveLength(100);
+    expect(results.find((r) => r.action === 'overflow')?.dropped).toBe(5);
+    // The extra 5 were never turned into issues — amplification is bounded.
+    expect(await prisma.issue.count({ where: { projectId } })).toBe(100);
+  });
+
   it('creates a task from a WordPress submission', async () => {
     const { sourceId, token } = await setupSource('wordpress');
     const res = await app.inject({

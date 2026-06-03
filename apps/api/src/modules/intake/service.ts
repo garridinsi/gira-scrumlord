@@ -10,6 +10,14 @@ import { createIssue } from '../issues/service.js';
 
 const SYSTEM_EMAIL = 'system@gira.local';
 
+// One inbound webhook must not be able to mint an unbounded number of issues. A single
+// 2 MB Grafana payload can carry thousands of minimal alert objects; each becomes its own
+// createIssue transaction (+ label upserts + rule scans + possible emergency paging), a
+// cheap amplification/DoS that also floods the project with junk. Cap items per request —
+// the byte-size body limit alone does not bound the item COUNT. Overflow is signalled, not
+// silently dropped, so a legitimate over-cap sender knows to split the batch.
+const MAX_INTAKE_ITEMS_PER_REQUEST = 100;
+
 async function systemUser(): Promise<{ id: string }> {
   return prisma.user.upsert({
     where: { email: SYSTEM_EMAIL },
@@ -51,8 +59,9 @@ async function resolveAssignee(
 }
 
 export interface IntakeResult {
-  action: 'created' | 'resolved' | 'duplicate' | 'ignored' | 'error';
+  action: 'created' | 'resolved' | 'duplicate' | 'ignored' | 'error' | 'overflow';
   key?: string;
+  dropped?: number;
 }
 
 export async function runIntake(
@@ -67,7 +76,17 @@ export async function runIntake(
   const reporter = await systemUser();
   const results: IntakeResult[] = [];
 
-  for (const n of intakes) {
+  // Bound the work a single request can trigger; signal (don't silently drop) overflow.
+  const capped = intakes.slice(0, MAX_INTAKE_ITEMS_PER_REQUEST);
+  if (intakes.length > MAX_INTAKE_ITEMS_PER_REQUEST) {
+    console.warn('[intake] payload exceeded item cap; extra items not processed', {
+      sourceId: source.id,
+      received: intakes.length,
+      cap: MAX_INTAKE_ITEMS_PER_REQUEST,
+    });
+  }
+
+  for (const n of capped) {
     // Per-item isolation: a single malformed event must not abort the whole batch
     // (and, with dedup written atomically, a retried batch re-dedups cleanly).
     try {
@@ -126,6 +145,10 @@ export async function runIntake(
       console.error('[intake] item failed', { sourceId: source.id, externalRef: n.externalRef, err });
       results.push({ action: 'error' });
     }
+  }
+
+  if (intakes.length > MAX_INTAKE_ITEMS_PER_REQUEST) {
+    results.push({ action: 'overflow', dropped: intakes.length - MAX_INTAKE_ITEMS_PER_REQUEST });
   }
 
   return results;

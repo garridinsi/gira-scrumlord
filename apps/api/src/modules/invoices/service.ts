@@ -181,21 +181,34 @@ export async function generateInvoice(
     });
     const projectIds = [...new Set(issues.map((i) => i.projectId))];
 
-    const [issueRates, projectRates, clientRate, defaultRate, priorClaims] = await Promise.all([
+    const [issueRates, projectRates, clientRate, defaultRate, fixedAlreadyBilled] = await Promise.all([
       tx.rate.findMany({ where: { issueId: { in: issueIds } } }),
       tx.rate.findMany({ where: { projectId: { in: projectIds } } }),
       tx.rate.findUnique({ where: { clientId } }),
       tx.rate.findFirst({ where: { scope: 'default' } }),
-      // Issues whose hours were already billed on a prior invoice (fixed price guard).
-      tx.worklog.findMany({
-        where: { issueId: { in: issueIds }, invoiceId: { not: null } },
+      // Fixed-price issues that ALREADY carry a fixed-price LINE (hourlyCents IS NULL) on a
+      // NON-VOID invoice. The "already charged" test MUST key off an actual charged line —
+      // never off worklog claims (the old, broken predicate): inferring it from worklogs
+      // loses the price when the invoice that charged it is voided (its hours free, but a
+      // *different* live invoice may still hold other hours of the same issue, so the
+      // re-charge is suppressed) and double-suppresses it when hours were billed hourly
+      // before the issue was switched to fixed. A voided invoice keeps its line but with
+      // status='void' (excluded here); a deleted draft cascades its lines away.
+      tx.invoiceLine.findMany({
+        where: {
+          issueId: { in: issueIds },
+          hourlyCents: null,
+          invoice: { status: { not: 'void' } },
+        },
         select: { issueId: true },
         distinct: ['issueId'],
       }),
     ]);
     const issueRateById = new Map(issueRates.map((r) => [r.issueId, r]));
     const projectRateById = new Map(projectRates.map((r) => [r.projectId, r]));
-    const alreadyBilled = new Set(priorClaims.map((w) => w.issueId));
+    const alreadyBilled = new Set(
+      fixedAlreadyBilled.map((l) => l.issueId).filter((id): id is string => id !== null),
+    );
 
     const lineData: Prisma.InvoiceLineCreateWithoutInvoiceInput[] = [];
     const unrated: string[] = [];

@@ -253,6 +253,55 @@ describe('invoicing (M5)', () => {
     expect(second.subtotalCents).toBe(50_000);
   });
 
+  it('re-bills a fixed price after the charging annex is voided, even while another live annex holds the issue’s hours', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Fixed scope' });
+    await prisma.issue.update({ where: { key: 'ACME-1' }, data: { billingMode: 'fixed', fixedPriceCents: 50_000 } });
+    await setRate(staff.cookie, 6000);
+
+    // Annex A charges the €500 fixed line and claims w1.
+    await logWork(staff.cookie, 'ACME-1', 60);
+    const a = (await generate(staff.cookie, client.id)).json();
+    expect(a.subtotalCents).toBe(50_000);
+
+    // More hours (w2) → annex B. The price is already on live A, so B carries no price
+    // line but still CLAIMS w2 — B stays live holding hours of the same issue.
+    await logWork(staff.cookie, 'ACME-1', 30);
+    const b = (await generate(staff.cookie, client.id)).json();
+    expect(b.subtotalCents).toBe(0);
+
+    // Void A (frees w1). The only annex that ever charged the price is now void; B (live)
+    // holds only hours. The price MUST be re-billable. The old worklog-claim predicate
+    // lost it here: B's claim made the issue look "already billed", so €500 vanished.
+    await app.inject({ method: 'POST', url: `/invoices/${a.id}/void`, headers: { cookie: staff.cookie } });
+    const c = (await generate(staff.cookie, client.id)).json();
+    expect(
+      c.lines.some((l: { hourlyCents: number | null; amountCents: number }) => l.hourlyCents === null && l.amountCents === 50_000),
+    ).toBe(true);
+    expect(c.subtotalCents).toBe(50_000);
+  });
+
+  it('bills the fixed price after an issue is switched from hourly to fixed (hours already billed hourly)', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Mode switch' });
+    await setRate(staff.cookie, 6000);
+
+    // Billed hourly first (an hourly line, hourlyCents set).
+    await logWork(staff.cookie, 'ACME-1', 60);
+    const a = (await generate(staff.cookie, client.id)).json();
+    expect(a.lines[0]).toMatchObject({ hourlyCents: 6000, amountCents: 6000 });
+
+    // Switch to fixed; log more hours; generate. The earlier HOURLY claim must NOT
+    // suppress the fixed price — the old predicate skipped the price line entirely.
+    await prisma.issue.update({ where: { key: 'ACME-1' }, data: { billingMode: 'fixed', fixedPriceCents: 50_000 } });
+    await logWork(staff.cookie, 'ACME-1', 30);
+    const b = (await generate(staff.cookie, client.id)).json();
+    expect(
+      b.lines.some((l: { hourlyCents: number | null; amountCents: number }) => l.hourlyCents === null && l.amountCents === 50_000),
+    ).toBe(true);
+    expect(b.subtotalCents).toBe(50_000);
+  });
+
   it('void releases the worklogs so they can be billed again', async () => {
     const { client, staff } = await setup();
     await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
