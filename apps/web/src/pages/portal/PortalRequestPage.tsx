@@ -182,6 +182,16 @@ export function PortalRequestPage() {
           </div>
         )}
 
+        {/* The project list failed to load — say so, rather than silently blocking submit. */}
+        {overviewQ.isError && (
+          <div className="cp-field">
+            <label>Proyecto · Project</label>
+            <span role="alert" style={{ color: 'var(--eg-red)' }}>
+              No se pudieron cargar los proyectos · could not load projects
+            </span>
+          </div>
+        )}
+
         {/* Type selector */}
         <div className="cp-field">
           <label>

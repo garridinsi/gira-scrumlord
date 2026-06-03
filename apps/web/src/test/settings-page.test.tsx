@@ -259,6 +259,11 @@ describe('SettingsPage', () => {
     await userEvent.click(screen.getByRole('button', { name: '+ Cliente' }));
     expect(await screen.findByText('// NUEVO CLIENTE · NEW CLIENT')).toBeInTheDocument();
 
+    // Inputs are programmatically labelled (Field/CurrencySelect associate label↔control
+    // via htmlFor/id) — so they have an accessible name for screen readers.
+    expect(screen.getByLabelText(/nombre · name/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/moneda · currency/)).toBeInTheDocument();
+
     // Create is disabled until name + slug are present.
     const createBtn = screen.getByRole('button', { name: '+ Crear Cliente' });
     expect(createBtn).toBeDisabled();
@@ -544,6 +549,13 @@ describe('SettingsPage', () => {
     expect(await screen.findByText(/sin canales · no channels yet/)).toBeInTheDocument();
   });
 
+  it('shows the channels error state instead of silently falling through to empty', async () => {
+    m.channelsList.mockRejectedValue(new Error('boom'));
+    renderTab('channels');
+    expect(await screen.findByText(/error al cargar canales · failed to load/)).toBeInTheDocument();
+    expect(screen.queryByText(/sin canales · no channels yet/)).not.toBeInTheDocument();
+  });
+
   it('lists channels with kind, events and active dot', async () => {
     m.channelsList.mockResolvedValue([
       aChannel(),
@@ -666,6 +678,13 @@ describe('SettingsPage', () => {
     expect(await screen.findByText(/cargando fuentes · loading sources/)).toBeInTheDocument();
     resolve([]);
     expect(await screen.findByText(/sin fuentes · no intake sources yet/)).toBeInTheDocument();
+  });
+
+  it('shows the intake-sources error state instead of silently falling through to empty', async () => {
+    m.intakeSourcesList.mockRejectedValue(new Error('boom'));
+    renderTab('intake');
+    expect(await screen.findByText(/error al cargar fuentes · failed to load/)).toBeInTheDocument();
+    expect(screen.queryByText(/sin fuentes · no intake sources yet/)).not.toBeInTheDocument();
   });
 
   it('lists intake sources with kind, type and priority', async () => {

@@ -819,7 +819,10 @@ export function BacklogPage() {
     );
   }
 
-  if (backlogQ.isError) {
+  if (backlogQ.isError || sprintsQ.isError) {
+    // A failed sprints query must not fall through silently (the sprint sections would
+    // just vanish and assign-to-sprint would show only "— sin sprint"); surface it too.
+    const err = (backlogQ.error ?? sprintsQ.error) as Error;
     return (
       <div className="body">
         <Subbar tabs={tabs} />
@@ -827,7 +830,7 @@ export function BacklogPage() {
           <div>
             <Plate>ERROR</Plate>
             <div className="mono" style={{ fontSize: 12, color: 'var(--eg-red)', marginTop: 8 }}>
-              {(backlogQ.error as Error).message}
+              {err.message}
             </div>
           </div>
         </div>

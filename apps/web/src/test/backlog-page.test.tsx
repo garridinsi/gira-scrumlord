@@ -159,6 +159,16 @@ describe('BacklogPage', () => {
     expect(screen.getByText('backlog boom')).toBeInTheDocument();
   });
 
+  it('surfaces the error state when the SPRINTS query fails (not just the backlog)', async () => {
+    // A failed sprints query used to fall through silently — the sprint sections just
+    // vanished. It must now raise the same ERROR plate.
+    backlog.mockResolvedValue([]);
+    sprintsList.mockImplementation(() => Promise.reject(new Error('sprints boom')));
+    renderAt('PRJ');
+    expect(await screen.findByText('ERROR')).toBeInTheDocument();
+    expect(screen.getByText('sprints boom')).toBeInTheDocument();
+  });
+
   // ── sprint grouping + start / close mutations ───────────────────────────────
   it('renders an active sprint with a Cerrar sprint button and closes it', async () => {
     backlog.mockResolvedValue([

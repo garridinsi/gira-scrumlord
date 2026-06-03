@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Settings: Clientes, Tarifas, Avisos, Integraciones, Equipo — EG "Mantenedor" design.
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useId } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
@@ -70,12 +70,14 @@ function Field({
   type?: string;
   placeholder?: string;
 }) {
+  const id = useId();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+      <label htmlFor={id} className="caps" style={{ color: 'var(--eg-fg-3)' }}>
         // {label}
       </label>
       <input
+        id={id}
         type={type}
         value={value}
         placeholder={placeholder}
@@ -95,12 +97,14 @@ function Field({
 }
 
 function CurrencySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const id = useId();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <label className="caps" style={{ color: 'var(--eg-fg-3)' }}>
+      <label htmlFor={id} className="caps" style={{ color: 'var(--eg-fg-3)' }}>
         // moneda · currency
       </label>
       <select
+        id={id}
         value={value}
         onChange={(e) => onChange(e.currentTarget.value)}
         style={{
@@ -1194,6 +1198,15 @@ function ChannelsTab() {
       </div>
     );
   }
+  if (list.isError) {
+    return (
+      <div className="gs-state">
+        <span className="mono" style={{ color: 'var(--eg-red)' }}>
+          // error al cargar canales · failed to load
+        </span>
+      </div>
+    );
+  }
 
   const data = list.data ?? [];
 
@@ -1947,6 +1960,15 @@ function IntakeTab() {
     return (
       <div className="gs-state">
         <span className="gs-loading">cargando fuentes · loading sources</span>
+      </div>
+    );
+  }
+  if (list.isError) {
+    return (
+      <div className="gs-state">
+        <span className="mono" style={{ color: 'var(--eg-red)' }}>
+          // error al cargar fuentes · failed to load
+        </span>
       </div>
     );
   }

@@ -50,6 +50,14 @@ describe('PortalRequestPage', () => {
     });
   });
 
+  it('shows an error when the project overview fails to load (no silent submit-block)', async () => {
+    overview.mockImplementation(() => Promise.reject(new Error('overview boom')));
+    renderWithProviders(<PortalRequestPage />);
+    expect(
+      await screen.findByText(/no se pudieron cargar los proyectos · could not load projects/i),
+    ).toBeInTheDocument();
+  });
+
   it('lets you pick a project and switch the type to task when several exist', async () => {
     overview.mockResolvedValue(
       overviewWith([
