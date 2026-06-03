@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { describe, it, expect } from 'vitest';
-import { formatCents, formatMinutes } from '../lib/format';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { formatCents, formatMinutes, formatDate, formatRelativeTime } from '../lib/format';
 
 describe('formatCents', () => {
   it('formats zero cents', () => {
@@ -68,5 +68,73 @@ describe('formatMinutes', () => {
   it('formats large values', () => {
     expect(formatMinutes(1440)).toBe('24h'); // exactly 1 day
     expect(formatMinutes(1445)).toBe('24h 5m');
+  });
+});
+
+describe('formatDate', () => {
+  it('renders an ISO date as a readable short US date', () => {
+    // Noon UTC keeps the calendar day stable across the runner's timezone.
+    expect(formatDate('2026-07-01T12:00:00Z')).toBe('Jul 1, 2026');
+    expect(formatDate('2026-01-15T12:00:00Z')).toBe('Jan 15, 2026');
+  });
+});
+
+describe('formatRelativeTime', () => {
+  // Anchor "now" so the deltas are deterministic regardless of timezone.
+  const NOW = new Date('2026-06-15T12:00:00Z');
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function withNow(fn: () => void) {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    try {
+      fn();
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
+  const MIN = 60_000;
+  const HOUR = 60 * MIN;
+  const DAY = 24 * HOUR;
+
+  it('returns "just now" under a minute', () => {
+    withNow(() => {
+      expect(formatRelativeTime(ago(30 * 1000))).toBe('just now');
+      expect(formatRelativeTime(ago(0))).toBe('just now');
+    });
+  });
+
+  it('returns minutes for < 1 hour', () => {
+    withNow(() => {
+      expect(formatRelativeTime(ago(5 * MIN))).toBe('5m ago');
+      expect(formatRelativeTime(ago(59 * MIN))).toBe('59m ago');
+    });
+  });
+
+  it('returns hours for < 1 day', () => {
+    withNow(() => {
+      expect(formatRelativeTime(ago(2 * HOUR))).toBe('2h ago');
+      expect(formatRelativeTime(ago(23 * HOUR))).toBe('23h ago');
+    });
+  });
+
+  it('returns days for < 30 days', () => {
+    withNow(() => {
+      expect(formatRelativeTime(ago(3 * DAY))).toBe('3d ago');
+      expect(formatRelativeTime(ago(29 * DAY))).toBe('29d ago');
+    });
+  });
+
+  it('falls back to an absolute short date for >= 30 days', () => {
+    withNow(() => {
+      // 60 days before 2026-06-15 -> mid-April 2026; assert format shape, not the
+      // exact day (timezone-safe).
+      expect(formatRelativeTime(ago(60 * DAY))).toMatch(/^[A-Z][a-z]{2} \d{1,2}, 2026$/);
+    });
   });
 });
