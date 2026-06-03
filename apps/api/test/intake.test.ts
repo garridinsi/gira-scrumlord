@@ -243,6 +243,103 @@ describe('M4 intake + auto-assign', () => {
     ).toBe(404);
   });
 
+  it('ignores a resolved alert for an issue it has never seen', async () => {
+    const { sourceId, token } = await setupSource('grafana');
+    const res = await app.inject({
+      method: 'POST',
+      url: `/intake/${sourceId}`,
+      headers: { 'x-gira-token': token },
+      payload: {
+        alerts: [
+          {
+            status: 'resolved',
+            fingerprint: 'unknown-fp',
+            labels: { alertname: 'X', severity: 'warning' },
+            annotations: { summary: 's' },
+          },
+        ],
+      },
+    });
+    expect(res.json().results[0].action).toBe('ignored');
+  });
+
+  it('skips assignment rules whose type/priority criteria do not match (issue left unassigned)', async () => {
+    const { cookie, projectKey, sourceId, token } = await setupSource('grafana');
+    const dev = await makeUser({ name: 'Dev', role: 'member' });
+    // Rule 1 matches only story-type; rule 2 only low-priority. A critical bug alert
+    // matches neither → both skipped → unassigned (exercises the matchType + matchPriority
+    // skip branches of resolveAssignee).
+    await app.inject({
+      method: 'POST',
+      url: `/projects/${projectKey}/assignment-rules`,
+      headers: { cookie },
+      payload: { assigneeId: dev.id, matchType: 'story' },
+    });
+    await app.inject({
+      method: 'POST',
+      url: `/projects/${projectKey}/assignment-rules`,
+      headers: { cookie },
+      payload: { assigneeId: dev.id, matchPriority: 'low' },
+    });
+    await app.inject({
+      method: 'POST',
+      url: `/intake/${sourceId}`,
+      headers: { 'x-gira-token': token },
+      payload: {
+        alerts: [
+          {
+            status: 'firing',
+            fingerprint: 'fp-skip',
+            labels: { alertname: 'Y', severity: 'critical' },
+            annotations: { summary: 'boom' },
+          },
+        ],
+      },
+    });
+    const issue = await prisma.issue.findFirst({ where: { externalRef: 'fp-skip' } });
+    expect(issue?.assigneeId).toBeNull();
+  });
+
+  it("reports 'error' for an item whose creation fails, without aborting the batch", async () => {
+    const { cookie, projectKey, sourceId, token } = await setupSource('grafana');
+    // An assignment rule pointing at a client user of a DIFFERENT tenant makes createIssue
+    // reject the assignee (cross-tenant guard) → the per-item catch records 'error'; the
+    // second alert in the same batch still succeeds.
+    const other = await prisma.client.create({
+      data: { name: 'Other', slug: 'other-intk', currency: 'EUR' },
+    });
+    const clientUser = await makeUser({ kind: 'client', role: 'viewer', clientId: other.id });
+    await app.inject({
+      method: 'POST',
+      url: `/projects/${projectKey}/assignment-rules`,
+      headers: { cookie },
+      payload: { assigneeId: clientUser.id },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/intake/${sourceId}`,
+      headers: { 'x-gira-token': token },
+      payload: {
+        alerts: [
+          {
+            status: 'firing',
+            fingerprint: 'fp-err',
+            labels: { alertname: 'A', severity: 'warning' },
+            annotations: { summary: 'one' },
+          },
+          {
+            status: 'firing',
+            fingerprint: 'fp-ok',
+            labels: { alertname: 'B', severity: 'warning' },
+            annotations: { summary: 'two' },
+          },
+        ],
+      },
+    });
+    const actions = (res.json().results as Array<{ action: string }>).map((r) => r.action);
+    expect(actions).toContain('error');
+  });
+
   it('caps the issues one webhook payload can mint and signals the overflow', async () => {
     const { sourceId, token, projectId } = await setupSource('grafana');
     // A single payload carrying far more alerts than the per-request cap.
