@@ -65,4 +65,17 @@ describe('escalation', () => {
     });
     expect(await escalateOpenIncidents({ intervalMinutes: 5 })).toBe(0);
   });
+
+  it('falls back to default interval/maxLevel/now when called with no options', async () => {
+    const { issue } = await makeIssue('T-9', 'T');
+    await prisma.incident.create({
+      data: {
+        issueId: issue.id,
+        status: 'open',
+        escalationLevel: 0,
+        lastNotifiedAt: new Date(Date.now() - 10 * 60_000), // older than the default 5-min interval
+      },
+    });
+    expect(await escalateOpenIncidents()).toBe(1); // defaults: 5 min · level 3 · now
+  });
 });

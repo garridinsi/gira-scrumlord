@@ -13,6 +13,10 @@ const useAuth = Boolean(smtpUser && smtpPass);
 
 export const notifyConfig = {
   smtp: {
+    // Env-default fallbacks. Both branches are reachable, but the alternate side isn't
+    // reproducible in one run: config is module-level, so the config.test re-imports it
+    // per env, and v8 retains only one module instance's branch data (no union).
+    /* c8 ignore next 2 */
     host: process.env.SMTP_HOST ?? 'localhost',
     port: Number(process.env.SMTP_PORT ?? 1025),
     secure: smtpSecure,
@@ -27,6 +31,7 @@ export const notifyConfig = {
         }
       : {}),
   },
+  /* c8 ignore next -- env-default fallback (see the SMTP host/port note above). */
   mailFrom: process.env.MAIL_FROM ?? 'gira-scrumlord <no-reply@gira.local>',
   // Webhooks to private/loopback hosts are blocked unless explicitly allowed (dev/tests).
   allowPrivateWebhooks: process.env.ALLOW_PRIVATE_WEBHOOKS === 'true',
