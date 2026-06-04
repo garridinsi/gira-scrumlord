@@ -12,7 +12,7 @@ import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
 import { badRequest } from '../../lib/http-error.js';
 import { assertCanAccessProject, assertCanWrite } from '../../lib/scope.js';
-import { toCommentView, toIssueEventView, toIssueView } from '../../lib/views.js';
+import { toCommentView, toIssueEventView, toIssueView, toPublicUserView } from '../../lib/views.js';
 import { getProjectByKeyOr404 } from '../projects/service.js';
 import {
   createIssue,
@@ -358,5 +358,56 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
     });
     await notifyMentions({ comment, issue, visibility, actorId: user.id, actorName: user.name });
     return reply.code(201).send(toCommentView(comment));
+  });
+
+  // Who the caller may @mention on this issue — the data source for the composer picker.
+  // Privacy is enforced here: a client never receives the full staff directory, only the
+  // staff already visible on this issue plus their own-tenant users. The caller is excluded
+  // (you cannot mention yourself). Notification authorization is re-checked on create.
+  app.get('/issues/:key/mentionable', { preHandler: requireAuth }, async (req) => {
+    const user = currentUser(req);
+    const { key } = req.params as { key: string };
+    const issue = await loadIssueOr404(key);
+    assertCanAccessProject(user, { clientId: issue.project.clientId });
+    const clientId = issue.project.clientId;
+
+    let users: { id: string; name: string }[];
+    if (user.kind === 'staff') {
+      // Staff may mention any active teammate, plus the project's client users.
+      users = await prisma.user.findMany({
+        where: {
+          isActive: true,
+          OR: [{ kind: 'staff' }, ...(clientId ? [{ kind: 'client' as const, clientId }] : [])],
+        },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+    } else {
+      // A client sees only the staff already visible on THIS issue (assignee / reporter /
+      // client-visible commenters) plus their own-tenant users — never the staff directory.
+      const commenters = await prisma.comment.findMany({
+        where: {
+          issueId: issue.id,
+          visibility: 'client',
+          author: { kind: 'staff', isActive: true },
+        },
+        select: { authorId: true },
+      });
+      const staffIds = new Set<string>(commenters.map((c) => c.authorId));
+      if (issue.assigneeId) staffIds.add(issue.assigneeId);
+      staffIds.add(issue.reporterId);
+      users = await prisma.user.findMany({
+        where: {
+          isActive: true,
+          OR: [
+            { id: { in: [...staffIds] }, kind: 'staff' },
+            { kind: 'client', clientId: user.clientId },
+          ],
+        },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+    }
+    return users.filter((u) => u.id !== user.id).map(toPublicUserView);
   });
 }

@@ -13,6 +13,10 @@ function label(n: InboxItemView): string {
   if (n.type === 'issue.assigned') return `${key} · asignada a ti · assigned to you`;
   if (n.type === 'issue.status_changed') return `${key} · estado cambiado · status changed`;
   if (n.type === 'issue.emergency') return `${key} · emergencia · emergency`;
+  if (n.type === 'mention') {
+    const who = typeof n.payload.actorName === 'string' ? n.payload.actorName : 'Alguien';
+    return `${key} · ${who} te mencionó · mentioned you`;
+  }
   return key ? `${key} · ${n.type}` : n.type;
 }
 

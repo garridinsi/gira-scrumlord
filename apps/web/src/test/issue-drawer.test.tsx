@@ -14,6 +14,7 @@ const h = vi.hoisted(() => ({
   attachmentsUpload: vi.fn(),
   attachmentsDelete: vi.fn(),
   commentsList: vi.fn(),
+  mentionable: vi.fn(),
   worklogsList: vi.fn(),
   statusesList: vi.fn(),
   labelsList: vi.fn(),
@@ -53,6 +54,7 @@ vi.mock('../api/client', () => ({
       list: (k: string) => h.commentsList(k),
       create: (k: string, b: unknown) => h.commentsCreate(k, b),
     },
+    mentionable: (k: string) => h.mentionable(k),
     worklogs: {
       list: (k: string) => h.worklogsList(k),
       create: (k: string, d: unknown) => h.worklogsCreate(k, d),
@@ -146,6 +148,7 @@ describe('IssueDrawer', () => {
     h.attachmentsUpload.mockReset().mockResolvedValue({});
     h.attachmentsDelete.mockReset().mockResolvedValue(undefined);
     h.commentsList.mockReset().mockResolvedValue([]);
+    h.mentionable.mockReset().mockResolvedValue([]);
     h.worklogsList.mockReset().mockResolvedValue([]);
     h.statusesList
       .mockReset()
@@ -304,6 +307,53 @@ describe('IssueDrawer', () => {
 
     await userEvent.click(screen.getByText('Comentarios'));
     await waitFor(() => expect(h.commentsList).toHaveBeenCalledWith('GIRA-1'));
+  });
+
+  it('renders @mention chips in existing comments', async () => {
+    h.commentsList.mockResolvedValue([
+      {
+        id: 'c1',
+        issueId: 'issue-cuid-0001',
+        author: { id: 'u1', name: 'Reporter' },
+        body: 'cc @[Bea](clbbb222bbb222bbb) please review',
+        createdAt: '2026-06-02T00:00:00Z',
+        visibility: 'client',
+      },
+    ]);
+    renderDrawer();
+    await screen.findByText('My issue title');
+    await userEvent.click(screen.getByText('Comentarios'));
+    const chip = await screen.findByText('@Bea');
+    expect(chip).toHaveClass('mention-chip');
+  });
+
+  it('picks a participant from the @mention picker and posts a comment with the token', async () => {
+    h.mentionable.mockResolvedValue([{ id: 'clbbb222bbb222bbb', name: 'Bea' }]);
+    h.commentsCreate.mockResolvedValue({
+      id: 'c2',
+      issueId: 'issue-cuid-0001',
+      author: { id: 'u1', name: 'Reporter' },
+      body: '@[Bea](clbbb222bbb222bbb)',
+      createdAt: '2026-06-03T00:00:00Z',
+      visibility: 'client',
+    });
+    renderDrawer();
+    await screen.findByText('My issue title');
+    await userEvent.click(screen.getByText('Comentarios'));
+
+    // Open the picker (lazy-loads the mentionable list), then pick Bea.
+    await userEvent.click(screen.getByRole('button', { name: /mencionar · mention/ }));
+    await waitFor(() => expect(h.mentionable).toHaveBeenCalledWith('GIRA-1'));
+    await userEvent.click(await screen.findByRole('option', { name: '@Bea' }));
+
+    // The token is now in the textarea; sending posts it verbatim.
+    await userEvent.click(screen.getByRole('button', { name: /Enviar · Send/ }));
+    await waitFor(() =>
+      expect(h.commentsCreate).toHaveBeenCalledWith('GIRA-1', {
+        body: '@[Bea](clbbb222bbb222bbb)',
+        visibility: 'client',
+      }),
+    );
   });
 
   it('switches to the Worklogs tab and loads worklogs', async () => {

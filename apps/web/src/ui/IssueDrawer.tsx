@@ -7,6 +7,7 @@ import type { CommentRecord, WorklogRecord } from '../api/client';
 import { MAX_ATTACHMENT_BYTES } from '@gira/shared';
 import { Avatar, Bi, LabelChip, Plate, PriorityChip, SpinGlyph, TypeChip } from './atoms';
 import { formatMinutes, formatRelativeTime, formatDate } from '../lib/format';
+import { appendMention, renderMentions } from '../lib/mentions';
 import { formatMoney, formatRatePerHour } from '../lib/money';
 import { useActiveTimer, useStartTimer, useStopTimer } from '../hooks/useTimer';
 import { useToast } from './Toast';
@@ -334,10 +335,18 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
   const toast = useToast();
   const [body, setBody] = useState('');
   const [internal, setInternal] = useState(false); // N1: staff-only internal note toggle
+  const [pickerOpen, setPickerOpen] = useState(false); // @mention participant picker
 
   const commentsQuery = useQuery({
     queryKey: ['comments', issueKey],
     queryFn: () => issues.comments.list(issueKey),
+  });
+
+  // Lazily loaded: who the caller may @mention here (privacy-scoped server-side).
+  const mentionable = useQuery({
+    queryKey: ['mentionable', issueKey],
+    queryFn: () => issues.mentionable(issueKey),
+    enabled: pickerOpen,
   });
 
   const createComment = useMutation({
@@ -426,7 +435,7 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
               </span>
             </div>
             <div style={{ fontSize: 13.5, color: 'var(--eg-iron)', marginTop: 4, lineHeight: 1.5 }}>
-              {c.body}
+              {renderMentions(c.body)}
             </div>
           </div>
         </div>
@@ -494,14 +503,86 @@ function CommentsTab({ issueKey }: { issueKey: string }) {
             />
             nota interna · internal note
           </label>
-          <button
-            type="button"
-            className="b-btn b-btn--ink"
-            disabled={!body.trim() || createComment.isPending}
-            onClick={() => body.trim() && createComment.mutate(body.trim())}
-          >
-            Enviar · Send
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+            <button
+              type="button"
+              className="b-btn"
+              aria-haspopup="listbox"
+              aria-expanded={pickerOpen}
+              onClick={() => setPickerOpen((o) => !o)}
+            >
+              @ mencionar · mention
+            </button>
+            {pickerOpen && (
+              <div
+                role="listbox"
+                aria-label="Mencionar a · Mention someone"
+                style={{
+                  position: 'absolute',
+                  bottom: 'calc(100% + 8px)',
+                  right: 0,
+                  minWidth: 200,
+                  maxHeight: 220,
+                  overflowY: 'auto',
+                  background: 'var(--eg-paper)',
+                  border: '1.5px solid var(--eg-iron)',
+                  boxShadow: '4px 4px 0 var(--eg-iron)',
+                  zIndex: 20,
+                }}
+              >
+                {mentionable.isLoading && (
+                  <div
+                    className="mono"
+                    style={{ padding: 10, fontSize: 11, color: 'var(--eg-fg-3)' }}
+                  >
+                    cargando · loading…
+                  </div>
+                )}
+                {!mentionable.isLoading && (mentionable.data ?? []).length === 0 && (
+                  <div
+                    className="mono"
+                    style={{ padding: 10, fontSize: 11, color: 'var(--eg-fg-3)' }}
+                  >
+                    nadie disponible · nobody to mention
+                  </div>
+                )}
+                {(mentionable.data ?? []).map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    onClick={() => {
+                      setBody((b) => appendMention(b, u));
+                      setPickerOpen(false);
+                    }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '8px 10px',
+                      border: 0,
+                      borderBottom: '1px dashed var(--eg-iron)',
+                      background: 'transparent',
+                      fontSize: 13,
+                      color: 'var(--eg-iron)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    @{u.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              className="b-btn b-btn--ink"
+              disabled={!body.trim() || createComment.isPending}
+              onClick={() => body.trim() && createComment.mutate(body.trim())}
+            >
+              Enviar · Send
+            </button>
+          </div>
         </div>
       </div>
     </div>

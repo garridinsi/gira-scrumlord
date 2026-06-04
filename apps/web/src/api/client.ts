@@ -343,6 +343,12 @@ export interface CommentRecord {
   visibility: 'client' | 'internal';
 }
 
+/** The client-safe {id, name} projection returned by /issues/:key/mentionable. */
+export interface MentionUser {
+  id: string;
+  name: string;
+}
+
 export interface WorklogRecord {
   id: string;
   issueId: string;
@@ -382,6 +388,9 @@ export const issues = {
     create: (key: string, data: CreateComment) =>
       request<CommentRecord>(`/issues/${key}/comments`, { method: 'POST', ...json(data) }),
   },
+
+  /** Users the caller may @mention on this issue (privacy-scoped server-side). */
+  mentionable: (key: string) => request<MentionUser[]>(`/issues/${key}/mentionable`),
 
   worklogs: {
     list: (key: string) => request<WorklogRecord[]>(`/issues/${key}/worklogs`),

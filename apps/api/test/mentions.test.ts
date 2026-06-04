@@ -129,4 +129,74 @@ describe('@mention notifications', () => {
     expect(await mentionsOf(inactive.id)).toHaveLength(0);
     expect(await prisma.notification.findMany({ where: { type: 'mention' } })).toHaveLength(0);
   });
+
+  // ── the picker data source: GET /issues/:key/mentionable ──────────────────────
+  const namesOf = (res: { json: () => { name: string }[] }) => res.json().map((u) => u.name);
+
+  it('mentionable (staff): active staff + project client users, excluding self and inactive', async () => {
+    const client = await prisma.client.create({
+      data: { name: 'Acme', slug: 'acme-pick', currency: 'EUR' },
+    });
+    const { cookie } = await setup(client.id);
+    await makeUser({ name: 'Bea', role: 'member' });
+    const inactive = await makeUser({ name: 'Zzz Inactive', role: 'member' });
+    await prisma.user.update({ where: { id: inactive.id }, data: { isActive: false } });
+    await makeUser({ name: 'Carla', kind: 'client', role: 'viewer', clientId: client.id });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/issues/GIRA-1/mentionable',
+      headers: { cookie },
+    });
+    expect(res.statusCode).toBe(200);
+    const names = namesOf(res);
+    expect(names).toContain('Bea');
+    expect(names).toContain('Carla'); // project's client user
+    expect(names).not.toContain('Author'); // caller excludes self
+    expect(names).not.toContain('Zzz Inactive'); // inactive excluded
+    // client-safe projection only — no email/role leak
+    expect(res.json()[0]).toEqual({ id: expect.any(String), name: expect.any(String) });
+  });
+
+  it('mentionable (client): only issue-visible staff + own-tenant users, never the full directory', async () => {
+    const client = await prisma.client.create({
+      data: { name: 'Acme', slug: 'acme-pick2', currency: 'EUR' },
+    });
+    const other = await prisma.client.create({
+      data: { name: 'Other', slug: 'other-pick2', currency: 'EUR' },
+    });
+    const author = await actingAs({ role: 'member', name: 'Author' }); // reporter of GIRA-1
+    const dev = await makeUser({ name: 'Dev', role: 'member' }); // assignee
+    await makeUser({ name: 'Zara', role: 'member' }); // unrelated staff — must stay hidden
+    await seedProject({ reporterId: author.user.id, clientId: client.id });
+    await app.inject({
+      method: 'POST',
+      url: '/issues',
+      headers: { cookie: author.cookie },
+      payload: { projectKey: 'GIRA', title: 'X', assigneeId: dev.id },
+    });
+
+    const carla = await actingAs({
+      name: 'Carla',
+      kind: 'client',
+      role: 'viewer',
+      clientId: client.id,
+    });
+    await makeUser({ name: 'Dan', kind: 'client', role: 'viewer', clientId: client.id });
+    await makeUser({ name: 'Foreign', kind: 'client', role: 'viewer', clientId: other.id });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/issues/GIRA-1/mentionable',
+      headers: { cookie: carla.cookie },
+    });
+    expect(res.statusCode).toBe(200);
+    const names = namesOf(res);
+    expect(names).toContain('Author'); // reporter — already visible to the client
+    expect(names).toContain('Dev'); // assignee — already visible
+    expect(names).toContain('Dan'); // own-tenant client user
+    expect(names).not.toContain('Zara'); // unrelated staff never exposed
+    expect(names).not.toContain('Foreign'); // foreign tenant never exposed
+    expect(names).not.toContain('Carla'); // self excluded
+  });
 });

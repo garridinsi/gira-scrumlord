@@ -39,6 +39,13 @@ describe('NotificationBell', () => {
         createdAt: '2026-06-02T00:00:00Z',
         readAt: '2026-06-02T01:00:00Z',
       },
+      {
+        id: 'n3',
+        type: 'mention',
+        payload: { issueKey: 'GIRA-3', actorName: 'Bea' },
+        createdAt: '2026-06-03T00:00:00Z',
+        readAt: null,
+      },
     ]);
     h.markAllRead.mockReset().mockResolvedValue({ marked: 3 });
     h.markRead.mockReset().mockResolvedValue({});
@@ -57,6 +64,7 @@ describe('NotificationBell', () => {
 
     expect(await screen.findByText(/GIRA-1 · asignada a ti/)).toBeInTheDocument();
     expect(screen.getByText(/GIRA-2 · estado cambiado/)).toBeInTheDocument();
+    expect(screen.getByText(/GIRA-3 · Bea te mencionó · mentioned you/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /marcar leído · mark read/ }));
     await waitFor(() => expect(h.markAllRead).toHaveBeenCalledTimes(1));
