@@ -11,9 +11,12 @@ import { assertResolvedHostSafe, createSafeWebhookAgent } from './ssrf.js';
 // so webhook delivery connects only to public addresses even under DNS rebinding.
 const webhookAgent: Agent = createSafeWebhookAgent();
 
+/* c8 ignore start -- transport selection is environment-determined, not a unit under test:
+   tests always take the jsonTransport arm; the real-SMTP arm only runs when NODE_ENV !== 'test'. */
 const transport = notifyConfig.isTest
   ? nodemailer.createTransport({ jsonTransport: true })
   : nodemailer.createTransport(notifyConfig.smtp);
+/* c8 ignore stop */
 
 export interface Channel {
   kind: 'email' | 'webhook';
@@ -79,6 +82,9 @@ export async function deliver(
             body: hop === 0 ? JSON.stringify(payload) : undefined,
             redirect: 'manual',
             signal: controller.signal,
+            /* c8 ignore next -- the SSRF-pinning agent (the !allowPrivate arm) only runs for a
+               PUBLIC host; loopback test targets with allowPrivate=false are rejected earlier by
+               assertResolvedHostSafe, so this arm can't be reached from a local server. */
             dispatcher: allowPrivate ? undefined : webhookAgent,
           });
           if (res.status >= 300 && res.status < 400) {

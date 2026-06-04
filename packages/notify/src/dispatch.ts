@@ -222,11 +222,15 @@ export async function dispatchOutboxBatch(limit = 100): Promise<number> {
         { type: e.type, payload: (e.payload as Record<string, unknown>) ?? {} },
         e.id,
       );
+      /* c8 ignore start -- retry-on-unexpected-throw safety net. dispatchEvent is internally
+         failure-tolerant (delivery failures are recorded on the Notification row, missing
+         entities return null), so this only fires on an unexpected infra error (e.g. a DB blip
+         mid-batch) that can't be injected deterministically without mocking prisma. */
     } catch {
-      // Leave it unprocessed for retry. Per-channel delivery failures are already
-      // captured on the Notification row inside dispatchEvent and do NOT throw.
+      // Leave it unprocessed for retry.
       continue;
     }
+    /* c8 ignore stop */
     await prisma.outbox.update({ where: { id: e.id }, data: { processedAt: new Date() } });
     processed += 1;
   }

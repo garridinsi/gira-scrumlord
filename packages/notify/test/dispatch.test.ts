@@ -2,7 +2,7 @@
 import { type Server, createServer } from 'node:http';
 import { type AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { dispatchEvent } from '../src/dispatch.js';
+import { dispatchEvent, dispatchOutboxBatch } from '../src/dispatch.js';
 import { makeIssue, prisma, resetDb } from './helpers/db.js';
 
 describe('dispatch', () => {
@@ -199,6 +199,56 @@ describe('dispatch', () => {
       const adhoc = await dispatchEvent({ type: 'issue.assigned', payload });
       expect(adhoc.userEmails).toBe(1);
       expect(await prisma.notification.count()).toBe(4); // +1 channel +1 personal
+    });
+  });
+
+  describe('channel delivery failure is recorded, not thrown', () => {
+    it('marks the Notification failed when the webhook is unreachable', async () => {
+      await makeIssue('T-1', 'T');
+      // Bind then close a server so the port is guaranteed refused (deterministic, no hang).
+      const s = createServer();
+      await new Promise<void>((r) => s.listen(0, '127.0.0.1', r));
+      const port = (s.address() as AddressInfo).port;
+      await new Promise<void>((r) => s.close(() => r()));
+
+      await prisma.notificationChannel.create({
+        data: {
+          name: 'dead hook',
+          kind: 'webhook',
+          target: `http://127.0.0.1:${port}/hook`,
+          scope: 'global',
+          events: ['issue.emergency'],
+        },
+      });
+      const res = await dispatchEvent({
+        type: 'issue.emergency',
+        payload: { issueKey: 'T-1', projectKey: 'T', title: 'down' },
+      });
+      expect(res.channelsMatched).toBe(1);
+      expect(res.delivered).toBe(0); // delivery failed but did not throw
+      const n = await prisma.notification.findFirst({ where: { channelId: { not: null } } });
+      expect(n?.status).toBe('failed');
+      expect(n?.error).toBeTruthy();
+    });
+  });
+
+  describe('dispatchOutboxBatch', () => {
+    it('drains pending outbox events and marks them processed', async () => {
+      await makeIssue('T-1', 'T');
+      // No matching channels → each event dispatches cleanly (delivered 0) and is marked done.
+      await prisma.outbox.create({
+        data: { type: 'issue.assigned', payload: { issueKey: 'T-1' } },
+      });
+      await prisma.outbox.create({
+        data: { type: 'issue.status_changed', payload: { issueKey: 'T-1' } },
+      });
+      const processed = await dispatchOutboxBatch();
+      expect(processed).toBe(2);
+      expect(await prisma.outbox.count({ where: { processedAt: null } })).toBe(0);
+    });
+
+    it('returns 0 when there is nothing to process', async () => {
+      expect(await dispatchOutboxBatch()).toBe(0);
     });
   });
 });
