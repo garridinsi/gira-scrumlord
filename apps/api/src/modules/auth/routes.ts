@@ -5,6 +5,8 @@ import {
   emailChangeRequestSchema,
   magicLinkCallbackSchema,
   magicLinkRequestSchema,
+  type PushConfigView,
+  pushSubscribeSchema,
   selfProfileSchema,
   type SessionView,
   type TelegramStatusView,
@@ -202,6 +204,39 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       action: 'telegram.unlink',
       entityType: 'User',
       entityId: me.id,
+    });
+    return reply.code(204).send();
+  });
+
+  // ── Web Push channel (E1) — per-user browser subscriptions. Off + invisible unless VAPID
+  // keys are configured. The public key is not secret; the private key never leaves the server.
+  app.get('/push/config', { preHandler: requireAuth }, async (): Promise<PushConfigView> => {
+    return {
+      enabled: notifyConfig.webPushEnabled,
+      publicKey: notifyConfig.webPushEnabled ? notifyConfig.vapidPublicKey : null,
+    };
+  });
+
+  app.post('/auth/me/push', { preHandler: requireAuth }, async (req, reply) => {
+    if (!notifyConfig.webPushEnabled) throw notFound('web push not configured');
+    const me = currentUser(req);
+    const { endpoint, keys } = pushSubscribeSchema.parse(req.body);
+    // Endpoint is globally unique (one browser/device). Re-subscribing — or a different user
+    // signing in on the same browser — upserts the row to the current owner.
+    await prisma.pushSubscription.upsert({
+      where: { endpoint },
+      create: { userId: me.id, endpoint, p256dh: keys.p256dh, auth: keys.auth },
+      update: { userId: me.id, p256dh: keys.p256dh, auth: keys.auth },
+    });
+    return reply.code(204).send();
+  });
+
+  app.delete('/auth/me/push', { preHandler: requireAuth }, async (req, reply) => {
+    const me = currentUser(req);
+    const { endpoint } = (req.body ?? {}) as { endpoint?: string };
+    // Scoped to the caller: unsubscribe one endpoint, or all of this user's if none given.
+    await prisma.pushSubscription.deleteMany({
+      where: { userId: me.id, ...(endpoint ? { endpoint } : {}) },
     });
     return reply.code(204).send();
   });

@@ -21,6 +21,9 @@ vi.mock('../api/client', () => ({
     telegram: () => h.telegram(),
     linkTelegram: (c: string) => h.linkTelegram(c),
     unlinkTelegram: () => h.unlinkTelegram(),
+    pushConfig: () => Promise.resolve({ enabled: false, publicKey: null }),
+    subscribePush: () => Promise.resolve(),
+    unsubscribePush: () => Promise.resolve(),
   },
   ApiError: class ApiError extends Error {},
 }));

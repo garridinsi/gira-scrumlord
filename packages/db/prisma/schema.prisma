@@ -218,6 +218,7 @@ model User {
   acknowledgedIncidents Incident[]
   assignmentRules       AssignmentRule[]
   telegramLink          TelegramLink?
+  pushSubscriptions     PushSubscription[]
 
   @@index([clientId])
 }
@@ -231,6 +232,21 @@ model TelegramLink {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   chatId    String // Telegram chat id (numeric, stored as text — can exceed 32-bit)
   createdAt DateTime @default(now())
+}
+
+// E1 (channels): a per-user Web Push subscription (one row per browser/device). Personal
+// notifications are also pushed here when VAPID keys are configured. The endpoint is unique
+// so a re-subscribe upserts; dead endpoints (404/410 from the push service) are pruned on send.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String // client public key (base64url)
+  auth      String // client auth secret (base64url)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /// OIDC-ready auth binding. Today provider = "magic-link"; a client's IdP plugs

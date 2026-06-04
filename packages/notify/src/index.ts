@@ -3,8 +3,11 @@ export {
   deliver,
   sendTelegram,
   sendUserEmail,
+  sendWebPush,
   type Channel,
   type DeliverResult,
+  type WebPushSub,
+  type WebPushResult,
 } from './deliver.js';
 export { assertSafeWebhookUrl, assertResolvedHostSafe, isPrivateHost } from './ssrf.js';
 export {

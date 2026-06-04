@@ -4,12 +4,24 @@
 
 import nodemailer from 'nodemailer';
 import { Agent, fetch as undiciFetch } from 'undici';
+import webpush from 'web-push';
 import { notifyConfig } from './config.js';
 import { assertResolvedHostSafe, createSafeWebhookAgent } from './ssrf.js';
 
 // A single pooled dispatcher whose connect-time lookup re-validates the resolved IP,
 // so webhook delivery connects only to public addresses even under DNS rebinding.
 const webhookAgent: Agent = createSafeWebhookAgent();
+
+// Configure VAPID once at module load — only meaningful (and only valid) when both keys are
+// set. When the channel is off, sendWebPush short-circuits before ever touching the library.
+/* c8 ignore next 7 -- VAPID setup runs only with real keys configured (off in tests). */
+if (notifyConfig.webPushEnabled) {
+  webpush.setVapidDetails(
+    notifyConfig.vapidSubject,
+    notifyConfig.vapidPublicKey,
+    notifyConfig.vapidPrivateKey,
+  );
+}
 
 /* c8 ignore start -- transport selection is environment-determined, not a unit under test:
    tests always take the jsonTransport arm; the real-SMTP arm only runs when NODE_ENV !== 'test'. */
@@ -68,6 +80,40 @@ export async function sendTelegram(chatId: string, text: string): Promise<Delive
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+export interface WebPushSub {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+/** `gone` marks a subscription the push service rejected as expired (404/410) → prune it. */
+export interface WebPushResult extends DeliverResult {
+  gone?: boolean;
+}
+
+/**
+ * Push an encrypted notification to one Web Push subscription via the VAPID-signed protocol
+ * (the web-push library handles aes128gcm payload encryption). No-op-fail when unconfigured.
+ * A 404/410 from the push service means the subscription is dead — flagged via `gone` so the
+ * caller can prune it.
+ */
+export async function sendWebPush(
+  sub: WebPushSub,
+  payload: { title: string; body: string; url?: string },
+): Promise<WebPushResult> {
+  if (!notifyConfig.webPushEnabled) return { ok: false, error: 'web push not configured' };
+  try {
+    await webpush.sendNotification(
+      { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+      JSON.stringify(payload),
+    );
+    return { ok: true };
+  } catch (e) {
+    const status = (e as { statusCode?: number }).statusCode;
+    const gone = status === 404 || status === 410;
+    return { ok: false, gone, error: e instanceof Error ? e.message : String(e) };
   }
 }
 

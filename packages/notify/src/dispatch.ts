@@ -4,7 +4,7 @@
 
 import { type Prisma, prisma } from '@gira/db';
 import { notifyConfig } from './config.js';
-import { type Channel, deliver, sendTelegram, sendUserEmail } from './deliver.js';
+import { type Channel, deliver, sendTelegram, sendUserEmail, sendWebPush } from './deliver.js';
 
 export interface DomainEvent {
   type: string;
@@ -77,6 +77,18 @@ async function sendPersonal(
   if (notifyConfig.telegramEnabled) {
     const link = await prisma.telegramLink.findUnique({ where: { userId: recipient.id } });
     if (link) await sendTelegram(link.chatId, `${subject}\n\n${body}`);
+  }
+  // Best-effort Web Push fan-out to every subscribed browser/device. A subscription the push
+  // service reports as gone (404/410) is pruned so it isn't retried forever.
+  if (notifyConfig.webPushEnabled) {
+    const subs = await prisma.pushSubscription.findMany({ where: { userId: recipient.id } });
+    for (const s of subs) {
+      const pushed = await sendWebPush(
+        { endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth },
+        { title: subject, body },
+      );
+      if (pushed.gone) await prisma.pushSubscription.delete({ where: { id: s.id } });
+    }
   }
   return r.ok ? 1 : 0;
 }

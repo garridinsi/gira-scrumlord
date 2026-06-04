@@ -19,9 +19,19 @@ export default defineConfig({
   test: {
     globalSetup: ['./test/global-setup.ts'],
     // A dummy bot token turns the Telegram channel ON for tests (so the link endpoints are
-    // reachable). Safe: the API never drains the Outbox itself, so no test actually POSTs to
-    // Telegram — only scrumlord's dispatch path would, and that is unit-tested separately.
-    env: { DATABASE_URL: testUrl, NODE_ENV: 'test', TELEGRAM_BOT_TOKEN: 'test-bot-token' },
+    // reachable). The VAPID keys (a throwaway, real-format keypair) turn Web Push ON. Safe:
+    // the API never drains the Outbox, so no test actually sends — only scrumlord's dispatch
+    // path would, and that is unit-tested separately. Real-format keys are required because
+    // web-push.setVapidDetails validates them at module load.
+    env: {
+      DATABASE_URL: testUrl,
+      NODE_ENV: 'test',
+      TELEGRAM_BOT_TOKEN: 'test-bot-token',
+      VAPID_PUBLIC_KEY:
+        'BDY0j1s7_1xgpWUK5ZUC8K0xumkxB4AP2RJxkKZqujPwv5JptU34NFuIjo_YNzAu6RgAxTCDsO9BIACL9H26XoM',
+      VAPID_PRIVATE_KEY: 't928DeLDTPEmuVHUPiTui3dHRPbW5hwLPu3CaIvBH-E',
+      VAPID_SUBJECT: 'mailto:test@gira.local',
+    },
     fileParallelism: false,
     pool: 'forks',
     poolOptions: { forks: { singleFork: true } },

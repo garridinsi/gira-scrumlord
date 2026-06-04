@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UserLocale } from '@gira/shared';
 import { auth, ApiError } from '../api/client';
 import { useMe } from '../hooks/useAuth';
+import { pushSupported, subscribeBrowser, unsubscribeBrowser } from '../lib/push';
 
 const LOCALES: { value: UserLocale; label: string }[] = [
   { value: 'es', label: 'Español' },
@@ -139,6 +140,22 @@ export function AccountPage() {
   const unlinkTelegram = useMutation({
     mutationFn: () => auth.unlinkTelegram(),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['auth', 'telegram'] }),
+  });
+
+  // Web Push channel (only surfaced when the server has VAPID keys AND the browser supports it).
+  const [pushOn, setPushOn] = useState(false);
+  const pushConfigQ = useQuery({ queryKey: ['push', 'config'], queryFn: () => auth.pushConfig() });
+  const enablePush = useMutation({
+    mutationFn: async () => {
+      const key = pushConfigQ.data?.publicKey;
+      if (!key) throw new Error('no key');
+      await auth.subscribePush(await subscribeBrowser(key));
+    },
+    onSuccess: () => setPushOn(true),
+  });
+  const disablePush = useMutation({
+    mutationFn: async () => auth.unsubscribePush(await unsubscribeBrowser()),
+    onSuccess: () => setPushOn(false),
   });
 
   if (me.isLoading)
@@ -424,6 +441,54 @@ export function AccountPage() {
                     style={{ color: 'var(--eg-red)', fontSize: 11 }}
                   >
                     chat id no válido · invalid chat id
+                  </span>
+                )}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Web Push — only shown when the server has VAPID keys configured. */}
+        {pushConfigQ.data?.enabled && (
+          <Card
+            title="Notificaciones push · Web Push"
+            sub="Avisos en el navegador, incluso con la pestaña cerrada · browser alerts even when the tab is closed"
+          >
+            {!pushSupported() ? (
+              <div className="mono" style={{ fontSize: 11, color: 'var(--eg-fg-4)' }}>
+                No soportado en este navegador · not supported in this browser
+              </div>
+            ) : pushOn ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className="mono" style={{ fontSize: 12, color: 'var(--eg-green, #2a7)' }}>
+                  ✓ activado · enabled
+                </span>
+                <button
+                  type="button"
+                  className="b-btn"
+                  disabled={disablePush.isPending}
+                  onClick={() => disablePush.mutate()}
+                >
+                  Desactivar · Disable
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="b-btn b-btn--ink"
+                  disabled={enablePush.isPending}
+                  onClick={() => enablePush.mutate()}
+                >
+                  Activar · Enable
+                </button>
+                {enablePush.isError && (
+                  <span
+                    className="mono"
+                    role="alert"
+                    style={{ color: 'var(--eg-red)', fontSize: 11 }}
+                  >
+                    permiso denegado · permission denied
                   </span>
                 )}
               </div>

@@ -40,4 +40,12 @@ export const notifyConfig = {
   // no delivery. Fixed egress (api.telegram.org), so no SSRF model applies.
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
   telegramEnabled: Boolean(process.env.TELEGRAM_BOT_TOKEN),
+  // Web Push (VAPID). Generate a keypair with `npx web-push generate-vapid-keys`. The channel
+  // is OFF (no subscribe UI, no delivery) unless BOTH keys are set. The public key is served
+  // to the browser; the private key signs. Egress is the user-agent's push service (Google/
+  // Mozilla/Apple) addressed by the subscription endpoint — no SSRF model applies.
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? '',
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? '',
+  vapidSubject: process.env.VAPID_SUBJECT ?? 'mailto:admin@gira.local',
+  webPushEnabled: Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
 };

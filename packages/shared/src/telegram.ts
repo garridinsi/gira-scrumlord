@@ -18,3 +18,20 @@ export interface TelegramStatusView {
   linked: boolean; // this user has linked a chat
   chatId: string | null;
 }
+
+// ── Web Push (E1 channels) ────────────────────────────────────────────────────────────────
+/** A browser PushSubscription as the client serializes it for POST /auth/me/push. */
+export const pushSubscribeSchema = z.object({
+  endpoint: z.string().url().max(1000),
+  keys: z.object({
+    p256dh: z.string().min(1).max(255),
+    auth: z.string().min(1).max(255),
+  }),
+});
+export type PushSubscribe = z.infer<typeof pushSubscribeSchema>;
+
+/** Whether web push is available + this user's VAPID public key to subscribe with. */
+export interface PushConfigView {
+  enabled: boolean;
+  publicKey: string | null;
+}

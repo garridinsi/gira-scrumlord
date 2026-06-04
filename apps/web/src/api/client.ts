@@ -27,6 +27,7 @@ import type {
   SlaPolicyView,
   SlaAttainmentView,
   TelegramStatusView,
+  PushConfigView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -236,6 +237,13 @@ export const auth = {
   linkTelegram: (chatId: string) =>
     request<void>('/auth/me/telegram', { method: 'PUT', ...json({ chatId }) }),
   unlinkTelegram: () => request<void>('/auth/me/telegram', { method: 'DELETE' }),
+
+  // Web Push channel. pushConfig().enabled is false when the server has no VAPID keys.
+  pushConfig: () => request<PushConfigView>('/push/config'),
+  subscribePush: (sub: { endpoint: string; keys: { p256dh: string; auth: string } }) =>
+    request<void>('/auth/me/push', { method: 'POST', ...json(sub) }),
+  unsubscribePush: (endpoint?: string) =>
+    request<void>('/auth/me/push', { method: 'DELETE', ...json(endpoint ? { endpoint } : {}) }),
 };
 
 // ---------------------------------------------------------------------------

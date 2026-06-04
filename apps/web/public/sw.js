@@ -63,3 +63,39 @@ self.addEventListener('fetch', (event) => {
     }),
   );
 });
+
+// Web Push: render the notification the server encrypted to us. Payload is JSON
+// { title, body, url? }; degrade gracefully if it isn't.
+self.addEventListener('push', (event) => {
+  let data = { title: 'gira-scrumlord', body: '', url: '/' };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch {
+    if (event.data) data.body = event.data.text();
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icon.svg',
+      badge: '/icon.svg',
+      data: { url: data.url || '/' },
+    }),
+  );
+});
+
+// Clicking a notification focuses an existing tab (navigating it to the target) or opens one.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const c of clients) {
+        if ('focus' in c) {
+          if ('navigate' in c) c.navigate(target);
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    }),
+  );
+});
