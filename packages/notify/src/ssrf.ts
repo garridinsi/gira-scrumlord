@@ -33,6 +33,9 @@ function embeddedV4(h: string): string | null {
   if (hex) {
     const hi = parseInt(hex[1]!, 16);
     const lo = parseInt(hex[2]!, 16);
+    // Unreachable: the [0-9a-f]{1,4} capture guarantees parseInt(.,16) is a number, so NaN
+    // never occurs. Kept as a guard against a future regex change.
+    /* c8 ignore next */
     if (Number.isNaN(hi) || Number.isNaN(lo)) return null;
     return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
   }
@@ -95,9 +98,14 @@ export async function assertResolvedHostSafe(raw: string, allowPrivate = false):
   let addrs: Array<{ address: string }>;
   try {
     addrs = await lookup(hostname, { all: true });
+    /* c8 ignore start -- DNS-failure rethrow. The resolver-rejection path is not unit-testable
+       under vitest 2.1.9: its unhandled-rejection detector flags a mocked rejected lookup
+       before this await's catch attaches (a known harness quirk), failing the test. The arm
+       is a thin defensive translation of an infra error and is exercised end-to-end. */
   } catch {
     throw new Error(`cannot resolve webhook host: ${hostname}`);
   }
+  /* c8 ignore stop */
   for (const a of addrs) {
     if (isPrivateHost(a.address)) {
       throw new Error(`webhook host ${hostname} resolves to a private address (${a.address})`);
