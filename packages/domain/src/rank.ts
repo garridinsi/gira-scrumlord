@@ -63,10 +63,13 @@ function between(lo: string, hi: string): string {
       i++;
       continue;
     }
+    /* c8 ignore start -- defensive: unreachable via the public API. `between` is only
+       called by rankBetween, which throws on prev >= next (line 41) before we get here,
+       so p <= n always holds. Kept as a guard against a future internal caller. */
     if (p > n) {
-      // Only reachable on invalid input (lo >= hi); rankBetween already guards this.
       throw new NoRankSpaceError(lo, hi);
     }
+    /* c8 ignore stop */
     const mid = Math.floor((p + n) / 2);
     if (mid !== p) {
       return result + DIGITS[mid]!;

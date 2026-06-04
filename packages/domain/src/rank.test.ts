@@ -44,6 +44,12 @@ describe('rankBetween', () => {
     expect(() => rankBetween('a', 'a')).toThrow();
   });
 
+  it('throws on a malformed rank digit outside the base-62 alphabet', () => {
+    // '!' is not a rank digit; val() must reject it rather than silently mis-rank.
+    // Shared 'a' prefix forces the descent to position 1, where hi's '!' is evaluated.
+    expect(() => rankBetween('a', 'a!')).toThrow(/invalid rank digit/);
+  });
+
   it('initialRank is a valid rank', () => {
     expect(initialRank().length).toBeGreaterThan(0);
   });

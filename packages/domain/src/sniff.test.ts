@@ -31,6 +31,11 @@ describe('sniffContentType', () => {
     expect(sniffContentType(bytes(0x00, 0x01, 0x02, 0x03))).toBeNull();
     expect(sniffContentType(bytes())).toBeNull();
   });
+  it('rejects a high control char (0x0e–0x1f, not < 0x09) as non-text → null', () => {
+    // Exercises the second half of the control-byte guard (c > 0x0d && c < 0x20):
+    // a printable 'A' followed by US (0x1f) is not text and matches no magic signature.
+    expect(sniffContentType(bytes(0x41, 0x1f))).toBeNull();
+  });
   it('rejects an SVG (it is text-ish but we never allow inline-renderable markup as an image)', () => {
     // An SVG sniffs as text/plain (not an image), so it can only ever be force-downloaded
     // as text/plain — never served as image/svg+xml that a browser would execute.
