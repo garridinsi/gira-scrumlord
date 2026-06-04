@@ -24,6 +24,8 @@ import type {
   AttachmentView,
   PeriodLockView,
   KbArticleView,
+  SlaPolicyView,
+  SlaAttainmentView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -44,6 +46,7 @@ import type {
   CreateAttachment,
   CreateKbArticle,
   UpdateKbArticle,
+  UpsertSlaPolicy,
   CreateProject,
   UpdateProject,
   CreateStatus,
@@ -430,6 +433,17 @@ export const kb = {
   update: (id: string, d: UpdateKbArticle) =>
     request<KbArticleView>(`/kb/${id}`, { method: 'PATCH', ...json(d) }),
   delete: (id: string) => request<void>(`/kb/${id}`, { method: 'DELETE' }),
+};
+
+// ---------------------------------------------------------------------------
+// SLA policies + attainment (B2) — per-project config + reporting.
+// ---------------------------------------------------------------------------
+
+export const sla = {
+  policies: (key: string) => request<SlaPolicyView[]>(`/projects/${key}/sla-policies`),
+  upsertPolicy: (key: string, d: UpsertSlaPolicy) =>
+    request<SlaPolicyView>(`/projects/${key}/sla-policies`, { method: 'PUT', ...json(d) }),
+  attainment: (key: string) => request<SlaAttainmentView>(`/projects/${key}/sla/attainment`),
 };
 
 // ---------------------------------------------------------------------------

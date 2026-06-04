@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { ProjectSummaryView } from '@gira/shared';
-import { projects, clients, ApiError } from '../api/client';
+import { projects, clients, sla, ApiError } from '../api/client';
 import type { SprintRecord } from '../api/client';
 import { Plate, SpinGlyph } from '../ui/atoms';
 import { Subbar } from '../ui/Subbar';
@@ -938,6 +938,135 @@ function BudgetEditorStrip({ projectKey }: { projectKey: string }) {
 }
 
 // ── Cadence toggle strip ───────────────────────────────────────────────────────
+function SlaPolicyStrip({ projectKey }: { projectKey: string }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const me = useMe();
+  const policiesQ = useQuery({
+    queryKey: ['sla-policies', projectKey],
+    queryFn: () => sla.policies(projectKey),
+    enabled: !!projectKey,
+  });
+  const attainmentQ = useQuery({
+    queryKey: ['sla-attainment', projectKey],
+    queryFn: () => sla.attainment(projectKey),
+    enabled: !!projectKey,
+  });
+
+  const dflt = policiesQ.data?.find((p) => p.priority === null);
+  const curResp = dflt ? String(Math.round(dflt.responseMinutes / 60)) : '';
+  const curReso = dflt ? String(Math.round(dflt.resolutionMinutes / 60)) : '';
+  const [resp, setResp] = useState<string | null>(null);
+  const [reso, setReso] = useState<string | null>(null);
+  const respVal = resp ?? curResp;
+  const resoVal = reso ?? curReso;
+
+  const saveMut = useMutation({
+    mutationFn: () =>
+      sla.upsertPolicy(projectKey, {
+        responseMinutes: Math.round(parseFloat(respVal || '0') * 60),
+        resolutionMinutes: Math.round(parseFloat(resoVal || '0') * 60),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sla-policies', projectKey] });
+      setResp(null);
+      setReso(null);
+      toast({ tone: 'ok', title: 'SLA guardado · SLA saved', body: projectKey });
+    },
+    onError: (err) =>
+      toast({
+        tone: 'danger',
+        title: 'Error',
+        body: err instanceof ApiError ? err.message : 'Error',
+      }),
+  });
+
+  const isWriter = me.data?.role === 'admin' || me.data?.role === 'member';
+  if (!isWriter) return null;
+
+  const inputStyle: React.CSSProperties = {
+    padding: '6px 8px',
+    border: '1.5px solid var(--eg-iron)',
+    background: 'var(--eg-paper)',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 12,
+    width: 90,
+  };
+  const labelStyle: React.CSSProperties = {
+    fontSize: 9,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    color: 'var(--eg-fg-4)',
+  };
+  const valid = (v: string) => v.trim() !== '' && Number(v) > 0;
+  const att = attainmentQ.data;
+
+  return (
+    <section
+      style={{
+        border: '2px solid var(--eg-iron)',
+        background: 'var(--eg-paper)',
+        marginBottom: 18,
+      }}
+    >
+      <div className="tag-head" style={{ background: 'var(--eg-paper-2)', padding: '8px 14px' }}>
+        <span>// SLA · OBJETIVOS · TARGETS</span>
+        <span className="mono" style={{ fontSize: 10, letterSpacing: '0.1em' }}>
+          HORAS HÁBILES · BIZ HRS
+        </span>
+      </div>
+      <div
+        style={{
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 20,
+          flexWrap: 'wrap',
+        }}
+      >
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="mono" style={labelStyle}>
+            Respuesta (h) · Response
+          </span>
+          <input
+            type="number"
+            value={respVal}
+            onChange={(e) => setResp(e.currentTarget.value)}
+            style={inputStyle}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span className="mono" style={labelStyle}>
+            Resolución (h) · Resolution
+          </span>
+          <input
+            type="number"
+            value={resoVal}
+            onChange={(e) => setReso(e.currentTarget.value)}
+            style={inputStyle}
+          />
+        </label>
+        <button
+          className="b-btn b-btn--ink"
+          disabled={!valid(respVal) || !valid(resoVal)}
+          onClick={() => saveMut.mutate()}
+        >
+          Guardar SLA · Save SLA
+        </button>
+        {att && (
+          <span
+            className="mono"
+            style={{ fontSize: 11, color: 'var(--eg-fg-3)', alignSelf: 'center' }}
+          >
+            Cumplimiento · attainment: resp {att.response.pct ?? '—'}% · reso{' '}
+            {att.resolution.pct ?? '—'}%
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function CadenceStrip({ projectKey }: { projectKey: string }) {
   const qc = useQueryClient();
   const toast = useToast();
@@ -1256,6 +1385,8 @@ export function ProjectSummaryPage() {
 
         {/* Monthly budget editor */}
         <BudgetEditorStrip projectKey={key} />
+
+        <SlaPolicyStrip projectKey={key} />
 
         {/* Empty state if no sprints at all */}
         {sprintsList.length === 0 && summary.openIssues === 0 && summary.doneIssues === 0 && (

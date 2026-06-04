@@ -5,19 +5,31 @@ import userEvent from '@testing-library/user-event';
 import { Routes, Route } from 'react-router-dom';
 import { renderWithProviders } from './render';
 
-const { summary, sprintsList, projectGet, update, clientsList, toast, meState } = vi.hoisted(
-  () => ({
-    summary: vi.fn(),
-    sprintsList: vi.fn(),
-    projectGet: vi.fn(),
-    update: vi.fn(),
-    clientsList: vi.fn(),
-    toast: vi.fn(),
-    // STABLE reference — writer strips read me.data.role; a fresh object would
-    // re-fire seeding effects and flake. Mutate .role between tests instead.
-    meState: { data: { role: 'admin' } as { role: string } },
-  }),
-);
+const {
+  summary,
+  sprintsList,
+  projectGet,
+  update,
+  clientsList,
+  slaPolicies,
+  slaUpsert,
+  slaAttainment,
+  toast,
+  meState,
+} = vi.hoisted(() => ({
+  summary: vi.fn(),
+  sprintsList: vi.fn(),
+  projectGet: vi.fn(),
+  update: vi.fn(),
+  clientsList: vi.fn(),
+  slaPolicies: vi.fn(),
+  slaUpsert: vi.fn(),
+  slaAttainment: vi.fn(),
+  toast: vi.fn(),
+  // STABLE reference — writer strips read me.data.role; a fresh object would
+  // re-fire seeding effects and flake. Mutate .role between tests instead.
+  meState: { data: { role: 'admin' } as { role: string } },
+}));
 
 vi.mock('../api/client', () => ({
   projects: {
@@ -27,6 +39,11 @@ vi.mock('../api/client', () => ({
     update: (k: string, b: unknown) => update(k, b),
   },
   clients: { list: () => clientsList() },
+  sla: {
+    policies: (k: string) => slaPolicies(k),
+    upsertPolicy: (k: string, d: unknown) => slaUpsert(k, d),
+    attainment: (k: string) => slaAttainment(k),
+  },
   ApiError: class ApiError extends Error {},
 }));
 vi.mock('../hooks/useAuth', () => ({ useMe: () => meState }));
@@ -89,6 +106,13 @@ describe('ProjectSummaryPage', () => {
     projectGet.mockReset().mockResolvedValue(baseProject());
     update.mockReset().mockResolvedValue(baseProject());
     clientsList.mockReset().mockResolvedValue([]);
+    slaPolicies.mockReset().mockResolvedValue([]);
+    slaUpsert.mockReset().mockResolvedValue({});
+    slaAttainment.mockReset().mockResolvedValue({
+      projectKey: 'MNT',
+      response: { applicable: 0, met: 0, pct: null },
+      resolution: { applicable: 0, met: 0, pct: null },
+    });
     toast.mockReset();
     meState.data = { role: 'admin' };
   });
@@ -116,6 +140,45 @@ describe('ProjectSummaryPage', () => {
     expect(
       screen.getByText(/Empieza creando tickets y sprints · Start by creating issues and sprints/),
     ).toBeInTheDocument();
+  });
+
+  it('shows + edits the SLA policy targets and shows attainment (B2)', async () => {
+    summary.mockResolvedValue(baseSummary());
+    slaPolicies.mockResolvedValue([
+      { id: 'p1', projectId: 'pr1', priority: null, responseMinutes: 480, resolutionMinutes: 2400 },
+    ]);
+    slaAttainment.mockResolvedValue({
+      projectKey: 'PRJ',
+      response: { applicable: 4, met: 3, pct: 75 },
+      resolution: { applicable: 2, met: 2, pct: 100 },
+    });
+    slaUpsert.mockResolvedValue({
+      id: 'p1',
+      projectId: 'pr1',
+      priority: null,
+      responseMinutes: 240,
+      resolutionMinutes: 2400,
+    });
+    renderAt('PRJ');
+
+    // Strip renders with the default policy in hours + attainment %.
+    expect(await screen.findByText('// SLA · OBJETIVOS · TARGETS')).toBeInTheDocument();
+    expect(
+      await screen.findByText((t) => t.includes('resp 75%') && t.includes('reso 100%')),
+    ).toBeInTheDocument();
+    const respInput = screen.getByLabelText(/Respuesta \(h\) · Response/) as HTMLInputElement;
+    expect(respInput.value).toBe('8'); // 480 min / 60
+
+    // Edit response → 4h and save.
+    await userEvent.clear(respInput);
+    await userEvent.type(respInput, '4');
+    await userEvent.click(screen.getByRole('button', { name: /Guardar SLA · Save SLA/ }));
+    await waitFor(() =>
+      expect(slaUpsert).toHaveBeenCalledWith('PRJ', {
+        responseMinutes: 240,
+        resolutionMinutes: 2400,
+      }),
+    );
   });
 
   // ── header + stat tiles ─────────────────────────────────────────────────────
