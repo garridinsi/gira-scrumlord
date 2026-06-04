@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { type Prisma, prisma } from '@gira/db';
-import { sanitizeMarkdown } from '@gira/domain';
+import { parseMentions, sanitizeMarkdown } from '@gira/domain';
 import {
   createCommentSchema,
   createIssueSchema,
@@ -18,10 +18,57 @@ import {
   createIssue,
   emitEmergency,
   issueInclude,
+  type IssueWithRelations,
   loadIssueOr404,
   recordIssueEvent,
 } from './service.js';
 import { computeSla } from './sla.js';
+
+// @mention fan-out: turn @[label](userId) tokens in a freshly-created comment into per-user
+// in-app notifications (the E1 inbox). Authorization is enforced HERE, never in the parser:
+//   • the author never notifies themselves;
+//   • a client recipient is only notified on a client-visible comment AND only when they
+//     belong to this project's client — so an internal note can never notify (or even
+//     reveal the existence of) someone who cannot see it;
+//   • inactive users are skipped.
+// Best-effort: a comment must still succeed even if no one is mentioned or notifiable.
+async function notifyMentions(args: {
+  comment: { id: string; body: string };
+  issue: IssueWithRelations;
+  visibility: string;
+  actorId: string;
+  actorName: string;
+}): Promise<void> {
+  const { comment, issue, visibility, actorId, actorName } = args;
+  const ids = parseMentions(comment.body).filter((id) => id !== actorId);
+  if (ids.length === 0) return;
+  const clientId = issue.project.clientId;
+  const recipients = await prisma.user.findMany({
+    where: {
+      id: { in: ids },
+      isActive: true,
+      OR: [
+        { kind: 'staff' },
+        ...(visibility === 'client' && clientId ? [{ kind: 'client' as const, clientId }] : []),
+      ],
+    },
+    select: { id: true },
+  });
+  if (recipients.length === 0) return;
+  await prisma.notification.createMany({
+    data: recipients.map((r) => ({
+      userId: r.id,
+      type: 'mention',
+      payload: {
+        issueKey: issue.key,
+        projectKey: issue.project.key,
+        commentId: comment.id,
+        actorName,
+        excerpt: comment.body.slice(0, 140),
+      },
+    })),
+  });
+}
 
 export async function issueRoutes(app: FastifyInstance): Promise<void> {
   // ── list / search / filter ─────────────────────────────────────────────
@@ -309,6 +356,7 @@ export async function issueRoutes(app: FastifyInstance): Promise<void> {
       },
       include: { author: true },
     });
+    await notifyMentions({ comment, issue, visibility, actorId: user.id, actorName: user.name });
     return reply.code(201).send(toCommentView(comment));
   });
 }

@@ -12,6 +12,7 @@ describe('domain barrel (index.ts)', () => {
     expect(typeof domain.businessMinutesBetween).toBe('function');
     expect(typeof domain.sanitizeMarkdown).toBe('function');
     expect(typeof domain.sniffContentType).toBe('function');
+    expect(typeof domain.parseMentions).toBe('function');
   });
 
   it('the re-exported functions behave identically to their source modules', () => {

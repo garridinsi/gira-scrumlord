@@ -8,3 +8,4 @@ export * from './token.js';
 export * from './business-hours.js';
 export * from './sanitize.js';
 export * from './sniff.js';
+export * from './mentions.js';
