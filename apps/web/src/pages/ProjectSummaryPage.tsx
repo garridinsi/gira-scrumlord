@@ -39,6 +39,7 @@ function BigStat({
     yellow: 'var(--eg-yellow)',
     ink: 'var(--eg-iron)',
   };
+  /* v8 ignore next -- color is constrained to the 4 map keys; the ?? fallback can't run. */
   const bg = bgMap[color] ?? 'var(--eg-paper)';
   const fg = color === 'ink' ? 'var(--eg-yellow)' : 'var(--eg-iron)';
   const subColor = color === 'ink' ? 'var(--eg-fg-5)' : 'var(--eg-fg-3)';
@@ -235,6 +236,8 @@ function VelocityChart({ sprintsData }: { sprintsData: SprintRecord[] }) {
             const dh = axisMax > 0 ? (completed / axisMax) * h : 0;
             const isPartial = d.state === 'active';
 
+            /* v8 ignore next 8 -- completed is hardcoded 0, so this fill color is
+               only consumed by the dead `dh > 0` block below; its branches can't run. */
             const fillColor =
               d.state === 'future'
                 ? 'var(--eg-paper-3)'
@@ -269,6 +272,8 @@ function VelocityChart({ sprintsData }: { sprintsData: SprintRecord[] }) {
                 )}
 
                 {/* Completed — solid fill (if available) */}
+                {/* v8 ignore next 11 -- dead branch: completed is hardcoded 0, so dh is
+                    always 0 and this completed-bar rect can never render. */}
                 {dh > 0 && (
                   <rect
                     x={cx - barW * 0.65}
@@ -407,6 +412,7 @@ function VelocityChart({ sprintsData }: { sprintsData: SprintRecord[] }) {
 function SprintVelocityTable({ sprintsData }: { sprintsData: SprintRecord[] }) {
   const rows = [...sprintsData].reverse().slice(0, 8);
 
+  /* v8 ignore next -- only mounted when sprintsList is non-empty, so rows is never empty. */
   if (rows.length === 0) return null;
 
   return (
@@ -476,6 +482,7 @@ function SprintVelocityTable({ sprintsData }: { sprintsData: SprintRecord[] }) {
 // ── Active sprint velocity details ────────────────────────────────────────────
 function ActiveSprintPanel({ summary }: { summary: ProjectSummaryView }) {
   const { activeSprint } = summary;
+  /* v8 ignore next -- only mounted when summary.activeSprint is truthy. */
   if (!activeSprint) return null;
 
   const { velocity } = activeSprint;
@@ -1222,6 +1229,8 @@ export function ProjectSummaryPage() {
   // moneyStr is like "EUR 28.405,00" — split currency prefix from amount
   const [moneyCurrency, moneyAmount] = moneyStr.split(' ') as [string, string];
   // Split integer part from decimal cents
+  /* v8 ignore next 3 -- formatMoney always yields "CUR int,dd" with a space and two
+     decimals, so the ?? fallbacks here are defensive and never taken. */
   const moneyParts = moneyAmount?.split(',') ?? ['0', '00'];
   const moneyInt = moneyParts[0] ?? '0';
   const moneyDec = `,${moneyParts[1] ?? '00'}`;

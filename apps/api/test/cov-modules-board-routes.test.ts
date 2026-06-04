@@ -39,14 +39,12 @@ describe('cov src/modules/board/routes.ts', () => {
   }
 
   const board = (cookie: string, key: string) =>
-    app
-      .inject({ method: 'GET', url: `/projects/${key}/board`, headers: { cookie } })
-      .then(
-        (r) =>
-          r.json() as {
-            columns: Array<{ status: { name: string }; issues: Array<{ key: string }> }>;
-          },
-      );
+    app.inject({ method: 'GET', url: `/projects/${key}/board`, headers: { cookie } }).then(
+      (r) =>
+        r.json() as {
+          columns: Array<{ status: { name: string }; issues: Array<{ key: string }> }>;
+        },
+    );
 
   const columnKeys = (
     b: { columns: Array<{ status: { name: string }; issues: Array<{ key: string }> }> },

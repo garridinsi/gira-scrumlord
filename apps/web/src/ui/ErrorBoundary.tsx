@@ -27,6 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
       message: error.message || String(error),
       stack: error.stack ?? undefined,
       componentStack: info.componentStack ?? undefined,
+      /* v8 ignore next -- window is always defined under jsdom/the browser; the `: undefined` SSR-guard arm can't run here. */
       url: typeof window !== 'undefined' ? window.location.href : undefined,
     });
   }

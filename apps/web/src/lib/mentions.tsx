@@ -24,6 +24,7 @@ export function renderMentions(body: string): ReactNode {
   const out: ReactNode[] = [];
   let last = 0;
   matches.forEach((m, i) => {
+    /* v8 ignore next -- matchAll on a global regex always yields a numeric .index; the ?? 0 fallback is unreachable */
     const idx = m.index ?? 0;
     if (idx > last) out.push(body.slice(last, idx));
     out.push(

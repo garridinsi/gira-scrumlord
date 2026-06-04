@@ -26,6 +26,9 @@ export function IssueDetailPage() {
     if (projectKey) {
       navigate(`/projects/${projectKey}/board`);
     } else {
+      // Unreachable via the only caller: the drawer (and thus this handler) only
+      // mounts when projectKey is truthy, so handleClose always takes the if-arm.
+      /* v8 ignore next */
       navigate(-1);
     }
   };

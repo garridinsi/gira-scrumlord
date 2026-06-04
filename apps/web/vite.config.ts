@@ -24,6 +24,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: true,
+    // A stuck test/hook must FAIL, never wedge the whole run (which has no other backstop).
+    testTimeout: 10_000,
+    hookTimeout: 20_000,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'json-summary', 'html'],
