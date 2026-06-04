@@ -21,5 +21,6 @@ export async function runSerializable<T>(
       if (code === 'P2034' && attempt < maxRetries) continue; // serialization failure — retry
       throw e;
     }
+    /* c8 ignore next 2 -- unreachable: the for(;;) only exits via return/throw above, so these closing braces never run */
   }
 }

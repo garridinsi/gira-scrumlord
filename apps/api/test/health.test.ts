@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import type { FastifyInstance } from 'fastify';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { prisma } from './helpers/db.js';
 
@@ -21,11 +21,20 @@ describe('health', () => {
 
   it('GET /health → 503 degraded when the database is unreachable', async () => {
     // A masked DB failure that still 200s would defeat uptime probes; assert it 503s.
-    const spy = vi.spyOn(prisma, '$queryRaw').mockRejectedValueOnce(new Error('db down'));
-    const res = await app.inject({ method: 'GET', url: '/health' });
-    expect(res.statusCode).toBe(503);
-    expect(res.json()).toMatchObject({ status: 'degraded', db: false });
-    spy.mockRestore();
+    // NB: swap-and-restore the real function reference rather than vi.spyOn — restoring a
+    // vitest spy on Prisma's $queryRaw tagged-template method leaves it `undefined` under
+    // this project's single-fork/no-isolation pool, which would break resetDb in every
+    // later file.
+    const original = prisma.$queryRaw;
+    prisma.$queryRaw = (() =>
+      Promise.reject(new Error('db down'))) as unknown as typeof prisma.$queryRaw;
+    try {
+      const res = await app.inject({ method: 'GET', url: '/health' });
+      expect(res.statusCode).toBe(503);
+      expect(res.json()).toMatchObject({ status: 'degraded', db: false });
+    } finally {
+      prisma.$queryRaw = original;
+    }
   });
 
   it('POST /client-errors accepts a crash report (204) and swallows junk', async () => {

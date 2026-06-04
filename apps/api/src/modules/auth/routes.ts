@@ -148,6 +148,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post('/auth/sessions/revoke-others', { preHandler: requireAuth }, async (req) => {
     const me = currentUser(req);
     const currentId = sessionIdFromCookie(req.cookies[SESSION_COOKIE]);
+    // c8 ignore next -- defensive: requireAuth already parsed this same cookie, so currentId is never null here; the `?? undefined` arm is unreachable from an authenticated call
     const revoked = await revokeUserSessions(me.id, currentId ?? undefined);
     return { revoked };
   });

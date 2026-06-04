@@ -114,6 +114,9 @@ export async function notificationRoutes(app: FastifyInstance): Promise<void> {
         where: { id: channel.projectId },
         select: { clientId: true },
       });
+      /* c8 ignore next -- unreachable: NotificationChannel.projectId has onDelete: Cascade,
+         so a project-scoped channel can never outlive its project (the channel is deleted
+         with it). Defensive guard kept in case the FK rule ever loosens. */
       if (!project) throw notFound('project not found');
       assertCanAccessProject(user, project);
     }

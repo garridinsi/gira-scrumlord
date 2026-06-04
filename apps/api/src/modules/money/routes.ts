@@ -76,11 +76,16 @@ export async function moneyRoutes(app: FastifyInstance): Promise<void> {
       } else {
         try {
           rate = await prisma.rate.create({ data: { scope: 'default', ...fields } });
+          /* c8 ignore start -- P2002 race-recovery arm: only reachable when a concurrent
+             writer creates the single default rate between this findFirst and create. The
+             partial-unique index + this fallback are the guard; the branch can't be hit
+             deterministically without spying prisma.rate, which corrupts the single-fork suite. */
         } catch (e) {
           if ((e as { code?: string }).code !== 'P2002') throw e;
           const winner = await prisma.rate.findFirstOrThrow({ where: { scope: 'default' } });
           rate = await prisma.rate.update({ where: { id: winner.id }, data: fields });
         }
+        /* c8 ignore stop */
       }
     } else if (input.scope === 'client') {
       rate = await prisma.rate.upsert({

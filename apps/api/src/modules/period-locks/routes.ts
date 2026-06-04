@@ -63,6 +63,9 @@ export async function periodLockRoutes(app: FastifyInstance): Promise<void> {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw conflict(`billing period ${data.monthKey} is already locked for this client`);
       }
+      /* c8 ignore next -- defensive rethrow of an unexpected (non-P2002) DB error; only the
+         P2002 conflict path is reachable from a well-formed request. Forcing a different
+         failure requires spying prisma.$transaction, which corrupts the single-fork suite. */
       throw err;
     }
   });

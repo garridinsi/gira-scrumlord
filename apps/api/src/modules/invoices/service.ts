@@ -242,6 +242,7 @@ export async function generateInvoice(
     let subtotal = 0;
     let retainerHourlyMinutes = 0; // B3: hourly minutes pooled under the retainer
     for (const issue of issues.sort((a, b) => a.key.localeCompare(b.key))) {
+      // c8 ignore next -- defensive: issues are queried by `id IN issueIds` where issueIds = byIssue keys, so every issue is in byIssue; the `?? 0` arm is unreachable
       const minutes = byIssue.get(issue.id)?.minutes ?? 0;
 
       if (issue.billingMode === 'fixed') {

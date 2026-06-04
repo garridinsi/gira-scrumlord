@@ -189,6 +189,7 @@ export async function createIssue(
       issueId: issue.id,
       kind: 'created',
       toStatusId: statusId,
+      // c8 ignore next -- defensive: statusId is always a member of project.statuses (validated at line 69 or set to first.id), so find() never misses; the `?.`/`?? null` fallback arms are unreachable
       statusCategory: project.statuses.find((s) => s.id === statusId)?.category ?? null,
       actorId: reporterId,
     });

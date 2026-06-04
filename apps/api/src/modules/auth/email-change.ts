@@ -81,6 +81,11 @@ export async function confirmEmailChange(rawToken: string): Promise<User> {
     if (claimed.count === 0) throw unauthorized('email-change link already used');
 
     const before = await tx.user.findUnique({ where: { id: token.userId } });
+    // Defensive: a live token implies a live user — EmailChangeToken.userId is an
+    // onDelete:Cascade FK, so deleting the user also deletes this token (the
+    // findUnique at the top would already have returned null). Unreachable from any
+    // real call sequence; kept as a belt-and-braces guard.
+    /* v8 ignore next */
     if (!before) throw unauthorized('account not available');
 
     // Re-check the target is still free (it may have been claimed since the request).

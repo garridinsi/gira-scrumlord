@@ -108,6 +108,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     }
     if (demotingFromAdmin || (deactivating && before.role === 'admin')) {
       const activeAdmins = await prisma.user.count({ where: { role: 'admin', isActive: true } });
+      // c8 ignore next -- defensive: this route is adminOnly, so the acting admin is always counted among the active admins; demoting/deactivating any *other* admin leaves count >= 2, and the only way to drop to the last admin is acting on yourself, which is already rejected at lines 106-107 — so this <=1 throw is unreachable from an API call
       if (activeAdmins <= 1) throw badRequest('cannot remove the last active admin');
     }
     if (typeof data.clientId === 'string') {
@@ -115,6 +116,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
         where: { id: data.clientId },
         select: { id: true },
       });
+      // c8 ignore next -- defensive: a string clientId only survives the guards above for a client user whose value equals before.clientId (line 94); a staff user is rejected at line 97. Since User.clientId is an FK with onDelete: Restrict, before.clientId always references a live client, so this lookup never misses and the throw is unreachable from an API call
       if (!client) throw notFound('client not found');
     }
 

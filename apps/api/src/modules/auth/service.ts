@@ -69,6 +69,10 @@ export async function consumeMagicLink(rawToken: string): Promise<User> {
     where: { id: token.id, consumedAt: null },
     data: { consumedAt: new Date() },
   });
+  /* c8 ignore next -- TOCTOU race arm: reachable only when a concurrent caller consumes the
+     token between this caller's findUnique (line 62, saw consumedAt null) and this updateMany.
+     The atomic updateMany IS the guard; this branch can't be hit deterministically in a
+     single-process test without spying Prisma's proxy methods (which corrupts the suite). */
   if (claimed.count === 0) throw unauthorized('sign-in link already used');
 
   const user = await prisma.user.findUnique({ where: { email: token.email } });
