@@ -126,6 +126,21 @@ export function AccountPage() {
     onSuccess: () => setNewEmail(''),
   });
 
+  // Telegram channel (only surfaced when the server has a bot token configured).
+  const [tgChatId, setTgChatId] = useState('');
+  const telegramQ = useQuery({ queryKey: ['auth', 'telegram'], queryFn: () => auth.telegram() });
+  const linkTelegram = useMutation({
+    mutationFn: () => auth.linkTelegram(tgChatId.trim()),
+    onSuccess: () => {
+      setTgChatId('');
+      void qc.invalidateQueries({ queryKey: ['auth', 'telegram'] });
+    },
+  });
+  const unlinkTelegram = useMutation({
+    mutationFn: () => auth.unlinkTelegram(),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['auth', 'telegram'] }),
+  });
+
   if (me.isLoading)
     return (
       <div className="mono" style={{ padding: 32 }}>
@@ -358,6 +373,63 @@ export function AccountPage() {
             </span>
           )}
         </Card>
+
+        {/* Telegram channel — only shown when the server has a bot token configured. */}
+        {telegramQ.data?.enabled && (
+          <Card
+            title="Telegram"
+            sub="Recibe notificaciones en Telegram · get notifications on Telegram"
+          >
+            {telegramQ.data.linked ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <ReadOnlyRow label="chat · chat id" value={telegramQ.data.chatId ?? ''} />
+                <button
+                  type="button"
+                  className="b-btn"
+                  disabled={unlinkTelegram.isPending}
+                  onClick={() => unlinkTelegram.mutate()}
+                >
+                  Desvincular · Unlink
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label className="mono" style={labelStyle} htmlFor="tg-chat">
+                  Abre el bot, envía /start y pega aquí tu chat id · open the bot, send /start,
+                  paste your chat id
+                </label>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <input
+                    id="tg-chat"
+                    style={{ ...inputStyle, width: 220 }}
+                    value={tgChatId}
+                    inputMode="numeric"
+                    placeholder="123456789"
+                    onChange={(e) => setTgChatId(e.target.value)}
+                    aria-label="Telegram chat id"
+                  />
+                  <button
+                    type="button"
+                    className="b-btn b-btn--ink"
+                    disabled={!tgChatId.trim() || linkTelegram.isPending}
+                    onClick={() => linkTelegram.mutate()}
+                  >
+                    Vincular · Link
+                  </button>
+                </div>
+                {linkTelegram.isError && (
+                  <span
+                    className="mono"
+                    role="alert"
+                    style={{ color: 'var(--eg-red)', fontSize: 11 }}
+                  >
+                    chat id no válido · invalid chat id
+                  </span>
+                )}
+              </div>
+            )}
+          </Card>
+        )}
       </div>
     </div>
   );

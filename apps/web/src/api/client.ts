@@ -26,6 +26,7 @@ import type {
   KbArticleView,
   SlaPolicyView,
   SlaAttainmentView,
+  TelegramStatusView,
 } from '@gira/shared';
 import type {
   CreateChannel,
@@ -228,6 +229,13 @@ export const auth = {
       method: 'POST',
       ...json({ token }),
     }),
+
+  // Telegram channel (per-user). status().enabled is false when the server has no bot token,
+  // in which case the UI hides the section entirely.
+  telegram: () => request<TelegramStatusView>('/auth/me/telegram'),
+  linkTelegram: (chatId: string) =>
+    request<void>('/auth/me/telegram', { method: 'PUT', ...json({ chatId }) }),
+  unlinkTelegram: () => request<void>('/auth/me/telegram', { method: 'DELETE' }),
 };
 
 // ---------------------------------------------------------------------------

@@ -39,6 +39,9 @@ vi.mock('../api/client', () => ({
     sessions: () => sessions(),
     revokeOtherSessions: () => revokeOtherSessions(),
     requestEmailChange: (e: string) => requestEmailChange(e),
+    telegram: () => Promise.resolve({ enabled: false, linked: false, chatId: null }),
+    linkTelegram: () => Promise.resolve(),
+    unlinkTelegram: () => Promise.resolve(),
   },
   // A real-ish ApiError so `(err as ApiError)?.message` resolves the message branch.
   ApiError: class ApiError extends Error {},

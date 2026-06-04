@@ -7,10 +7,14 @@ import {
   magicLinkRequestSchema,
   selfProfileSchema,
   type SessionView,
+  type TelegramStatusView,
+  upsertTelegramLinkSchema,
 } from '@gira/shared';
+import { notifyConfig } from '@gira/notify';
 import { recordAudit } from '@gira/sauron';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
+import { notFound } from '../../lib/http-error.js';
 import { authRateLimit } from '../../lib/rate-limits.js';
 import { toUserView } from '../../lib/views.js';
 import { confirmEmailChange, requestEmailChange } from './email-change.js';
@@ -151,5 +155,54 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     // c8 ignore next -- defensive: requireAuth already parsed this same cookie, so currentId is never null here; the `?? undefined` arm is unreachable from an authenticated call
     const revoked = await revokeUserSessions(me.id, currentId ?? undefined);
     return { revoked };
+  });
+
+  // ── Telegram channel link (E1) — per-user, self-scoped. The whole channel is inert and the
+  // UI hidden unless a TELEGRAM_BOT_TOKEN is configured server-side. A user links their own
+  // chat id (from the bot's /start reply); personal notifications then also push to that chat.
+  app.get(
+    '/auth/me/telegram',
+    { preHandler: requireAuth },
+    async (req): Promise<TelegramStatusView> => {
+      const me = currentUser(req);
+      const link = notifyConfig.telegramEnabled
+        ? await prisma.telegramLink.findUnique({ where: { userId: me.id } })
+        : null;
+      return {
+        enabled: notifyConfig.telegramEnabled,
+        linked: link !== null,
+        chatId: link?.chatId ?? null,
+      };
+    },
+  );
+
+  app.put('/auth/me/telegram', { preHandler: requireAuth }, async (req, reply) => {
+    if (!notifyConfig.telegramEnabled) throw notFound('telegram channel not configured');
+    const me = currentUser(req);
+    const { chatId } = upsertTelegramLinkSchema.parse(req.body);
+    await prisma.telegramLink.upsert({
+      where: { userId: me.id },
+      create: { userId: me.id, chatId },
+      update: { chatId },
+    });
+    await recordAudit(prisma, {
+      actorId: me.id,
+      action: 'telegram.link',
+      entityType: 'User',
+      entityId: me.id,
+    });
+    return reply.code(204).send();
+  });
+
+  app.delete('/auth/me/telegram', { preHandler: requireAuth }, async (req, reply) => {
+    const me = currentUser(req);
+    await prisma.telegramLink.deleteMany({ where: { userId: me.id } });
+    await recordAudit(prisma, {
+      actorId: me.id,
+      action: 'telegram.unlink',
+      entityType: 'User',
+      entityId: me.id,
+    });
+    return reply.code(204).send();
   });
 }

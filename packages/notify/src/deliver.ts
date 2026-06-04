@@ -43,6 +43,34 @@ export async function sendUserEmail(
   }
 }
 
+/**
+ * Push a message to one Telegram chat via the Bot API. Egress is the fixed, trusted host
+ * api.telegram.org (no SSRF model — the bot token, not a user URL, is the secret), so this
+ * does NOT use the webhook SSRF agent. No-op-fail when the channel is unconfigured.
+ */
+export async function sendTelegram(chatId: string, text: string): Promise<DeliverResult> {
+  if (!notifyConfig.telegramEnabled) return { ok: false, error: 'telegram not configured' };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await undiciFetch(
+      `https://api.telegram.org/bot${notifyConfig.telegramBotToken}/sendMessage`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+        signal: controller.signal,
+      },
+    );
+    if (!res.ok) return { ok: false, error: `telegram responded ${res.status}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function deliver(
   channel: Channel,
   payload: Record<string, unknown>,

@@ -20,4 +20,5 @@ export * from './channel.js';
 export * from './intake.js';
 export * from './invoice.js';
 export * from './portal.js';
+export * from './telegram.js';
 export * from './views.js';

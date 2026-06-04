@@ -217,8 +217,20 @@ model User {
   auditLogs             AuditLog[]
   acknowledgedIncidents Incident[]
   assignmentRules       AssignmentRule[]
+  telegramLink          TelegramLink?
 
   @@index([clientId])
+}
+
+// E1 (channels): a per-user Telegram link. The user pastes the numeric chat id their bot
+// `/start` reply gives them; personal notifications are then ALSO pushed to that chat when a
+// TELEGRAM_BOT_TOKEN is configured. Inactive (and hidden in the UI) until the token is set.
+model TelegramLink {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId    String // Telegram chat id (numeric, stored as text — can exceed 32-bit)
+  createdAt DateTime @default(now())
 }
 
 /// OIDC-ready auth binding. Today provider = "magic-link"; a client's IdP plugs

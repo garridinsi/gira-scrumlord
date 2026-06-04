@@ -36,4 +36,8 @@ export const notifyConfig = {
   // Webhooks to private/loopback hosts are blocked unless explicitly allowed (dev/tests).
   allowPrivateWebhooks: process.env.ALLOW_PRIVATE_WEBHOOKS === 'true',
   isTest: process.env.NODE_ENV === 'test',
+  // Telegram channel: a bot token from @BotFather. Empty ⇒ the channel is OFF — no link UI,
+  // no delivery. Fixed egress (api.telegram.org), so no SSRF model applies.
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
+  telegramEnabled: Boolean(process.env.TELEGRAM_BOT_TOKEN),
 };

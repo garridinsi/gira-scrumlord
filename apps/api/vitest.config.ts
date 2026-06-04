@@ -18,7 +18,10 @@ process.env.DATABASE_URL = testUrl;
 export default defineConfig({
   test: {
     globalSetup: ['./test/global-setup.ts'],
-    env: { DATABASE_URL: testUrl, NODE_ENV: 'test' },
+    // A dummy bot token turns the Telegram channel ON for tests (so the link endpoints are
+    // reachable). Safe: the API never drains the Outbox itself, so no test actually POSTs to
+    // Telegram — only scrumlord's dispatch path would, and that is unit-tested separately.
+    env: { DATABASE_URL: testUrl, NODE_ENV: 'test', TELEGRAM_BOT_TOKEN: 'test-bot-token' },
     fileParallelism: false,
     pool: 'forks',
     poolOptions: { forks: { singleFork: true } },

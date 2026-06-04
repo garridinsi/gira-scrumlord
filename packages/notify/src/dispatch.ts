@@ -3,7 +3,8 @@
 // the Outbox) and by the API (test-send).
 
 import { type Prisma, prisma } from '@gira/db';
-import { type Channel, deliver, sendUserEmail } from './deliver.js';
+import { notifyConfig } from './config.js';
+import { type Channel, deliver, sendTelegram, sendUserEmail } from './deliver.js';
 
 export interface DomainEvent {
   type: string;
@@ -70,6 +71,13 @@ async function sendPersonal(
       ? { status: 'sent', sentAt: new Date() }
       : { status: 'failed', error: r.error?.slice(0, 500) },
   });
+  // Best-effort Telegram fan-out alongside the email — only when the channel is configured AND
+  // this user has linked a chat. Reached on the same (non-deduped) create path above, so it's
+  // not re-sent on a re-dispatch. Failures never affect the email/inbox result.
+  if (notifyConfig.telegramEnabled) {
+    const link = await prisma.telegramLink.findUnique({ where: { userId: recipient.id } });
+    if (link) await sendTelegram(link.chatId, `${subject}\n\n${body}`);
+  }
   return r.ok ? 1 : 0;
 }
 
