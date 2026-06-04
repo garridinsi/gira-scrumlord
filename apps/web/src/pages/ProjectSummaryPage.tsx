@@ -949,15 +949,18 @@ function SlaPolicyStrip({ projectKey }: { projectKey: string }) {
   const qc = useQueryClient();
   const toast = useToast();
   const me = useMe();
+  // SLA policy GET/PUT are admin-only server-side; gate the whole strip (and its queries)
+  // on admin so a non-admin never sees a strip whose requests would 403.
+  const isAdmin = me.data?.role === 'admin';
   const policiesQ = useQuery({
     queryKey: ['sla-policies', projectKey],
     queryFn: () => sla.policies(projectKey),
-    enabled: !!projectKey,
+    enabled: isAdmin && !!projectKey,
   });
   const attainmentQ = useQuery({
     queryKey: ['sla-attainment', projectKey],
     queryFn: () => sla.attainment(projectKey),
-    enabled: !!projectKey,
+    enabled: isAdmin && !!projectKey,
   });
 
   const dflt = policiesQ.data?.find((p) => p.priority === null);
@@ -988,8 +991,7 @@ function SlaPolicyStrip({ projectKey }: { projectKey: string }) {
       }),
   });
 
-  const isWriter = me.data?.role === 'admin' || me.data?.role === 'member';
-  if (!isWriter) return null;
+  if (!isAdmin) return null;
 
   const inputStyle: React.CSSProperties = {
     padding: '6px 8px',
