@@ -20,9 +20,31 @@ export interface TelegramStatusView {
 }
 
 // ── Web Push (E1 channels) ────────────────────────────────────────────────────────────────
+// SSRF guard: the server later POSTs to whatever `endpoint` is stored, so it MUST be a real
+// browser push service — never an attacker-chosen internal/metadata URL. Restrict to the known
+// public push hosts over https. (The set of push services is small and stable.)
+const ALLOWED_PUSH_HOSTS = [
+  'fcm.googleapis.com', // Chrome / Android (FCM)
+  'updates.push.services.mozilla.com', // Firefox
+  'push.services.mozilla.com',
+  'notify.windows.com', // Edge / Windows (incl. *.notify.windows.com)
+  'web.push.apple.com', // Safari / Apple
+  'push.apple.com',
+];
+function isTrustedPushEndpoint(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:') return false;
+    const host = url.hostname.toLowerCase().replace(/\.$/, '');
+    return ALLOWED_PUSH_HOSTS.some((s) => host === s || host.endsWith('.' + s));
+  } catch {
+    return false;
+  }
+}
+
 /** A browser PushSubscription as the client serializes it for POST /auth/me/push. */
 export const pushSubscribeSchema = z.object({
-  endpoint: z.string().url().max(1000),
+  endpoint: z.string().url().max(1000).refine(isTrustedPushEndpoint, 'untrusted push endpoint'),
   keys: z.object({
     p256dh: z.string().min(1).max(255),
     auth: z.string().min(1).max(255),

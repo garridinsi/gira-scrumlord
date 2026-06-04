@@ -49,7 +49,7 @@ describe('Web Push (/push/config, /auth/me/push)', () => {
           method: 'POST',
           url: '/auth/me/push',
           headers: { cookie },
-          payload: sub('https://push.example/endpoint-1'),
+          payload: sub('https://fcm.googleapis.com/fcm/send/ep1'),
         })
       ).statusCode,
     ).toBe(204);
@@ -60,7 +60,10 @@ describe('Web Push (/push/config, /auth/me/push)', () => {
       method: 'POST',
       url: '/auth/me/push',
       headers: { cookie },
-      payload: { endpoint: 'https://push.example/endpoint-1', keys: { p256dh: 'p2', auth: 'a2' } },
+      payload: {
+        endpoint: 'https://fcm.googleapis.com/fcm/send/ep1',
+        keys: { p256dh: 'p2', auth: 'a2' },
+      },
     });
     const rows = await prisma.pushSubscription.findMany({ where: { userId: user.id } });
     expect(rows).toHaveLength(1);
@@ -71,7 +74,7 @@ describe('Web Push (/push/config, /auth/me/push)', () => {
       method: 'POST',
       url: '/auth/me/push',
       headers: { cookie },
-      payload: sub('https://push.example/endpoint-2'),
+      payload: sub('https://web.push.apple.com/ep2'),
     });
     expect(await prisma.pushSubscription.count({ where: { userId: user.id } })).toBe(2);
 
@@ -80,7 +83,7 @@ describe('Web Push (/push/config, /auth/me/push)', () => {
       method: 'DELETE',
       url: '/auth/me/push',
       headers: { cookie },
-      payload: { endpoint: 'https://push.example/endpoint-1' },
+      payload: { endpoint: 'https://fcm.googleapis.com/fcm/send/ep1' },
     });
     expect(await prisma.pushSubscription.count({ where: { userId: user.id } })).toBe(1);
 
@@ -101,6 +104,25 @@ describe('Web Push (/push/config, /auth/me/push)', () => {
       payload: { endpoint: 'not-a-url', keys: {} },
     });
     expect(res.statusCode).toBe(400);
+  });
+
+  it('rejects an untrusted/internal endpoint (SSRF guard) and never stores it', async () => {
+    const { user, cookie } = await actingAs({ role: 'member' });
+    for (const endpoint of [
+      'http://169.254.169.254/latest/meta-data/', // cloud metadata
+      'https://evil.example.com/hook', // arbitrary host
+      'http://fcm.googleapis.com/fcm/send/x', // allowlisted host but plain http
+      'https://fcm.googleapis.com.evil.com/x', // suffix-spoof
+    ]) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/auth/me/push',
+        headers: { cookie },
+        payload: { endpoint, keys: { p256dh: 'p', auth: 'a' } },
+      });
+      expect(res.statusCode).toBe(400);
+    }
+    expect(await prisma.pushSubscription.count({ where: { userId: user.id } })).toBe(0);
   });
 
   it('never deletes another user’s subscription', async () => {
