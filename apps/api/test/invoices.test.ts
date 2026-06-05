@@ -709,6 +709,8 @@ describe('invoicing (M5)', () => {
       kind: 'covered',
     });
     expect(covered?.['description' as keyof Line]).toMatch(/cubierto|covered/i);
+    // The flat fee line carries the total covered time (the fee "includes" those hours).
+    expect(lineFor(inv, 'RETAINER')).toMatchObject({ minutes: 300, kind: 'retainer' });
   });
 
   it('combines billable + covered + fixed issues on ONE retainer annex', async () => {
@@ -724,7 +726,12 @@ describe('invoicing (M5)', () => {
     await logAt(staff.cookie, 'ACME-2', 90, '2026-03-15T12:00:00.000Z'); // covered → €0
     await logAt(staff.cookie, 'ACME-3', 60, '2026-03-15T12:00:00.000Z'); // fixed → €500
     const inv = (await generate(staff.cookie, client.id, MARCH)).json();
-    expect(lineFor(inv, 'RETAINER')).toMatchObject({ amountCents: 500_000, kind: 'retainer' });
+    // The fee line carries ONLY the covered time (ACME-2's 90min) — not hourly/fixed hours.
+    expect(lineFor(inv, 'RETAINER')).toMatchObject({
+      amountCents: 500_000,
+      minutes: 90,
+      kind: 'retainer',
+    });
     expect(lineFor(inv, 'ACME-1')).toMatchObject({ amountCents: 12_000, kind: 'billable' });
     expect(lineFor(inv, 'ACME-2')).toMatchObject({ amountCents: 0, kind: 'covered' });
     expect(lineFor(inv, 'ACME-3')).toMatchObject({ amountCents: 50_000, kind: 'fixed' });

@@ -112,6 +112,41 @@ describe('InvoiceReceipt', () => {
     expect(screen.getByTestId('line-kind-fixed')).toHaveTextContent(/Precio fijo/);
     expect(screen.getByTestId('line-kind-covered')).toHaveTextContent(/Cubierto/);
     expect(screen.getByTestId('line-kind-retainer')).toHaveTextContent(/Cuota/);
+    // The covered line (5h) shows its rate cell as "included", not "fixed".
+    expect(screen.getByText(/incluido.*included/i)).toBeInTheDocument();
+    // Footer totals the covered time and states it's included in the flat fee.
+    const footer = screen.getByTestId('covered-footer');
+    expect(footer).toHaveTextContent(/Tiempo cubierto.*Covered time.*5h/);
+    expect(footer).toHaveTextContent(/incluido en la cuota fija.*flat monthly fee/i);
+  });
+
+  it('omits the covered footer when no line is covered', () => {
+    render(<InvoiceReceipt invoice={makeInvoice()} />); // billable + fixed only
+    expect(screen.queryByTestId('covered-footer')).not.toBeInTheDocument();
+  });
+
+  it('footer reads "not billed" for covered work without a retainer', () => {
+    render(
+      <InvoiceReceipt
+        invoice={makeInvoice({
+          subtotalCents: 0,
+          lines: [
+            {
+              id: 'l1',
+              issueKey: 'GIRA-1',
+              description: 'Goodwill fix',
+              minutes: 120,
+              hourlyCents: null,
+              amountCents: 0,
+              kind: 'covered',
+            },
+          ],
+        })}
+      />,
+    );
+    const footer = screen.getByTestId('covered-footer');
+    expect(footer).toHaveTextContent(/Covered time.*2h/);
+    expect(footer).toHaveTextContent(/no facturado.*not billed/i);
   });
 
   it('renders a draft with notes and an external fiscal reference', () => {

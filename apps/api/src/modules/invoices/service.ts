@@ -242,14 +242,17 @@ export async function generateInvoice(
     const unpriced: string[] = [];
     const mismatched: string[] = [];
     let subtotal = 0;
+    let coveredMinutes = 0; // total time folded into the flat retainer fee (covered issues)
     for (const issue of issues.sort((a, b) => a.key.localeCompare(b.key))) {
       // c8 ignore next -- defensive: issues are queried by `id IN issueIds` where issueIds = byIssue keys, so every issue is in byIssue; the `?? 0` arm is unreachable
       const minutes = byIssue.get(issue.id)?.minutes ?? 0;
 
       // Covered (e.g. by a maintenance retainer): tracked but never billed. Emit a €0 detail
       // line so the annex still itemises what was done for the client, then move on — no rate
-      // resolution, no charge, no effect on the subtotal.
+      // resolution, no charge, no effect on the subtotal. The minutes are pooled onto the flat
+      // fee line below so the fee visibly "includes" all the covered time.
       if (issue.billingMode === 'covered') {
+        coveredMinutes += minutes;
         lineData.push({
           issueId: issue.id,
           issueKey: issue.key,
@@ -333,13 +336,14 @@ export async function generateInvoice(
 
     // A retainer adds a flat monthly fee line. What gets billed ON TOP of it is decided per
     // issue: hourly issues bill T&M (above), issues marked "covered" show at €0. There is no
-    // hour pooling or overage — coverage is explicit, issue by issue.
+    // hour pooling or overage — coverage is explicit, issue by issue. The fee line carries the
+    // TOTAL covered time so the flat fee visibly includes all the covered issues' hours.
     if (retainer) {
       const label = monthKey(input.periodStart!, config.BILLING_TIMEZONE);
       lineData.unshift({
         issueKey: 'RETAINER',
         description: `Cuota fija · retainer (${label})`,
-        minutes: 0,
+        minutes: coveredMinutes,
         hourlyCents: null,
         amountCents: retainer.retainerCents!,
       });

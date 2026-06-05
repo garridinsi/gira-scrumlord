@@ -211,6 +211,89 @@ function AnnexDisclaimer() {
   );
 }
 
+// ── Covered-time footer ──────────────────────────────────────────────────────
+// Totals the time of every "covered" line and states it explicitly: under a retainer
+// that time is included in the flat monthly fee (no extra charge); without one it is
+// simply tracked-but-not-billed. Hidden when nothing is covered.
+
+function CoveredFooter({ invoice }: { invoice: InvoiceView }) {
+  const coveredMinutes = invoice.lines
+    .filter((l) => l.kind === 'covered')
+    .reduce((sum, l) => sum + l.minutes, 0);
+  if (coveredMinutes === 0) return null;
+  const hasRetainer = invoice.lines.some((l) => l.kind === 'retainer');
+
+  return (
+    <div
+      data-testid="covered-footer"
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 12,
+        margin: '18px 0 0',
+        padding: '10px 14px',
+        background: 'var(--eg-paper-2)',
+        border: '2px solid var(--eg-iron)',
+        borderLeft: '5px solid var(--eg-green)',
+      }}
+    >
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontWeight: 900,
+          fontSize: 16,
+          color: 'var(--eg-green)',
+          lineHeight: 1,
+          flexShrink: 0,
+          marginTop: 1,
+        }}
+        aria-hidden
+      >
+        ✓
+      </span>
+      <div>
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 700,
+            fontSize: 11,
+            textTransform: 'uppercase',
+            letterSpacing: '0.14em',
+            color: 'var(--eg-iron)',
+            marginBottom: 3,
+          }}
+        >
+          Tiempo cubierto · Covered time: {formatMinutes(coveredMinutes)}
+        </div>
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            color: 'var(--eg-fg-2)',
+            lineHeight: 1.5,
+          }}
+        >
+          {hasRetainer ? (
+            <>
+              Incluido en la cuota fija mensual, sin coste adicional.
+              <span style={{ color: 'var(--eg-fg-4)', marginLeft: 6 }}>
+                · Included in the flat monthly fee, at no extra charge.
+              </span>
+            </>
+          ) : (
+            <>
+              Trabajo cubierto, no facturado.
+              <span style={{ color: 'var(--eg-fg-4)', marginLeft: 6 }}>
+                · Covered work, not billed.
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main receipt component ───────────────────────────────────────────────────
 
 export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
@@ -530,7 +613,11 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
                     color: 'var(--eg-fg-3)',
                   }}
                 >
-                  precio fijo · fixed
+                  {line.kind === 'covered'
+                    ? 'incluido · included'
+                    : line.kind === 'retainer'
+                      ? 'cuota mensual · monthly'
+                      : 'precio fijo · fixed'}
                 </span>
               )}
             </span>
@@ -595,6 +682,9 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
           </Plate>
         </div>
       </div>
+
+      {/* ── Covered-time footer ─────────────────────────────── */}
+      <CoveredFooter invoice={invoice} />
 
       {/* ── Notes ───────────────────────────────────────────── */}
       {invoice.notes && (
