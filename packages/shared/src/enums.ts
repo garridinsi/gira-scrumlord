@@ -10,7 +10,9 @@ export const userKind = z.enum(['staff', 'client']);
 export const userRole = z.enum(['admin', 'member', 'viewer']);
 /** Per-user UI language preference: Spanish, English, or the bilingual default. */
 export const userLocale = z.enum(['es', 'en', 'both']);
-export const billingMode = z.enum(['hourly', 'fixed']);
+// hourly = time & materials; fixed = one-off fixed price; covered = covered by an agreement
+// (e.g. a maintenance retainer), tracked but never billed — €0. One board can mix all three.
+export const billingMode = z.enum(['hourly', 'fixed', 'covered']);
 export const rateScope = z.enum(['default', 'client', 'project', 'issue']);
 export const sprintState = z.enum(['future', 'active', 'closed']);
 export const channelKind = z.enum(['email', 'webhook']);

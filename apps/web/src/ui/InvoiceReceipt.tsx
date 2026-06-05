@@ -31,9 +31,9 @@ const KIND_BADGES: Record<
     fg: 'var(--eg-iron)',
     border: 'var(--eg-iron)',
   },
-  maintenance: {
+  covered: {
     mark: '✓',
-    es: 'Mantenimiento',
+    es: 'Cubierto',
     en: 'covered',
     bg: 'var(--eg-paper-2)',
     fg: 'var(--eg-fg-2)',
@@ -43,14 +43,6 @@ const KIND_BADGES: Record<
     mark: '▣',
     es: 'Cuota',
     en: 'retainer fee',
-    bg: 'var(--eg-yellow)',
-    fg: 'var(--eg-iron)',
-    border: 'var(--eg-iron)',
-  },
-  overage: {
-    mark: '+',
-    es: 'Extra',
-    en: 'overage',
     bg: 'var(--eg-yellow)',
     fg: 'var(--eg-iron)',
     border: 'var(--eg-iron)',

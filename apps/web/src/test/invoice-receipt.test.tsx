@@ -92,7 +92,7 @@ describe('InvoiceReceipt', () => {
               minutes: 300,
               hourlyCents: null,
               amountCents: 0,
-              kind: 'maintenance',
+              kind: 'covered',
             },
             {
               id: 'l4',
@@ -110,7 +110,7 @@ describe('InvoiceReceipt', () => {
     // One badge per line, each visually distinguishing the billing nature.
     expect(screen.getByTestId('line-kind-billable')).toHaveTextContent(/Facturable.*billable/);
     expect(screen.getByTestId('line-kind-fixed')).toHaveTextContent(/Precio fijo/);
-    expect(screen.getByTestId('line-kind-maintenance')).toHaveTextContent(/Mantenimiento/);
+    expect(screen.getByTestId('line-kind-covered')).toHaveTextContent(/Cubierto/);
     expect(screen.getByTestId('line-kind-retainer')).toHaveTextContent(/Cuota/);
   });
 

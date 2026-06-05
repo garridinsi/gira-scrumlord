@@ -53,4 +53,13 @@ describe('accruedCents', () => {
       0,
     );
   });
+
+  it('covered mode is always zero, ignoring rate, fixed price and minutes', () => {
+    expect(accruedCents({ billingMode: 'covered', billableMinutes: 600, hourlyCents: 10000 })).toBe(
+      0,
+    );
+    expect(
+      accruedCents({ billingMode: 'covered', billableMinutes: 600, fixedPriceCents: 50_000 }),
+    ).toBe(0);
+  });
 });

@@ -652,17 +652,12 @@ describe('invoicing (M5)', () => {
     expect(ok.statusCode).toBe(201);
   });
 
-  // ── B3: flat-retainer billing ────────────────────────────────────────────────
+  // ── B3: flat-retainer fee + per-issue coverage ───────────────────────────────
+  // The retainer is a flat monthly fee line. What's billed ON TOP is decided per issue:
+  // hourly issues bill T&M, "covered" issues show €0. No hour pooling, no overage.
   const contract = (clientId: string, over: Record<string, unknown> = {}) =>
     prisma.contract.create({
-      data: {
-        clientId,
-        name: 'Retainer',
-        retainerCents: 500_000,
-        includedHours: 10,
-        status: 'active',
-        ...over,
-      },
+      data: { clientId, name: 'Retainer', retainerCents: 500_000, status: 'active', ...over },
     });
   const logAt = (cookie: string, key: string, minutes: number, loggedAt: string) =>
     app.inject({
@@ -671,78 +666,100 @@ describe('invoicing (M5)', () => {
       headers: { cookie },
       payload: { minutes, billable: true, loggedAt },
     });
+  const setMode = (key: string, billingMode: 'hourly' | 'fixed' | 'covered', fixedPriceCents = 0) =>
+    prisma.issue.update({ where: { key }, data: { billingMode, fixedPriceCents } });
   const MARCH = { periodStart: '2026-03-01', periodEnd: '2026-03-31' };
+  type Line = { issueKey: string; kind: string; minutes: number; amountCents: number };
+  const lineFor = (inv: { lines: Line[] }, key: string) =>
+    inv.lines.find((l) => l.issueKey === key);
 
-  it('bills a flat retainer line and covers hours within the included cap', async () => {
+  it('adds a flat retainer fee and bills hourly work T&M ON TOP (no pooling)', async () => {
     const { client, staff } = await setup();
-    await contract(client.id, { retainerCents: 500_000, includedHours: 10 });
+    await contract(client.id, { retainerCents: 500_000 });
+    await setRate(staff.cookie, 6000); // €60/h
     await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
-    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z'); // 5h ≤ 10h included
+    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z'); // 5h hourly
     const inv = (await generate(staff.cookie, client.id, MARCH)).json();
-    expect(inv.subtotalCents).toBe(500_000);
-    expect(
-      inv.lines.some(
-        (l: { issueKey: string; amountCents: number }) =>
-          l.issueKey === 'RETAINER' && l.amountCents === 500_000,
-      ),
-    ).toBe(true);
-    expect(inv.lines.some((l: { issueKey: string }) => l.issueKey === 'OVERAGE')).toBe(false);
-    // The worked issue is itemised on the annex as a €0 maintenance line (covered by the fee).
-    const covered = inv.lines.find((l: { issueKey: string }) => l.issueKey === 'ACME-1');
-    expect(covered).toMatchObject({ minutes: 300, amountCents: 0, kind: 'maintenance' });
-    expect(covered.description).toMatch(/cuota|covered/i);
+    // Flat fee + 5h @ €60 billed on top — hourly is NOT folded into the retainer.
+    expect(inv.subtotalCents).toBe(500_000 + 30_000);
+    expect(lineFor(inv, 'RETAINER')).toMatchObject({ amountCents: 500_000, kind: 'retainer' });
+    expect(lineFor(inv, 'ACME-1')).toMatchObject({
+      minutes: 300,
+      hourlyCents: 6000,
+      amountCents: 30_000,
+      kind: 'billable',
+    });
+    expect(inv.lines.some((l: Line) => l.issueKey === 'OVERAGE')).toBe(false);
   });
 
-  it('bills overage beyond the included hours at the client/default rate', async () => {
+  it('shows a "covered" issue at €0 under a retainer (folded into the fee)', async () => {
     const { client, staff } = await setup();
-    await contract(client.id, { retainerCents: 500_000, includedHours: 2 });
-    await setRate(staff.cookie, 6000); // €60/h default → overage rate
-    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
-    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z'); // 5h; 2h incl → 3h overage
+    await contract(client.id, { retainerCents: 500_000 });
+    await setRate(staff.cookie, 6000);
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Maintenance work' });
+    await setMode('ACME-1', 'covered');
+    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z');
     const inv = (await generate(staff.cookie, client.id, MARCH)).json();
-    const overage = inv.lines.find((l: { issueKey: string }) => l.issueKey === 'OVERAGE');
-    expect(overage).toMatchObject({ minutes: 180, hourlyCents: 6000, amountCents: 18_000 });
-    expect(inv.subtotalCents).toBe(500_000 + 18_000);
-  });
-
-  it('covers all hours when includedHours is null (pure flat retainer)', async () => {
-    const { client, staff } = await setup();
-    await contract(client.id, { retainerCents: 300_000, includedHours: null });
-    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
-    await logAt(staff.cookie, 'ACME-1', 1200, '2026-03-15T12:00:00.000Z'); // 20h, all covered
-    const inv = (await generate(staff.cookie, client.id, MARCH)).json();
-    expect(inv.subtotalCents).toBe(300_000);
-    // The fee line, plus a €0 detail line per worked issue (transparency: the client
-    // still sees what was done for the fee, even though it isn't billed separately).
-    expect(inv.lines).toHaveLength(2);
-    type Line = { issueKey: string; kind: string; minutes: number; amountCents: number };
-    const find = (key: string) => inv.lines.find((l: Line) => l.issueKey === key);
-    expect(find('RETAINER')).toMatchObject({ kind: 'retainer', amountCents: 300_000 });
-    expect(find('ACME-1')).toMatchObject({
-      minutes: 1200,
+    expect(inv.subtotalCents).toBe(500_000); // only the flat fee; the work is covered
+    const covered = lineFor(inv, 'ACME-1');
+    expect(covered).toMatchObject({
+      minutes: 300,
       amountCents: 0,
       hourlyCents: null,
-      kind: 'maintenance',
+      kind: 'covered',
     });
+    expect(covered?.['description' as keyof Line]).toMatch(/cubierto|covered/i);
   });
 
-  it('bills the retainer even for a zero-hours month', async () => {
+  it('combines billable + covered + fixed issues on ONE retainer annex', async () => {
     const { client, staff } = await setup();
-    await contract(client.id, { retainerCents: 250_000, includedHours: 10 });
+    await contract(client.id, { retainerCents: 500_000 });
+    await setRate(staff.cookie, 6000); // €60/h
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Extra hourly work' });
+    await create(staff.cookie, { projectKey: 'ACME', title: 'In-maintenance ticket' });
+    await create(staff.cookie, { projectKey: 'ACME', title: 'One-off project' });
+    await setMode('ACME-2', 'covered');
+    await setMode('ACME-3', 'fixed', 50_000);
+    await logAt(staff.cookie, 'ACME-1', 120, '2026-03-15T12:00:00.000Z'); // 2h → €120 hourly
+    await logAt(staff.cookie, 'ACME-2', 90, '2026-03-15T12:00:00.000Z'); // covered → €0
+    await logAt(staff.cookie, 'ACME-3', 60, '2026-03-15T12:00:00.000Z'); // fixed → €500
+    const inv = (await generate(staff.cookie, client.id, MARCH)).json();
+    expect(lineFor(inv, 'RETAINER')).toMatchObject({ amountCents: 500_000, kind: 'retainer' });
+    expect(lineFor(inv, 'ACME-1')).toMatchObject({ amountCents: 12_000, kind: 'billable' });
+    expect(lineFor(inv, 'ACME-2')).toMatchObject({ amountCents: 0, kind: 'covered' });
+    expect(lineFor(inv, 'ACME-3')).toMatchObject({ amountCents: 50_000, kind: 'fixed' });
+    expect(inv.subtotalCents).toBe(500_000 + 12_000 + 50_000); // covered adds nothing
+  });
+
+  it('bills the flat retainer fee even for a zero-hours month', async () => {
+    const { client, staff } = await setup();
+    await contract(client.id, { retainerCents: 250_000 });
     const gen = await generate(staff.cookie, client.id, MARCH); // no worklogs at all
     expect(gen.statusCode).toBe(201);
     expect(gen.json().subtotalCents).toBe(250_000);
-    expect(gen.json().lines.map((l: { issueKey: string }) => l.issueKey)).toEqual(['RETAINER']);
+    expect(gen.json().lines.map((l: Line) => l.issueKey)).toEqual(['RETAINER']);
   });
 
-  it('refuses retainer overage when no client/default rate is set', async () => {
+  it('refuses an hourly issue with no rate, even under a retainer (no silent €0)', async () => {
     const { client, staff } = await setup();
-    await contract(client.id, { retainerCents: 100_000, includedHours: 1 });
-    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
-    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z'); // overage, but no rate
+    await contract(client.id, { retainerCents: 100_000 });
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Unrated work' });
+    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z'); // hourly, but no rate set
     const gen = await generate(staff.cookie, client.id, MARCH);
     expect(gen.statusCode).toBe(400);
-    expect(gen.json().error).toMatch(/overage|rate/i);
+    expect(gen.json().error).toMatch(/rate/i);
+  });
+
+  it('shows a covered issue at €0 even WITHOUT a retainer (pure non-billable)', async () => {
+    const { client, staff } = await setup(); // no contract
+    await setRate(staff.cookie, 6000);
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Goodwill fix' });
+    await setMode('ACME-1', 'covered');
+    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z');
+    const inv = (await generate(staff.cookie, client.id, MARCH)).json();
+    expect(inv.lines.some((l: Line) => l.issueKey === 'RETAINER')).toBe(false);
+    expect(lineFor(inv, 'ACME-1')).toMatchObject({ amountCents: 0, kind: 'covered' });
+    expect(inv.subtotalCents).toBe(0);
   });
 
   it('leaves non-retainer clients on the pure T&M path (no retainer line)', async () => {
@@ -751,7 +768,7 @@ describe('invoicing (M5)', () => {
     await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
     await logAt(staff.cookie, 'ACME-1', 120, '2026-03-15T12:00:00.000Z');
     const inv = (await generate(staff.cookie, client.id, MARCH)).json();
-    expect(inv.lines.some((l: { issueKey: string }) => l.issueKey === 'RETAINER')).toBe(false);
+    expect(inv.lines.some((l: Line) => l.issueKey === 'RETAINER')).toBe(false);
     expect(inv.subtotalCents).toBe(12_000); // 2h @ €60
   });
 });

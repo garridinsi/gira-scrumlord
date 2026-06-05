@@ -40,9 +40,12 @@ export async function computeIssueCost(issueKey: string): Promise<CostView> {
   });
 
   const minutes = issue.worklogs.reduce((s, w) => s + w.minutes, 0);
-  const billableMinutes = issue.worklogs
-    .filter((w) => w.billable)
-    .reduce((s, w) => s + w.minutes, 0);
+  // Covered issues are never billed, so none of their time counts as billable (it still
+  // counts toward total minutes — the work was done).
+  const billableMinutes =
+    issue.billingMode === 'covered'
+      ? 0
+      : issue.worklogs.filter((w) => w.billable).reduce((s, w) => s + w.minutes, 0);
 
   return {
     issueKey: issue.key,
@@ -96,7 +99,11 @@ export async function computeProjectSummary(projectKey: string): Promise<Project
 
   for (const i of issues) {
     const m = i.worklogs.reduce((s, w) => s + w.minutes, 0);
-    const bm = i.worklogs.filter((w) => w.billable).reduce((s, w) => s + w.minutes, 0);
+    // Covered issues bill €0 → contribute no billable minutes (but still count to total).
+    const bm =
+      i.billingMode === 'covered'
+        ? 0
+        : i.worklogs.filter((w) => w.billable).reduce((s, w) => s + w.minutes, 0);
     totalMinutes += m;
     billableMinutes += bm;
     if (i.status.category === 'done') done += 1;
@@ -194,9 +201,12 @@ export async function computeProjectMonthly(
       buckets.get(month) ??
       ({ totalMinutes: 0, billableMinutes: 0, hourlyMinutesByIssue: new Map() } satisfies Bucket);
     b.totalMinutes += w.minutes;
-    if (w.billable) {
+    // c8 ignore next -- defensive: worklogs are queried by projectId and billingModeById holds every issue in the project, so the `?? 'hourly'` fallback is unreachable
+    const mode = billingModeById.get(w.issueId) ?? 'hourly';
+    // Covered issues bill €0 → excluded from billable minutes (still in total minutes above).
+    if (w.billable && mode !== 'covered') {
       b.billableMinutes += w.minutes;
-      if ((billingModeById.get(w.issueId) ?? 'hourly') === 'hourly') {
+      if (mode === 'hourly') {
         b.hourlyMinutesByIssue.set(
           w.issueId,
           (b.hourlyMinutesByIssue.get(w.issueId) ?? 0) + w.minutes,

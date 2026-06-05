@@ -27,8 +27,9 @@ export type GenerateInvoice = z.infer<typeof generateInvoiceSchema>;
 
 /**
  * Derive an annex line's billing nature from its frozen fields (no extra column needed).
- * RETAINER/OVERAGE are sentinel issue keys; a null rate with a non-zero amount is a fixed
- * price; a null rate with a zero amount is retainer-covered maintenance; otherwise hourly.
+ * RETAINER is the sentinel issue key for the flat fee line; a null rate with a non-zero
+ * amount is a fixed price; a null rate with a zero amount is covered (e.g. by a maintenance
+ * retainer); a line carrying an hourly rate is billable T&M.
  */
 export function invoiceLineKind(line: {
   issueKey: string;
@@ -36,7 +37,6 @@ export function invoiceLineKind(line: {
   amountCents: number;
 }): InvoiceLineKind {
   if (line.issueKey === 'RETAINER') return 'retainer';
-  if (line.issueKey === 'OVERAGE') return 'overage';
   if (line.hourlyCents !== null) return 'billable';
-  return line.amountCents > 0 ? 'fixed' : 'maintenance';
+  return line.amountCents > 0 ? 'fixed' : 'covered';
 }

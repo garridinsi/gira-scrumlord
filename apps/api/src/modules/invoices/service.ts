@@ -242,10 +242,24 @@ export async function generateInvoice(
     const unpriced: string[] = [];
     const mismatched: string[] = [];
     let subtotal = 0;
-    let retainerHourlyMinutes = 0; // B3: hourly minutes pooled under the retainer
     for (const issue of issues.sort((a, b) => a.key.localeCompare(b.key))) {
       // c8 ignore next -- defensive: issues are queried by `id IN issueIds` where issueIds = byIssue keys, so every issue is in byIssue; the `?? 0` arm is unreachable
       const minutes = byIssue.get(issue.id)?.minutes ?? 0;
+
+      // Covered (e.g. by a maintenance retainer): tracked but never billed. Emit a €0 detail
+      // line so the annex still itemises what was done for the client, then move on — no rate
+      // resolution, no charge, no effect on the subtotal.
+      if (issue.billingMode === 'covered') {
+        lineData.push({
+          issueId: issue.id,
+          issueKey: issue.key,
+          description: `${issue.title} · cubierto · covered`,
+          minutes,
+          hourlyCents: null,
+          amountCents: 0,
+        });
+        continue;
+      }
 
       if (issue.billingMode === 'fixed') {
         if (alreadyBilled.has(issue.id)) continue; // price already charged; just consume hours
@@ -268,22 +282,9 @@ export async function generateInvoice(
         continue;
       }
 
-      // B3: under a retainer, hourly work is covered (pooled), not billed per issue. We STILL
-      // emit a €0 detail line per worked issue so the annex shows the client what was done for
-      // the fee (transparency); the overage (beyond includedHours) is billed once below.
-      if (retainer) {
-        retainerHourlyMinutes += minutes;
-        lineData.push({
-          issueId: issue.id,
-          issueKey: issue.key,
-          description: `${issue.title} · incluido en la cuota · covered by retainer`,
-          minutes,
-          hourlyCents: null,
-          amountCents: 0,
-        });
-        continue;
-      }
-
+      // Hourly path: bills T&M at the resolved rate. Retainer clients are billed this WORK
+      // on top of their flat fee — coverage is now declared per issue (mark an issue "covered"
+      // to fold it into the retainer at €0), not auto-pooled across every hourly issue.
       const resolved = resolveRate({
         issue: toResolved(issueRateById.get(issue.id)),
         project: toResolved(projectRateById.get(issue.projectId)),
@@ -330,7 +331,9 @@ export async function generateInvoice(
       );
     }
 
-    // B3: prepend the flat retainer line, then bill any overage beyond the included hours.
+    // A retainer adds a flat monthly fee line. What gets billed ON TOP of it is decided per
+    // issue: hourly issues bill T&M (above), issues marked "covered" show at €0. There is no
+    // hour pooling or overage — coverage is explicit, issue by issue.
     if (retainer) {
       const label = monthKey(input.periodStart!, config.BILLING_TIMEZONE);
       lineData.unshift({
@@ -341,37 +344,6 @@ export async function generateInvoice(
         amountCents: retainer.retainerCents!,
       });
       subtotal += retainer.retainerCents!;
-
-      // null includedHours = the retainer covers all logged time (no overage); a number
-      // is the entitlement cap, beyond which hours bill T&M at the client/default rate.
-      const includedMinutes = retainer.includedHours == null ? null : retainer.includedHours * 60;
-      if (includedMinutes != null && retainerHourlyMinutes > includedMinutes) {
-        const overageMinutes = retainerHourlyMinutes - includedMinutes;
-        const resolved = toResolved(clientRate) ?? toResolved(defaultRate);
-        if (!resolved) {
-          throw badRequest(
-            'retainer overage hours have no client or default rate — set one before invoicing',
-          );
-        }
-        if (resolved.currency !== client.currency) {
-          throw badRequest(
-            `retainer overage rate currency mismatch — rates must be in ${client.currency}`,
-          );
-        }
-        const amount = accruedCents({
-          billingMode: 'hourly',
-          billableMinutes: overageMinutes,
-          hourlyCents: resolved.hourlyCents,
-        });
-        subtotal += amount;
-        lineData.push({
-          issueKey: 'OVERAGE',
-          description: `Horas extra · overage (${(overageMinutes / 60).toFixed(2)}h sobre ${retainer.includedHours}h incl.)`,
-          minutes: overageMinutes,
-          hourlyCents: resolved.hourlyCents,
-          amountCents: amount,
-        });
-      }
     }
 
     // ANX = non-fiscal billing annex (the fiscal invoice is issued via TicketBAI).

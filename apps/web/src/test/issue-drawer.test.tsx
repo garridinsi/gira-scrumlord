@@ -1015,7 +1015,10 @@ describe('IssueDrawer', () => {
     renderDrawer();
     await screen.findByText('My issue title');
 
-    const fixedOption = screen.getByRole('option', { name: /Fixed/ }) as HTMLOptionElement;
+    // Exact name avoids colliding with the billing dropdown's "Precio fijo · Fixed price".
+    const fixedOption = screen.getByRole('option', {
+      name: 'Resuelto · Fixed',
+    }) as HTMLOptionElement;
     await userEvent.selectOptions(fixedOption.closest('select')!, 'fixed');
 
     await waitFor(() => expect(h.update).toHaveBeenCalledWith('GIRA-1', { resolution: 'fixed' }));
@@ -1169,15 +1172,37 @@ describe('IssueDrawer', () => {
     await waitFor(() => expect(h.move).toHaveBeenCalledWith('GIRA-1', { statusId: 's2' }));
   });
 
-  // ── Sidebar: read-only fields ────────────────────────────────────────────
+  // ── Sidebar: billing mode (editable) ─────────────────────────────────────
 
-  it('renders the fixed billing mode with the fixed price in the sidebar', async () => {
+  it('renders the fixed billing mode and price in the editable sidebar', async () => {
     h.get.mockResolvedValue(issue({ billingMode: 'fixed', fixedPriceCents: 50000 }));
     renderDrawer();
     await screen.findByText('My issue title');
 
-    expect(screen.getByText('FIJO · FIXED')).toBeInTheDocument();
-    expect(screen.getByText('EUR 500,00')).toBeInTheDocument();
+    const fixedOpt = screen.getByRole('option', {
+      name: 'Precio fijo · Fixed price',
+    }) as HTMLOptionElement;
+    expect(fixedOpt.selected).toBe(true);
+    expect((screen.getByLabelText(/fixed price/i) as HTMLInputElement).value).toBe('500');
+  });
+
+  it('changes the billing mode to covered from the sidebar (€0, clears the price)', async () => {
+    h.get.mockResolvedValue(issue({ billingMode: 'hourly' }));
+    h.update.mockResolvedValue(issue({ billingMode: 'covered', fixedPriceCents: null }));
+    renderDrawer();
+    await screen.findByText('My issue title');
+
+    const coveredOpt = screen.getByRole('option', {
+      name: 'Cubierto · Covered (€0)',
+    }) as HTMLOptionElement;
+    await userEvent.selectOptions(coveredOpt.closest('select')!, 'covered');
+
+    await waitFor(() =>
+      expect(h.update).toHaveBeenCalledWith('GIRA-1', {
+        billingMode: 'covered',
+        fixedPriceCents: null,
+      }),
+    );
   });
 
   it('renders story points and estimate/logged in the sidebar', async () => {

@@ -3,22 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { invoiceLineKind } from './invoice.js';
 
 // invoiceLineKind derives an annex line's billing nature purely from its frozen
-// fields, so a single annex can mix T&M, fixed-price and retainer-covered work and
-// still label each line. These cases pin every branch of that derivation.
+// fields, so a single annex can mix T&M, fixed-price and covered work and still
+// label each line. These cases pin every branch of that derivation.
 describe('invoiceLineKind', () => {
   it('classifies the RETAINER sentinel as the retainer fee, regardless of amount', () => {
     expect(invoiceLineKind({ issueKey: 'RETAINER', hourlyCents: null, amountCents: 500_000 })).toBe(
       'retainer',
     );
-    // The sentinel wins even if its shape would otherwise read as maintenance (€0).
+    // The sentinel wins even if its shape would otherwise read as covered (€0).
     expect(invoiceLineKind({ issueKey: 'RETAINER', hourlyCents: null, amountCents: 0 })).toBe(
       'retainer',
-    );
-  });
-
-  it('classifies the OVERAGE sentinel as overage', () => {
-    expect(invoiceLineKind({ issueKey: 'OVERAGE', hourlyCents: 6000, amountCents: 18_000 })).toBe(
-      'overage',
     );
   });
 
@@ -38,9 +32,9 @@ describe('invoiceLineKind', () => {
     );
   });
 
-  it('classifies a null-rate €0 line as retainer-covered maintenance', () => {
+  it('classifies a null-rate €0 line as covered', () => {
     expect(invoiceLineKind({ issueKey: 'ACME-4', hourlyCents: null, amountCents: 0 })).toBe(
-      'maintenance',
+      'covered',
     );
   });
 });

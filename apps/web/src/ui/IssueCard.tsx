@@ -121,6 +121,9 @@ export function IssueCard({
               fixed · {formatMoney(issue.fixedPriceCents, 'EUR')}
             </span>
           )}
+          {issue.billingMode === 'covered' && (
+            <span className="chip chip--ink">cubierto · covered</span>
+          )}
         </div>
 
         <div

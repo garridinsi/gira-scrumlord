@@ -289,13 +289,12 @@ export interface IncidentView {
 // ── Invoicing (M5) ─────────────────────────────────────────────────────────
 /**
  * The billing nature of an annex line, so a single annex can mix types and stay legible:
- *  - billable    — T&M hourly work, charged at the frozen rate
- *  - fixed       — a fixed-price issue, charged once
- *  - maintenance — covered by the monthly retainer fee (shown at €0, hours visible)
- *  - retainer    — the flat monthly fee line itself
- *  - overage     — hours beyond the retainer's included cap, charged T&M
+ *  - billable — T&M hourly work, charged at the frozen rate
+ *  - fixed    — a fixed-price issue, charged once
+ *  - covered  — covered by an agreement (e.g. a maintenance retainer): shown at €0, hours visible
+ *  - retainer — the flat monthly retainer fee line itself
  */
-export type InvoiceLineKind = 'billable' | 'fixed' | 'maintenance' | 'retainer' | 'overage';
+export type InvoiceLineKind = 'billable' | 'fixed' | 'covered' | 'retainer';
 
 export interface InvoiceLineView {
   id: string;

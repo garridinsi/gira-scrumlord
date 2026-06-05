@@ -78,6 +78,36 @@ describe('money: rates + accrued cost', () => {
     expect(cost.json()).toMatchObject({ billingMode: 'fixed', accruedCents: 25000 });
   });
 
+  it('covered issues accrue €0 and contribute no billable minutes (time still tracked)', async () => {
+    const { user, cookie } = await actingAs({ role: 'member' });
+    const { projectKey } = await seedProject({ reporterId: user.id });
+    await setRate(cookie, { scope: 'default', hourlyCents: 6000 });
+    await app.inject({
+      method: 'POST',
+      url: '/issues',
+      headers: { cookie },
+      payload: { projectKey, title: 'Maintenance', billingMode: 'covered' },
+    });
+    await app.inject({
+      method: 'POST',
+      url: '/issues/GIRA-1/worklogs',
+      headers: { cookie },
+      payload: { minutes: 300, billable: true }, // 5h logged, but covered → €0
+    });
+    const cost = await app.inject({
+      method: 'GET',
+      url: '/issues/GIRA-1/cost',
+      headers: { cookie },
+    });
+    // Total minutes still reflect the work done; billable minutes and accrued cost are zero.
+    expect(cost.json()).toMatchObject({
+      billingMode: 'covered',
+      minutes: 300,
+      billableMinutes: 0,
+      accruedCents: 0,
+    });
+  });
+
   it('project summary rolls up time, money, and counts', async () => {
     const { user, cookie } = await actingAs({ role: 'member' });
     const { projectKey } = await seedProject({ reporterId: user.id });
@@ -101,6 +131,19 @@ describe('money: rates + accrued cost', () => {
       headers: { cookie },
       payload: { projectKey, title: 'Fixed', billingMode: 'fixed', fixedPriceCents: 25000 },
     });
+    // A covered issue: its time counts toward total minutes but not billable minutes or cost.
+    await app.inject({
+      method: 'POST',
+      url: '/issues',
+      headers: { cookie },
+      payload: { projectKey, title: 'Covered', billingMode: 'covered' },
+    });
+    await app.inject({
+      method: 'POST',
+      url: '/issues/GIRA-3/worklogs',
+      headers: { cookie },
+      payload: { minutes: 60, billable: true },
+    });
 
     const summary = await app.inject({
       method: 'GET',
@@ -108,11 +151,11 @@ describe('money: rates + accrued cost', () => {
       headers: { cookie },
     });
     const body = summary.json();
-    expect(body.totalMinutes).toBe(120);
-    expect(body.billableMinutes).toBe(120);
-    expect(body.openIssues).toBe(2);
+    expect(body.totalMinutes).toBe(180); // 120 hourly + 60 covered
+    expect(body.billableMinutes).toBe(120); // covered minutes excluded
+    expect(body.openIssues).toBe(3);
     expect(body.doneIssues).toBe(0);
-    // GIRA-1: 120min @ 5000/h = 10000; GIRA-2 fixed 25000 => 35000
+    // GIRA-1: 120min @ 5000/h = 10000; GIRA-2 fixed 25000; GIRA-3 covered €0 => 35000
     expect(body.accruedCents).toBe(35000);
   });
 
@@ -210,6 +253,22 @@ describe('money: rates + accrued cost', () => {
         loggedAt: new Date('2026-04-02T09:00:00Z'),
       },
     });
+    // A covered issue with March time: counts toward total minutes but not billable/accrued.
+    const covered = await app.inject({
+      method: 'POST',
+      url: '/issues',
+      headers: { cookie },
+      payload: { projectKey, title: 'Covered', billingMode: 'covered' },
+    });
+    await prisma.worklog.create({
+      data: {
+        issueId: covered.json().id as string,
+        userId: user.id,
+        minutes: 30,
+        billable: true,
+        loggedAt: new Date('2026-03-12T09:00:00Z'),
+      },
+    });
 
     const res = await app.inject({
       method: 'GET',
@@ -219,12 +278,18 @@ describe('money: rates + accrued cost', () => {
     expect(res.statusCode).toBe(200);
     const months = res.json().months as Array<{
       month: string;
+      totalMinutes: number;
       billableMinutes: number;
       accruedCents: number;
     }>;
     expect(months.map((m) => m.month)).toEqual(['2026-04', '2026-03']); // most recent first
     expect(months[0]).toMatchObject({ billableMinutes: 60, accruedCents: 6000 }); // 1h @ 60
-    expect(months[1]).toMatchObject({ billableMinutes: 120, accruedCents: 12000 }); // 2h @ 60
+    // March: 120 billable hourly min + 30 covered min → total 150, billable 120, €120 accrued.
+    expect(months[1]).toMatchObject({
+      totalMinutes: 150,
+      billableMinutes: 120,
+      accruedCents: 12000,
+    });
   });
 
   it('buckets months in the billing timezone, not UTC (late-night month-end)', async () => {

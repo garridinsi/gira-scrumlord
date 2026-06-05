@@ -94,14 +94,15 @@ describe('cov src/modules/invoices/service.ts', () => {
         clientId: client.id,
         name: 'Dated retainer',
         retainerCents: 400_000,
-        includedHours: 10,
         status: 'active',
         startDate: new Date('2026-01-01T00:00:00.000Z'),
         endDate: new Date('2026-12-31T00:00:00.000Z'),
       },
     });
     await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
-    await logAt(staff.cookie, 'ACME-1', 120, '2026-03-15T12:00:00.000Z'); // within included
+    // Covered work needs no rate; the flat retainer fee is the whole annex here.
+    await prisma.issue.update({ where: { key: 'ACME-1' }, data: { billingMode: 'covered' } });
+    await logAt(staff.cookie, 'ACME-1', 120, '2026-03-15T12:00:00.000Z');
     const inv = (await generate(staff.cookie, client.id, MARCH)).json();
     expect(inv.subtotalCents).toBe(400_000);
     expect(
@@ -110,30 +111,6 @@ describe('cov src/modules/invoices/service.ts', () => {
           l.issueKey === 'RETAINER' && l.amountCents === 400_000,
       ),
     ).toBe(true);
-  });
-
-  // ── retainer overage currency mismatch (lines 344-348) ───────────────────────
-  it('refuses retainer overage when the resolved rate currency differs from the client', async () => {
-    const { client, staff } = await setup(); // EUR client
-    await prisma.contract.create({
-      data: {
-        clientId: client.id,
-        name: 'Retainer',
-        retainerCents: 100_000,
-        includedHours: 1, // small cap → overage
-        status: 'active',
-      },
-    });
-    // A default rate in USD resolves for the overage but mismatches the EUR client.
-    // Inserted directly (the /rates route would reject a mismatched currency).
-    await prisma.rate.create({
-      data: { scope: 'default', hourlyCents: 6000, currency: 'USD' },
-    });
-    await create(staff.cookie, { projectKey: 'ACME', title: 'Work' });
-    await logAt(staff.cookie, 'ACME-1', 300, '2026-03-15T12:00:00.000Z'); // 5h; 1h incl → overage
-    const res = await generate(staff.cookie, client.id, MARCH);
-    expect(res.statusCode).toBe(400);
-    expect(res.json().error).toMatch(/currency/i);
   });
 
   // ── voidInvoice guards (lines 494, 495) ──────────────────────────────────────

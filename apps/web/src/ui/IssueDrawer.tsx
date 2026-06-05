@@ -1046,7 +1046,11 @@ function CostTab({ issueKey }: { issueKey: string }) {
             className="disp"
             style={{ fontSize: 18, color: 'var(--eg-paper)', lineHeight: 1.05 }}
           >
-            {cost.billingMode === 'fixed' ? 'FIJO' : 'HORA'}
+            {cost.billingMode === 'fixed'
+              ? 'FIJO'
+              : cost.billingMode === 'covered'
+                ? 'CUBIERTO'
+                : 'HORA'}
           </div>
           {cost.hourlyCents != null && (
             <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-4)', marginTop: 4 }}>
@@ -1389,6 +1393,8 @@ function DrawerSidebar({
       blockedReason: string | null;
       severity: string | null;
       moscow: string | null;
+      billingMode: string;
+      fixedPriceCents: number | null;
     }>,
   ) => void;
   onAssigneeChange: (assigneeId: string | null) => void;
@@ -1748,12 +1754,62 @@ function DrawerSidebar({
       </SideField>
 
       <SideField labelEs="facturación" labelEn="billing">
-        <span className="mono" style={{ fontSize: 11, fontWeight: 600 }}>
-          {issue.billingMode === 'fixed' ? 'FIJO · FIXED' : 'POR HORA · HOURLY'}
-        </span>
-        {issue.billingMode === 'fixed' && issue.fixedPriceCents != null && (
+        <select
+          value={issue.billingMode}
+          onChange={(e) => {
+            const mode = e.target.value;
+            // Only fixed-price issues carry a price. Switching to fixed seeds €0 so the change
+            // is accepted (the price input below sets the real figure); hourly/covered clear it.
+            onUpdate(
+              mode === 'fixed'
+                ? { billingMode: mode, fixedPriceCents: issue.fixedPriceCents ?? 0 }
+                : { billingMode: mode, fixedPriceCents: null },
+            );
+          }}
+          style={{
+            width: '100%',
+            marginBottom: 6,
+            padding: '4px 8px',
+            border: '1.5px solid var(--eg-iron)',
+            background: 'var(--eg-paper)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+          }}
+        >
+          <option value="hourly">Por hora · Hourly</option>
+          <option value="fixed">Precio fijo · Fixed price</option>
+          <option value="covered">Cubierto · Covered (€0)</option>
+        </select>
+        {issue.billingMode === 'fixed' && (
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            // key resets the uncontrolled input when the persisted price changes externally.
+            key={issue.fixedPriceCents ?? 'none'}
+            defaultValue={issue.fixedPriceCents != null ? issue.fixedPriceCents / 100 : ''}
+            placeholder="precio € · price"
+            aria-label="Precio fijo · fixed price (€)"
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              const cents = v === '' ? 0 : Math.round(Number(v) * 100);
+              if (Number.isFinite(cents) && cents !== issue.fixedPriceCents) {
+                onUpdate({ fixedPriceCents: cents });
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '4px 8px',
+              border: '1.5px solid var(--eg-iron)',
+              background: 'var(--eg-paper)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+            }}
+          />
+        )}
+        {issue.billingMode === 'covered' && (
           <div className="mono" style={{ fontSize: 10, color: 'var(--eg-fg-3)', marginTop: 2 }}>
-            {formatMoney(issue.fixedPriceCents, 'EUR')}
+            cubierto · €0 — no se factura / not billed
           </div>
         )}
       </SideField>
@@ -1915,6 +1971,8 @@ export function IssueDrawer({ issueKey, projectKey, onClose }: IssueDrawerProps)
       blockedReason: string | null;
       severity: string | null;
       moscow: string | null;
+      billingMode: string;
+      fixedPriceCents: number | null;
     }>,
   ) => {
     if (data.statusId) {

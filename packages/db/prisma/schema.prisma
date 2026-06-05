@@ -52,6 +52,7 @@ enum UserRole {
 enum BillingMode {
   hourly
   fixed
+  covered // work covered by an agreement (e.g. a maintenance retainer); tracked but never billed — €0
 }
 
 enum RateScope {
