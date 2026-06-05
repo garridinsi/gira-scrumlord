@@ -27,6 +27,11 @@ x-env: &env
   SMTP_USER: ${SMTP_USER:-}
   SMTP_PASS: ${SMTP_PASS:-}
   MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM, e.g. "gira-scrumlord <noreply@enekogarrido.com>"}
+  # Optional notification channels — each is OFF until its secret is set in .env.
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+  VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+  VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:noreply@gira.local}
 
 x-app: &app
   build:
