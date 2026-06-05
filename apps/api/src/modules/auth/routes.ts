@@ -12,8 +12,9 @@ import {
   type TelegramStatusView,
   upsertTelegramLinkSchema,
 } from '@gira/shared';
-import { notifyConfig } from '@gira/notify';
+import { notifyConfig, sendTelegram } from '@gira/notify';
 import { recordAudit } from '@gira/sauron';
+import { createHash } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { currentUser, requireAuth } from '../../lib/auth.js';
 import { notFound } from '../../lib/http-error.js';
@@ -30,6 +31,13 @@ import {
   sessionCookieOptions,
   sessionIdFromCookie,
 } from './session.js';
+
+// Telegram echoes this back in the X-Telegram-Bot-Api-Secret-Token header on every webhook
+// call; deriving it from the bot token avoids managing another secret while still rejecting
+// forged updates. Configure it on the bot via setWebhook's `secret_token`.
+export function telegramWebhookSecret(): string {
+  return createHash('sha256').update(notifyConfig.telegramBotToken).digest('hex');
+}
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post('/auth/magic-link', { config: { rateLimit: authRateLimit } }, async (req, reply) => {
@@ -206,6 +214,26 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       entityId: me.id,
     });
     return reply.code(204).send();
+  });
+
+  // Telegram bot webhook — Telegram POSTs updates here (NOT session-authed; verified by the
+  // secret token Telegram echoes in a header). On /start it replies with the chat id so a user
+  // can self-link from Account → Telegram. The only bot→user reply path.
+  app.post('/telegram/webhook', async (req, reply) => {
+    if (!notifyConfig.telegramEnabled) return reply.code(404).send();
+    if (req.headers['x-telegram-bot-api-secret-token'] !== telegramWebhookSecret()) {
+      return reply.code(401).send();
+    }
+    const update = req.body as { message?: { chat?: { id?: number }; text?: string } } | undefined;
+    const chatId = update?.message?.chat?.id;
+    const text = update?.message?.text ?? '';
+    if (typeof chatId === 'number' && text.trim().startsWith('/start')) {
+      await sendTelegram(
+        String(chatId),
+        `¡Hola! · Hi!\n\nTu chat id es · your chat id is:\n${chatId}\n\nPégalo en gira-scrumlord → Mi cuenta → Telegram.\nPaste it in gira → Account → Telegram to get your notifications here.`,
+      );
+    }
+    return reply.code(200).send({ ok: true });
   });
 
   // ── Web Push channel (E1) — per-user browser subscriptions. Off + invisible unless VAPID
