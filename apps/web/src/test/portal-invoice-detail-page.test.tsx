@@ -46,6 +46,7 @@ describe('PortalInvoiceDetailPage', () => {
           minutes: 60,
           hourlyCents: 6000,
           amountCents: 6000,
+          kind: 'billable',
         },
       ],
     });

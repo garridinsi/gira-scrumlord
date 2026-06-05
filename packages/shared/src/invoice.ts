@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { z } from 'zod';
+import type { InvoiceLineKind } from './views.js';
 
 /**
  * Generate a draft invoice for a client. The (optional) period bounds which
@@ -23,3 +24,19 @@ export const generateInvoiceSchema = z
     path: ['periodStart'],
   });
 export type GenerateInvoice = z.infer<typeof generateInvoiceSchema>;
+
+/**
+ * Derive an annex line's billing nature from its frozen fields (no extra column needed).
+ * RETAINER/OVERAGE are sentinel issue keys; a null rate with a non-zero amount is a fixed
+ * price; a null rate with a zero amount is retainer-covered maintenance; otherwise hourly.
+ */
+export function invoiceLineKind(line: {
+  issueKey: string;
+  hourlyCents: number | null;
+  amountCents: number;
+}): InvoiceLineKind {
+  if (line.issueKey === 'RETAINER') return 'retainer';
+  if (line.issueKey === 'OVERAGE') return 'overage';
+  if (line.hourlyCents !== null) return 'billable';
+  return line.amountCents > 0 ? 'fixed' : 'maintenance';
+}

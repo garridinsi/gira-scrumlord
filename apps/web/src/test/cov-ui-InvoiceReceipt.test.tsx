@@ -29,6 +29,7 @@ function makeInvoice(overrides: Partial<InvoiceView> = {}): InvoiceView {
         minutes: 120,
         hourlyCents: 6000,
         amountCents: 12000,
+        kind: 'billable',
       },
     ],
     ...overrides,

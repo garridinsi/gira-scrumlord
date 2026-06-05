@@ -1,10 +1,93 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Printable billing annex receipt — EG "Mantenedor" design. Presentation-only.
 // NOT a fiscal invoice. Fiscal invoices are issued via TicketBAI / Batuz.
-import type { InvoiceView } from '@gira/shared';
+import type { InvoiceLineKind, InvoiceView } from '@gira/shared';
 import { Glyph, Plate } from './atoms';
 import { formatMoney } from '../lib/money';
 import { formatMinutes, formatDate } from '../lib/format';
+
+// ── Billing-type badge ─────────────────────────────────────────────────────────
+// A single annex can mix T&M hourly, fixed-price and retainer-covered lines. Each
+// line carries a derived `kind` so the client can tell at a glance what they're
+// being charged for (or not — maintenance shows the hours done at €0).
+
+const KIND_BADGES: Record<
+  InvoiceLineKind,
+  { mark: string; es: string; en: string; bg: string; fg: string; border: string }
+> = {
+  billable: {
+    mark: '✓',
+    es: 'Facturable',
+    en: 'billable',
+    bg: 'var(--eg-green)',
+    fg: 'var(--eg-paper)',
+    border: 'var(--eg-iron)',
+  },
+  fixed: {
+    mark: '◆',
+    es: 'Precio fijo',
+    en: 'fixed price',
+    bg: 'var(--eg-paper-3)',
+    fg: 'var(--eg-iron)',
+    border: 'var(--eg-iron)',
+  },
+  maintenance: {
+    mark: '✓',
+    es: 'Mantenimiento',
+    en: 'covered',
+    bg: 'var(--eg-paper-2)',
+    fg: 'var(--eg-fg-2)',
+    border: 'var(--eg-rule)',
+  },
+  retainer: {
+    mark: '▣',
+    es: 'Cuota',
+    en: 'retainer fee',
+    bg: 'var(--eg-yellow)',
+    fg: 'var(--eg-iron)',
+    border: 'var(--eg-iron)',
+  },
+  overage: {
+    mark: '+',
+    es: 'Extra',
+    en: 'overage',
+    bg: 'var(--eg-yellow)',
+    fg: 'var(--eg-iron)',
+    border: 'var(--eg-iron)',
+  },
+};
+
+function KindBadge({ kind }: { kind: InvoiceLineKind }) {
+  const cfg = KIND_BADGES[kind];
+  return (
+    <span
+      data-testid={`line-kind-${kind}`}
+      style={{
+        fontFamily: 'var(--font-mono)',
+        fontWeight: 700,
+        fontSize: 9.5,
+        textTransform: 'uppercase',
+        letterSpacing: '0.1em',
+        padding: '1px 6px',
+        border: '1px solid',
+        background: cfg.bg,
+        color: cfg.fg,
+        borderColor: cfg.border,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        alignSelf: 'flex-start',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span aria-hidden style={{ fontWeight: 900 }}>
+        {cfg.mark}
+      </span>
+      {cfg.es}
+      <span style={{ opacity: 0.6 }}>· {cfg.en}</span>
+    </span>
+  );
+}
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 
@@ -402,13 +485,23 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
             <span className="invoice-receipt__col invoice-receipt__col--desc">
               <span
                 style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
-                  color: 'var(--eg-fg-1)',
-                  lineHeight: 1.4,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: 5,
                 }}
               >
-                {line.description}
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 12,
+                    color: 'var(--eg-fg-1)',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {line.description}
+                </span>
+                <KindBadge kind={line.kind} />
               </span>
             </span>
             <span className="invoice-receipt__col invoice-receipt__col--time">

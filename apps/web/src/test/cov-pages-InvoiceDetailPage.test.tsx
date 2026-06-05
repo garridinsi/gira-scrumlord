@@ -83,6 +83,7 @@ const baseInvoice = (over: Partial<InvoiceView> = {}): InvoiceView =>
         minutes: 60,
         hourlyCents: 6000,
         amountCents: 6000,
+        kind: 'billable',
       },
     ],
     ...over,
@@ -129,6 +130,7 @@ describe('InvoiceDetailPage (coverage)', () => {
             minutes: 120,
             hourlyCents: null, // fixed-price → exportAnnexCsv emits '' for the rate cell
             amountCents: 5000,
+            kind: 'fixed',
           },
         ],
       }),

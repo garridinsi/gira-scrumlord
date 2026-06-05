@@ -79,6 +79,7 @@ const baseInvoice = (over: Partial<InvoiceView> = {}): InvoiceView =>
         minutes: 60,
         hourlyCents: 6000,
         amountCents: 6000,
+        kind: 'billable',
       },
     ],
     ...over,

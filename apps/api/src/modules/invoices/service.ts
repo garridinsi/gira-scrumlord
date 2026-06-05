@@ -6,6 +6,7 @@
 import { type Prisma, type Rate, prisma } from '@gira/db';
 import { type ResolvedRate, accruedCents, resolveRate } from '@gira/domain';
 import type { GenerateInvoice, InvoiceListItemView, InvoiceView } from '@gira/shared';
+import { invoiceLineKind } from '@gira/shared';
 import { recordAudit } from '@gira/sauron';
 import { config } from '../../config.js';
 import { badRequest, notFound } from '../../lib/http-error.js';
@@ -88,6 +89,7 @@ export function toInvoiceView(i: InvoiceWithRelations): InvoiceView {
       minutes: l.minutes,
       hourlyCents: l.hourlyCents,
       amountCents: l.amountCents,
+      kind: invoiceLineKind(l),
     })),
   };
 }
@@ -266,10 +268,19 @@ export async function generateInvoice(
         continue;
       }
 
-      // B3: under a retainer, hourly work is covered (pooled), not billed per issue;
-      // the overage (beyond includedHours) is billed once at the client rate below.
+      // B3: under a retainer, hourly work is covered (pooled), not billed per issue. We STILL
+      // emit a €0 detail line per worked issue so the annex shows the client what was done for
+      // the fee (transparency); the overage (beyond includedHours) is billed once below.
       if (retainer) {
         retainerHourlyMinutes += minutes;
+        lineData.push({
+          issueId: issue.id,
+          issueKey: issue.key,
+          description: `${issue.title} · incluido en la cuota · covered by retainer`,
+          minutes,
+          hourlyCents: null,
+          amountCents: 0,
+        });
         continue;
       }
 

@@ -27,6 +27,7 @@ function makeInvoice(overrides: Partial<InvoiceView> = {}): InvoiceView {
         minutes: 120,
         hourlyCents: 6000,
         amountCents: 12000,
+        kind: 'billable',
       },
       {
         id: 'l2',
@@ -35,6 +36,7 @@ function makeInvoice(overrides: Partial<InvoiceView> = {}): InvoiceView {
         minutes: 0,
         hourlyCents: null,
         amountCents: 6000,
+        kind: 'fixed',
       },
     ],
     ...overrides,
@@ -57,6 +59,59 @@ describe('InvoiceReceipt', () => {
       <InvoiceReceipt invoice={makeInvoice({ status: 'paid', paidAt: '2026-06-05T00:00:00Z' })} />,
     );
     expect(screen.getByText(/Paid|Pagada/)).toBeInTheDocument();
+  });
+
+  it('labels each line with its billing-type badge so a mixed annex stays legible', () => {
+    render(
+      <InvoiceReceipt
+        invoice={makeInvoice({
+          subtotalCents: 518000,
+          lines: [
+            {
+              id: 'l1',
+              issueKey: 'GIRA-1',
+              description: 'Billable hours',
+              minutes: 120,
+              hourlyCents: 6000,
+              amountCents: 12000,
+              kind: 'billable',
+            },
+            {
+              id: 'l2',
+              issueKey: 'GIRA-2',
+              description: 'Fixed task',
+              minutes: 0,
+              hourlyCents: null,
+              amountCents: 6000,
+              kind: 'fixed',
+            },
+            {
+              id: 'l3',
+              issueKey: 'GIRA-3',
+              description: 'Covered by the retainer',
+              minutes: 300,
+              hourlyCents: null,
+              amountCents: 0,
+              kind: 'maintenance',
+            },
+            {
+              id: 'l4',
+              issueKey: 'RETAINER',
+              description: 'Cuota fija · retainer',
+              minutes: 0,
+              hourlyCents: null,
+              amountCents: 500000,
+              kind: 'retainer',
+            },
+          ],
+        })}
+      />,
+    );
+    // One badge per line, each visually distinguishing the billing nature.
+    expect(screen.getByTestId('line-kind-billable')).toHaveTextContent(/Facturable.*billable/);
+    expect(screen.getByTestId('line-kind-fixed')).toHaveTextContent(/Precio fijo/);
+    expect(screen.getByTestId('line-kind-maintenance')).toHaveTextContent(/Mantenimiento/);
+    expect(screen.getByTestId('line-kind-retainer')).toHaveTextContent(/Cuota/);
   });
 
   it('renders a draft with notes and an external fiscal reference', () => {

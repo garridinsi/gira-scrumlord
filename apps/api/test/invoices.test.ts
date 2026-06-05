@@ -70,6 +70,7 @@ describe('invoicing (M5)', () => {
       minutes: 120,
       hourlyCents: 6000,
       amountCents: 12000,
+      kind: 'billable',
     });
     expect(inv.subtotalCents).toBe(12000);
 
@@ -224,7 +225,12 @@ describe('invoicing (M5)', () => {
 
     const inv = (await generate(staff.cookie, client.id)).json();
     expect(inv.lines).toHaveLength(1);
-    expect(inv.lines[0]).toMatchObject({ hourlyCents: null, amountCents: 50_000, minutes: 600 });
+    expect(inv.lines[0]).toMatchObject({
+      hourlyCents: null,
+      amountCents: 50_000,
+      minutes: 600,
+      kind: 'fixed',
+    });
     expect(inv.subtotalCents).toBe(50_000);
   });
 
@@ -681,6 +687,10 @@ describe('invoicing (M5)', () => {
       ),
     ).toBe(true);
     expect(inv.lines.some((l: { issueKey: string }) => l.issueKey === 'OVERAGE')).toBe(false);
+    // The worked issue is itemised on the annex as a €0 maintenance line (covered by the fee).
+    const covered = inv.lines.find((l: { issueKey: string }) => l.issueKey === 'ACME-1');
+    expect(covered).toMatchObject({ minutes: 300, amountCents: 0, kind: 'maintenance' });
+    expect(covered.description).toMatch(/cuota|covered/i);
   });
 
   it('bills overage beyond the included hours at the client/default rate', async () => {
@@ -702,8 +712,18 @@ describe('invoicing (M5)', () => {
     await logAt(staff.cookie, 'ACME-1', 1200, '2026-03-15T12:00:00.000Z'); // 20h, all covered
     const inv = (await generate(staff.cookie, client.id, MARCH)).json();
     expect(inv.subtotalCents).toBe(300_000);
-    expect(inv.lines).toHaveLength(1);
-    expect(inv.lines[0].issueKey).toBe('RETAINER');
+    // The fee line, plus a €0 detail line per worked issue (transparency: the client
+    // still sees what was done for the fee, even though it isn't billed separately).
+    expect(inv.lines).toHaveLength(2);
+    type Line = { issueKey: string; kind: string; minutes: number; amountCents: number };
+    const find = (key: string) => inv.lines.find((l: Line) => l.issueKey === key);
+    expect(find('RETAINER')).toMatchObject({ kind: 'retainer', amountCents: 300_000 });
+    expect(find('ACME-1')).toMatchObject({
+      minutes: 1200,
+      amountCents: 0,
+      hourlyCents: null,
+      kind: 'maintenance',
+    });
   });
 
   it('bills the retainer even for a zero-hours month', async () => {
