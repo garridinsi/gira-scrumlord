@@ -563,7 +563,10 @@ model Timer {
 /// are issued externally via TicketBAI/Batuz; `externalInvoiceRef` links to that.
 model Invoice {
   id            String        @id @default(cuid())
-  number        String        @unique // ANX-YYYY-NNNN annex ref, assigned at creation
+  // ANX-YYYY-NNNN annex ref. NULL while draft — a number is minted only when the annex is
+  // issued (becomes definitive), so drafts never consume a sequence number. @unique still
+  // holds: Postgres treats NULLs as distinct, so any number of unnumbered drafts coexist.
+  number        String?       @unique
   externalInvoiceRef String?   // the real TicketBAI fiscal invoice number, recorded by staff
   clientId      String
   // RESTRICT, not Cascade: a non-fiscal billing annex (and its externalInvoiceRef link

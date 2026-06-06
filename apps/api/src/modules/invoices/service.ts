@@ -114,22 +114,23 @@ export async function listClientInvoices(clientId: string): Promise<InvoiceListI
 }
 
 /**
- * Generate a draft invoice. Pulls every billable, not-yet-invoiced worklog for the
- * client (optionally bounded by period), groups by issue, and writes one frozen
- * line per issue. Fixed-price issues bill their price once — on the first invoice
- * that touches them; later invoices consume their hours without re-charging.
+ * Compute the annex lines for a client + period WITHOUT writing anything: pulls every
+ * billable, not-yet-invoiced worklog, groups by issue, resolves rates, and builds one
+ * frozen line per issue (covered €0, fixed once, hourly T&M) plus the flat retainer fee.
+ * Throws the same validation errors (no rate / no price / currency mismatch / nothing to
+ * bill) so a PREVIEW surfaces them before anything is saved. Returns the lines, the
+ * subtotal, and the ids of the worklogs the annex would claim.
  */
-export async function generateInvoice(
-  clientId: string,
+async function computeAnnex(
+  tx: Prisma.TransactionClient,
+  client: { id: string; name: string; currency: string },
   input: GenerateInvoice,
-  actorId: string,
-): Promise<InvoiceView> {
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { id: true, name: true, currency: true },
-  });
-  if (!client) throw notFound('client not found');
-
+): Promise<{
+  lineData: Prisma.InvoiceLineCreateWithoutInvoiceInput[];
+  subtotal: number;
+  worklogIds: string[];
+}> {
+  const clientId = client.id;
   // Period bounds are interpreted in BILLING_TIMEZONE (not UTC) so the worklogs an
   // annex bills are exactly the ones the monthly rollup attributes to that month.
   // Half-open: gte start-of-periodStart, lt start-of-(periodEnd + 1 day).
@@ -149,10 +150,7 @@ export async function generateInvoice(
     loggedAt.lt = zonedDayStartUtc(dayAfter, config.BILLING_TIMEZONE);
   }
 
-  // Serializable + retry: the annex number is derived from the current max for the
-  // year, and two concurrent generates reading the same max would otherwise produce
-  // a duplicate number (unique-constraint 500). SSI aborts the loser, which retries.
-  const invoice = await runSerializable(async (tx) => {
+  {
     const worklogs = await tx.worklog.findMany({
       where: {
         billable: true,
@@ -350,28 +348,103 @@ export async function generateInvoice(
       subtotal += retainer.retainerCents!;
     }
 
-    // ANX = non-fiscal billing annex (the fiscal invoice is issued via TicketBAI).
-    const year = new Date().getFullYear();
-    // NUMERIC max (not count-based, not lexicographic): deleting a draft must not let
-    // the sequence reuse a live number, AND `ORDER BY number DESC` is a STRING sort —
-    // it would rank ANX-2026-9999 above ANX-2026-10000 once past 9999. So fetch the
-    // year's numbers and take the true integer max of the suffix; a row whose suffix
-    // doesn't parse is skipped (never collapsed to 0, which would mint a colliding
-    // ...-0001). The unique constraint + serializable retry are the final backstop.
-    const prefix = `ANX-${year}-`;
-    const existing = await tx.invoice.findMany({
-      where: { number: { startsWith: prefix } },
-      select: { number: true },
-    });
-    const maxSeq = existing.reduce((max, { number: n }) => {
-      const seq = Number.parseInt(n.slice(prefix.length), 10);
-      return Number.isFinite(seq) && seq > max ? seq : max;
-    }, 0);
-    const number = `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
+    return { lineData, subtotal, worklogIds: worklogs.map((w) => w.id) };
+  }
+}
 
-    const created = await tx.invoice.create({
+/**
+ * Mint the next ANX-YYYY-NNNN annex number. NUMERIC max (not count-based, not lexicographic):
+ * deleting a draft must not let the sequence reuse a live number, AND `ORDER BY number DESC`
+ * is a STRING sort — it would rank ANX-2026-9999 above ANX-2026-10000 once past 9999. So fetch
+ * the year's numbers and take the true integer max of the suffix; a row whose suffix doesn't
+ * parse is skipped (never collapsed to 0, which would mint a colliding ...-0001). Numbers are
+ * minted only at issue time, so unnumbered drafts (number IS NULL) are naturally ignored. The
+ * unique constraint + serializable retry are the final backstop.
+ */
+async function nextAnnexNumber(tx: Prisma.TransactionClient): Promise<string> {
+  const prefix = `ANX-${new Date().getFullYear()}-`;
+  const existing = await tx.invoice.findMany({
+    where: { number: { startsWith: prefix } },
+    select: { number: true },
+  });
+  const maxSeq = existing.reduce((max, { number: n }) => {
+    // n is non-null: the `startsWith` filter above excludes unnumbered (NULL) drafts.
+    const seq = Number.parseInt(n!.slice(prefix.length), 10);
+    return Number.isFinite(seq) && seq > max ? seq : max;
+  }, 0);
+  return `${prefix}${String(maxSeq + 1).padStart(4, '0')}`;
+}
+
+async function loadClientOr404(
+  clientId: string,
+): Promise<{ id: string; name: string; currency: string }> {
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { id: true, name: true, currency: true },
+  });
+  if (!client) throw notFound('client not found');
+  return client;
+}
+
+/**
+ * Preview an annex WITHOUT saving it: same computation and validation as a real draft, but
+ * nothing is written — no row, no number, no worklog claim. Returns an ephemeral, unnumbered
+ * draft view so staff can review the bill before deciding to save it.
+ */
+export async function previewAnnex(clientId: string, input: GenerateInvoice): Promise<InvoiceView> {
+  const client = await loadClientOr404(clientId);
+  const { lineData, subtotal } = await prisma.$transaction((tx) => computeAnnex(tx, client, input));
+  return {
+    id: '',
+    number: null,
+    externalInvoiceRef: null,
+    clientId: client.id,
+    clientName: client.name,
+    status: 'draft',
+    currency: client.currency,
+    subtotalCents: subtotal,
+    periodStart: input.periodStart?.toISOString() ?? null,
+    periodEnd: input.periodEnd?.toISOString() ?? null,
+    createdAt: new Date().toISOString(),
+    issuedAt: null,
+    paidAt: null,
+    notes: input.notes ?? null,
+    // Match the persisted read order (lines orderBy issueKey asc) so preview == saved.
+    lines: [...lineData]
+      .sort((a, b) => a.issueKey.localeCompare(b.issueKey))
+      .map((l, i) => {
+        const hourlyCents = l.hourlyCents ?? null;
+        return {
+          id: `preview-${i}`,
+          issueKey: l.issueKey,
+          description: l.description,
+          minutes: l.minutes ?? 0,
+          hourlyCents,
+          amountCents: l.amountCents,
+          kind: invoiceLineKind({ issueKey: l.issueKey, hourlyCents, amountCents: l.amountCents }),
+        };
+      }),
+  };
+}
+
+/**
+ * Save a draft annex — the explicit "decide to keep it" step. Persists the lines and claims
+ * the worklogs it bills (so no hour lands on a second annex), but assigns NO number: drafts
+ * are always unnumbered. The number is minted later, only when the draft is issued.
+ */
+export async function saveAnnexDraft(
+  clientId: string,
+  input: GenerateInvoice,
+  actorId: string,
+): Promise<InvoiceView> {
+  const client = await loadClientOr404(clientId);
+  // Serializable + retry: claiming worklogs mutates the un-invoiced pool a concurrent
+  // preview/save reads; SSI makes the loser re-run on a fresh snapshot.
+  const created = await runSerializable(async (tx) => {
+    const { lineData, subtotal, worklogIds } = await computeAnnex(tx, client, input);
+    const inv = await tx.invoice.create({
       data: {
-        number,
+        // number omitted → NULL: a draft never consumes a sequence number.
         clientId,
         status: 'draft',
         currency: client.currency,
@@ -384,26 +457,20 @@ export async function generateInvoice(
       },
       include: invoiceInclude,
     });
-
-    // Claim every candidate worklog (even fixed-issue hours with no line) so it
-    // can't land on a second invoice. Deleting/voiding this invoice frees them.
     await tx.worklog.updateMany({
-      where: { id: { in: worklogs.map((w) => w.id) } },
-      data: { invoiceId: created.id },
+      where: { id: { in: worklogIds } },
+      data: { invoiceId: inv.id },
     });
-
     await recordAudit(tx, {
       actorId,
-      action: 'invoice.generate',
+      action: 'invoice.draft.save',
       entityType: 'Invoice',
-      entityId: created.id,
-      after: { number, subtotalCents: subtotal, lines: lineData.length },
+      entityId: inv.id,
+      after: { subtotalCents: subtotal, lines: lineData.length },
     });
-
-    return created;
+    return inv;
   });
-
-  return toInvoiceView(invoice);
+  return toInvoiceView(created);
 }
 
 /** Record (or clear) the external TicketBAI fiscal-invoice reference on an annex. */
@@ -435,10 +502,15 @@ export async function setInvoiceExternalRef(
 export async function issueInvoice(id: string, actorId: string): Promise<InvoiceView> {
   const invoice = await loadInvoiceOr404(id);
   if (invoice.status !== 'draft') throw badRequest('only a draft invoice can be issued');
-  const updated = await prisma.$transaction(async (tx) => {
+  // Issuing is what makes an annex DEFINITIVE — so the number is minted now, not at draft time.
+  // Serializable + retry: two concurrent issues reading the same max would collide on the unique
+  // number; SSI aborts the loser, which retries on a fresh snapshot. A draft already carries a
+  // number only in the (re)issue-of-an-already-numbered edge — keep it if so.
+  const updated = await runSerializable(async (tx) => {
+    const number = invoice.number ?? (await nextAnnexNumber(tx));
     const u = await tx.invoice.update({
       where: { id },
-      data: { status: 'issued', issuedAt: new Date() },
+      data: { status: 'issued', issuedAt: new Date(), number },
       include: invoiceInclude,
     });
     await recordAudit(tx, {
@@ -447,7 +519,7 @@ export async function issueInvoice(id: string, actorId: string): Promise<Invoice
       entityType: 'Invoice',
       entityId: id,
       before: { status: 'draft' },
-      after: { status: 'issued', number: u.number },
+      after: { status: 'issued', number },
     });
     return u;
   });

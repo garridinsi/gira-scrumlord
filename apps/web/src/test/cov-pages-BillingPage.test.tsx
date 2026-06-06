@@ -15,20 +15,24 @@ import type { InvoiceListItemView } from '@gira/shared';
 import { renderWithProviders } from './render';
 
 // vi.hoisted so the hoisted vi.mock factories can close over the spies.
-const { clientsList, listForClient, generate, toastSpy, navigateSpy, role } = vi.hoisted(() => ({
-  clientsList: vi.fn(),
-  listForClient: vi.fn(),
-  generate: vi.fn(),
-  toastSpy: vi.fn(),
-  navigateSpy: vi.fn(),
-  // STABLE mutable ref so useMe returns the same object across renders.
-  role: { value: 'admin' as string },
-}));
+const { clientsList, listForClient, preview, generate, toastSpy, navigateSpy, role } = vi.hoisted(
+  () => ({
+    clientsList: vi.fn(),
+    listForClient: vi.fn(),
+    preview: vi.fn(),
+    generate: vi.fn(),
+    toastSpy: vi.fn(),
+    navigateSpy: vi.fn(),
+    // STABLE mutable ref so useMe returns the same object across renders.
+    role: { value: 'admin' as string },
+  }),
+);
 
 vi.mock('../api/client', () => ({
   clients: { list: () => clientsList() },
   invoices: {
     listForClient: (id: string) => listForClient(id),
+    preview: (c: string, b: unknown) => preview(c, b),
     generate: (c: string, b: unknown) => generate(c, b),
   },
   ApiError: class ApiError extends Error {
@@ -88,25 +92,65 @@ describe('BillingPage (coverage)', () => {
     role.value = 'admin';
     clientsList.mockReset().mockResolvedValue([]);
     listForClient.mockReset().mockResolvedValue([]);
+    preview.mockReset();
     generate.mockReset();
     toastSpy.mockReset();
     navigateSpy.mockReset();
   });
 
-  // ── 173: pending label on the generate button ──────────────────────────────
-  it('shows the "..." pending label while the generate mutation is in flight', async () => {
+  // A complete ephemeral preview view, enough for <InvoiceReceipt> to render.
+  const previewView = () => ({
+    id: '',
+    number: null,
+    externalInvoiceRef: null,
+    clientId: 'c1',
+    clientName: 'Acme Corp',
+    status: 'draft',
+    currency: 'EUR',
+    subtotalCents: 12000,
+    periodStart: null,
+    periodEnd: null,
+    createdAt: '2026-06-01T00:00:00Z',
+    issuedAt: null,
+    paidAt: null,
+    notes: null,
+    lines: [
+      {
+        id: 'preview-0',
+        issueKey: 'ACME-1',
+        description: 'Work',
+        minutes: 120,
+        hourlyCents: 6000,
+        amountCents: 12000,
+        kind: 'billable',
+      },
+    ],
+  });
+
+  // ── pending label on the preview button ────────────────────────────────────
+  it('shows the "..." pending label while the preview mutation is in flight', async () => {
     clientsList.mockResolvedValue(TWO_CLIENTS);
     listForClient.mockResolvedValue([]);
     // Never resolves → mutation stays isPending, exposing the "..." label.
-    generate.mockReturnValue(new Promise<never>(() => {}));
+    preview.mockReturnValue(new Promise<never>(() => {}));
     renderWithProviders(<BillingPage />);
     await selectAcme();
 
-    const btn = await screen.findByRole('button', { name: /Generate Annex/ });
+    const btn = await screen.findByRole('button', { name: /Preview/ });
     await userEvent.click(btn);
 
     expect(await screen.findByRole('button', { name: '...' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Generate Annex/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Preview/ })).not.toBeInTheDocument();
+  });
+
+  // ── null-number draft row shows the "— borrador · draft" placeholder ───────
+  it('renders the draft placeholder for an unnumbered annex in the list', async () => {
+    clientsList.mockResolvedValue(TWO_CLIENTS);
+    listForClient.mockResolvedValue([inv({ id: 'd0', number: null, status: 'draft' })]);
+    renderWithProviders(<BillingPage />);
+    await selectAcme();
+
+    expect(await screen.findByText(/— borrador · draft/i)).toBeInTheDocument();
   });
 
   // ── 207: listQ.data ?? [] when listForClient resolves null ─────────────────
@@ -195,16 +239,36 @@ describe('BillingPage (coverage)', () => {
     expect(within(head).getByText('EUR')).toBeInTheDocument();
   });
 
-  // ── extra: generate-form omits empty optionals (guards mutationFn body) ─────
-  it('navigates to the new annex after a successful generation', async () => {
+  // ── preview → save draft → navigate to the saved (unnumbered) annex ─────────
+  it('navigates to the saved draft after previewing then saving', async () => {
     clientsList.mockResolvedValue(TWO_CLIENTS);
     listForClient.mockResolvedValue([]);
-    generate.mockResolvedValue({ id: 'gen-1', number: 'ANX-2026-9999' });
+    preview.mockResolvedValue(previewView());
+    generate.mockResolvedValue({ id: 'gen-1', number: null });
     renderWithProviders(<BillingPage />);
     await selectAcme();
 
-    await userEvent.click(await screen.findByRole('button', { name: /Generate Annex/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Preview/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Save draft/ }));
 
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith('/invoices/gen-1'));
+  });
+
+  // ── Discard clears the preview without saving ───────────────────────────────
+  it('discards the preview without saving', async () => {
+    clientsList.mockResolvedValue(TWO_CLIENTS);
+    listForClient.mockResolvedValue([]);
+    preview.mockResolvedValue(previewView());
+    renderWithProviders(<BillingPage />);
+    await selectAcme();
+
+    await userEvent.click(await screen.findByRole('button', { name: /Preview/ }));
+    expect(await screen.findByText(/BORRADOR · DRAFT/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Discard/ }));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /Save draft/ })).not.toBeInTheDocument(),
+    );
+    expect(generate).not.toHaveBeenCalled();
   });
 });

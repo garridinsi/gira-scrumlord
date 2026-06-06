@@ -5,20 +5,24 @@ import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from './render';
 
 // vi.hoisted so the hoisted vi.mock factories can close over the spies.
-const { clientsList, listForClient, generate, toastSpy, navigateSpy, role } = vi.hoisted(() => ({
-  clientsList: vi.fn(),
-  listForClient: vi.fn(),
-  generate: vi.fn(),
-  toastSpy: vi.fn(),
-  navigateSpy: vi.fn(),
-  // STABLE mutable ref so useMe returns the same object across renders.
-  role: { value: 'admin' as string },
-}));
+const { clientsList, listForClient, preview, generate, toastSpy, navigateSpy, role } = vi.hoisted(
+  () => ({
+    clientsList: vi.fn(),
+    listForClient: vi.fn(),
+    preview: vi.fn(),
+    generate: vi.fn(),
+    toastSpy: vi.fn(),
+    navigateSpy: vi.fn(),
+    // STABLE mutable ref so useMe returns the same object across renders.
+    role: { value: 'admin' as string },
+  }),
+);
 
 vi.mock('../api/client', () => ({
   clients: { list: () => clientsList() },
   invoices: {
     listForClient: (id: string) => listForClient(id),
+    preview: (c: string, b: unknown) => preview(c, b),
     generate: (c: string, b: unknown) => generate(c, b),
   },
   // A real-ish ApiError (mirrors the real (status, body, message) constructor) so
@@ -60,9 +64,39 @@ describe('BillingPage', () => {
     role.value = 'admin';
     clientsList.mockReset().mockResolvedValue([]);
     listForClient.mockReset().mockResolvedValue([]);
+    preview.mockReset();
     generate.mockReset();
     toastSpy.mockReset();
     navigateSpy.mockReset();
+  });
+
+  // A complete ephemeral preview view, enough for <InvoiceReceipt> to render.
+  const previewView = () => ({
+    id: '',
+    number: null,
+    externalInvoiceRef: null,
+    clientId: 'c1',
+    clientName: 'Acme Corp',
+    status: 'draft',
+    currency: 'EUR',
+    subtotalCents: 12000,
+    periodStart: null,
+    periodEnd: null,
+    createdAt: '2026-06-01T00:00:00Z',
+    issuedAt: null,
+    paidAt: null,
+    notes: null,
+    lines: [
+      {
+        id: 'preview-0',
+        issueKey: 'ACME-1',
+        description: 'Work',
+        minutes: 120,
+        hourlyCents: 6000,
+        amountCents: 12000,
+        kind: 'billable',
+      },
+    ],
   });
 
   // ── Page header + client selector ─────────────────────────────────────────
@@ -237,7 +271,7 @@ describe('BillingPage', () => {
 
     expect(await screen.findByText(/read-only/i)).toBeInTheDocument();
     expect(screen.queryByText(/GENERATE ANNEX/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Generate Annex/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Preview/ })).not.toBeInTheDocument();
   });
 
   it('shows the selected client currency in the generate form head', async () => {
@@ -251,10 +285,11 @@ describe('BillingPage', () => {
     expect(within(head).getByText('USD')).toBeInTheDocument();
   });
 
-  it('generates an annex with the typed period + notes, toasts ok, and navigates', async () => {
+  it('previews with the typed period + notes, then saves the draft (toast ok, navigates)', async () => {
     clientsList.mockResolvedValue(TWO_CLIENTS);
     listForClient.mockResolvedValue([]);
-    generate.mockResolvedValue({ id: 'new-inv', number: 'ANX-2026-0099' });
+    preview.mockResolvedValue(previewView());
+    generate.mockResolvedValue({ id: 'new-inv', number: null }); // saved DRAFT — no number
     renderWithProviders(<BillingPage />);
     await selectAcme();
 
@@ -271,8 +306,21 @@ describe('BillingPage', () => {
     await userEvent.type(endInput, '2026-05-31');
     await userEvent.type(notes, 'May retainer');
 
-    await userEvent.click(screen.getByRole('button', { name: /Generate Annex/ }));
+    // Step 1: Preview — computes but saves nothing.
+    await userEvent.click(screen.getByRole('button', { name: /Preview/ }));
+    await waitFor(() => expect(preview).toHaveBeenCalledTimes(1));
+    expect(preview).toHaveBeenCalledWith('c1', {
+      periodStart: '2026-05-01',
+      periodEnd: '2026-05-31',
+      notes: 'May retainer',
+    });
+    // The preview receipt renders, and nothing has been saved or navigated yet.
+    expect(await screen.findByText(/BORRADOR · DRAFT/)).toBeInTheDocument();
+    expect(generate).not.toHaveBeenCalled();
+    expect(navigateSpy).not.toHaveBeenCalled();
 
+    // Step 2: Save draft — persists (still unnumbered) and navigates.
+    await userEvent.click(screen.getByRole('button', { name: /Save draft/ }));
     await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
     expect(generate).toHaveBeenCalledWith('c1', {
       periodStart: '2026-05-01',
@@ -281,62 +329,81 @@ describe('BillingPage', () => {
     });
     await waitFor(() =>
       expect(toastSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ tone: 'ok', body: 'ANX-2026-0099' }),
+        expect.objectContaining({ tone: 'ok', title: expect.stringMatching(/Draft saved/) }),
       ),
     );
     expect(navigateSpy).toHaveBeenCalledWith('/invoices/new-inv');
   });
 
-  it('omits empty optional fields (sends undefined) when generating with no input', async () => {
+  it('omits empty optional fields (sends undefined) when previewing with no input', async () => {
     clientsList.mockResolvedValue(TWO_CLIENTS);
     listForClient.mockResolvedValue([]);
-    generate.mockResolvedValue({ id: 'i2', number: 'ANX-2026-0100' });
+    preview.mockResolvedValue(previewView());
     renderWithProviders(<BillingPage />);
     await selectAcme();
 
-    await userEvent.click(await screen.findByRole('button', { name: /Generate Annex/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Preview/ }));
 
-    await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
-    expect(generate).toHaveBeenCalledWith('c1', {
+    await waitFor(() => expect(preview).toHaveBeenCalledTimes(1));
+    expect(preview).toHaveBeenCalledWith('c1', {
       periodStart: undefined,
       periodEnd: undefined,
       notes: undefined,
     });
-    expect(navigateSpy).toHaveBeenCalledWith('/invoices/i2');
   });
 
-  it('surfaces a danger toast and the inline error span when generate fails', async () => {
+  it('surfaces a danger toast when the preview fails (no navigation)', async () => {
     clientsList.mockResolvedValue(TWO_CLIENTS);
     listForClient.mockResolvedValue([]);
-    generate.mockRejectedValue(new ApiError(400, null, 'period overlaps an existing annex'));
+    preview.mockRejectedValue(new ApiError(400, null, 'no billable work for this period'));
     renderWithProviders(<BillingPage />);
     await selectAcme();
 
-    await userEvent.click(await screen.findByRole('button', { name: /Generate Annex/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Preview/ }));
 
     await waitFor(() =>
       expect(toastSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           tone: 'danger',
-          title: 'Error al generar · Generate failed',
-          body: 'period overlaps an existing annex',
+          title: 'Error al previsualizar · Preview failed',
+          body: 'no billable work for this period',
         }),
       ),
     );
-    // The inline "// error · check input" hint appears once the mutation is in error.
-    expect(await screen.findByText(/error · check input/i)).toBeInTheDocument();
-    // No navigation on failure.
     expect(navigateSpy).not.toHaveBeenCalled();
   });
 
-  it('falls back to "Error" body when the rejection is not an ApiError', async () => {
+  it('surfaces a danger toast when the draft SAVE fails (after a good preview)', async () => {
     clientsList.mockResolvedValue(TWO_CLIENTS);
     listForClient.mockResolvedValue([]);
-    generate.mockRejectedValue(new TypeError('network'));
+    preview.mockResolvedValue(previewView());
+    generate.mockRejectedValue(new ApiError(409, null, 'worklog already invoiced'));
     renderWithProviders(<BillingPage />);
     await selectAcme();
 
-    await userEvent.click(await screen.findByRole('button', { name: /Generate Annex/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Preview/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /Save draft/ }));
+
+    await waitFor(() =>
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: 'danger',
+          title: 'Error al guardar · Save failed',
+          body: 'worklog already invoiced',
+        }),
+      ),
+    );
+    expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  it('falls back to "Error" body when the preview rejection is not an ApiError', async () => {
+    clientsList.mockResolvedValue(TWO_CLIENTS);
+    listForClient.mockResolvedValue([]);
+    preview.mockRejectedValue(new TypeError('network'));
+    renderWithProviders(<BillingPage />);
+    await selectAcme();
+
+    await userEvent.click(await screen.findByRole('button', { name: /Preview/ }));
 
     await waitFor(() =>
       expect(toastSpy).toHaveBeenCalledWith(

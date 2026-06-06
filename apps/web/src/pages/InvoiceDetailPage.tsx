@@ -11,8 +11,10 @@ import { centsToDecimal, downloadCsv } from '../lib/csv';
 import type { InvoiceView } from '@gira/shared';
 
 function exportAnnexCsv(inv: InvoiceView): void {
-  downloadCsv(inv.number, [
-    ['Anexo · Annex', inv.number],
+  // Drafts have no number yet — fall back to a stable filename/label.
+  const ref = inv.number ?? 'BORRADOR';
+  downloadCsv(ref, [
+    ['Anexo · Annex', ref],
     ['Cliente · Client', inv.clientName],
     ['Moneda · Currency', inv.currency],
     ['Factura TicketBAI · TicketBAI invoice', inv.externalInvoiceRef ?? ''],
@@ -152,7 +154,7 @@ export function InvoiceDetailPage() {
     mutationFn: () => invoices.issue(id!),
     onSuccess: (inv) => {
       invalidate();
-      toast({ tone: 'ok', title: 'Anexo emitido · Annex issued', body: inv.number });
+      toast({ tone: 'ok', title: 'Anexo emitido · Annex issued', body: inv.number ?? undefined });
     },
     onError: (err) => {
       toast({
@@ -167,7 +169,7 @@ export function InvoiceDetailPage() {
     mutationFn: () => invoices.pay(id!),
     onSuccess: (inv) => {
       invalidate();
-      toast({ tone: 'ok', title: 'Anexo pagado · Annex paid', body: inv.number });
+      toast({ tone: 'ok', title: 'Anexo pagado · Annex paid', body: inv.number ?? undefined });
     },
     onError: (err) => {
       toast({
@@ -182,7 +184,7 @@ export function InvoiceDetailPage() {
     mutationFn: () => invoices.void(id!),
     onSuccess: (inv) => {
       invalidate();
-      toast({ tone: 'warn', title: 'Anexo anulado · Annex voided', body: inv.number });
+      toast({ tone: 'warn', title: 'Anexo anulado · Annex voided', body: inv.number ?? undefined });
     },
     onError: (err) => {
       toast({
@@ -384,7 +386,9 @@ export function InvoiceDetailPage() {
                 <button
                   className="b-btn b-btn--ghost"
                   onClick={() => {
-                    if (confirm(`¿Eliminar borrador ${inv.number}? · Delete draft ${inv.number}?`))
+                    // Drafts are unnumbered; identify by client + period in the prompt instead.
+                    const ref = inv.number ?? inv.clientName;
+                    if (confirm(`¿Eliminar borrador ${ref}? · Delete draft ${ref}?`))
                       deleteMut.mutate();
                   }}
                   disabled={anyPending}

@@ -10,11 +10,12 @@ import { currentUser, requireAuth } from '../../lib/auth.js';
 import { assertAdmin, assertCanWrite, assertStaff } from '../../lib/scope.js';
 import {
   deleteInvoice,
-  generateInvoice,
   getInvoice,
   issueInvoice,
   listClientInvoices,
   payInvoice,
+  previewAnnex,
+  saveAnnexDraft,
   setInvoiceExternalRef,
   toInvoiceView,
   voidInvoice,
@@ -27,13 +28,26 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
     return listClientInvoices(id);
   });
 
+  // Preview an annex without saving it — same computation + validation, but nothing is
+  // written (no row, no number, no worklog claim). Staff review this before deciding to save.
+  app.post('/clients/:id/invoices/preview', { preHandler: requireAuth }, async (req) => {
+    const user = currentUser(req);
+    assertStaff(user);
+    assertCanWrite(user);
+    const { id } = req.params as { id: string };
+    const input = generateInvoiceSchema.parse(req.body ?? {});
+    return previewAnnex(id, input);
+  });
+
+  // Save a draft — the explicit "keep it" step. Persists the lines + claims worklogs, but
+  // assigns NO number (drafts are always unnumbered; the number is minted only when issued).
   app.post('/clients/:id/invoices', { preHandler: requireAuth }, async (req, reply) => {
     const user = currentUser(req);
     assertStaff(user);
     assertCanWrite(user);
     const { id } = req.params as { id: string };
     const input = generateInvoiceSchema.parse(req.body ?? {});
-    const invoice = await generateInvoice(id, input, user.id);
+    const invoice = await saveAnnexDraft(id, input, user.id);
     return reply.code(201).send(invoice);
   });
 

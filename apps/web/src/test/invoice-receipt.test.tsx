@@ -120,6 +120,12 @@ describe('InvoiceReceipt', () => {
     expect(footer).toHaveTextContent(/incluido en la cuota fija.*flat monthly fee/i);
   });
 
+  it('shows a draft placeholder instead of a number when the annex is unnumbered', () => {
+    render(<InvoiceReceipt invoice={makeInvoice({ number: null, status: 'draft' })} />);
+    expect(screen.getByText('BORRADOR · DRAFT')).toBeInTheDocument();
+    expect(screen.queryByText('ANX-2026-0001')).not.toBeInTheDocument();
+  });
+
   it('omits the covered footer when no line is covered', () => {
     render(<InvoiceReceipt invoice={makeInvoice()} />); // billable + fixed only
     expect(screen.queryByTestId('covered-footer')).not.toBeInTheDocument();

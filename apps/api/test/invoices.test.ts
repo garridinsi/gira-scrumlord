@@ -63,7 +63,7 @@ describe('invoicing (M5)', () => {
     const inv = gen.json();
     expect(inv.status).toBe('draft');
     expect(inv.currency).toBe('EUR');
-    expect(inv.number).toMatch(/^ANX-\d{4}-0001$/); // non-fiscal annex, not a TicketBAI invoice
+    expect(inv.number).toBeNull(); // a saved DRAFT carries no number until it is issued
     expect(inv.lines).toHaveLength(1);
     expect(inv.lines[0]).toMatchObject({
       issueKey: 'ACME-1',
@@ -82,6 +82,15 @@ describe('invoicing (M5)', () => {
       headers: { cookie: staff.cookie },
     });
     expect(reread.json().lines[0]).toMatchObject({ hourlyCents: 6000, amountCents: 12000 });
+
+    // Issuing is what makes it definitive — the ANX number is minted now, not at draft time.
+    const issued = await app.inject({
+      method: 'POST',
+      url: `/invoices/${inv.id}/issue`,
+      headers: { cookie: staff.cookie },
+    });
+    expect(issued.statusCode).toBe(200);
+    expect(issued.json().number).toMatch(/^ANX-\d{4}-0001$/);
   });
 
   it('refuses to generate when an hourly issue has no rate (no silent €0)', async () => {
@@ -102,6 +111,89 @@ describe('invoicing (M5)', () => {
         })
       ).json(),
     ).toEqual([]);
+  });
+
+  it('previews an annex without saving it (no row, no number, no worklog claim)', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Build the anvil' });
+    await logWork(staff.cookie, 'ACME-1', 120);
+    await setRate(staff.cookie, 6000);
+
+    const preview = await app.inject({
+      method: 'POST',
+      url: `/clients/${client.id}/invoices/preview`,
+      headers: { cookie: staff.cookie },
+    });
+    expect(preview.statusCode).toBe(200);
+    const pv = preview.json();
+    expect(pv.id).toBe(''); // ephemeral — not a saved row
+    expect(pv.number).toBeNull();
+    expect(pv.status).toBe('draft');
+    expect(pv.subtotalCents).toBe(12_000);
+    expect(pv.lines[0]).toMatchObject({
+      issueKey: 'ACME-1',
+      amountCents: 12_000,
+      kind: 'billable',
+    });
+
+    // Nothing was persisted: the client's annex list is still empty…
+    const list = await app.inject({
+      method: 'GET',
+      url: `/clients/${client.id}/invoices`,
+      headers: { cookie: staff.cookie },
+    });
+    expect(list.json()).toEqual([]);
+    // …and the worklog was NOT claimed, so a real generate still finds it billable.
+    const saved = await generate(staff.cookie, client.id);
+    expect(saved.statusCode).toBe(201);
+    expect(saved.json().subtotalCents).toBe(12_000);
+  });
+
+  it('preview echoes the period and itemises covered lines (€0) without saving', async () => {
+    const { client, staff } = await setup();
+    await setRate(staff.cookie, 6000);
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Billable' });
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Covered' });
+    await prisma.issue.update({ where: { key: 'ACME-2' }, data: { billingMode: 'covered' } });
+    await app.inject({
+      method: 'POST',
+      url: '/issues/ACME-1/worklogs',
+      headers: { cookie: staff.cookie },
+      payload: { minutes: 60, billable: true, loggedAt: '2026-05-10T12:00:00.000Z' },
+    });
+    await app.inject({
+      method: 'POST',
+      url: '/issues/ACME-2/worklogs',
+      headers: { cookie: staff.cookie },
+      payload: { minutes: 30, billable: true, loggedAt: '2026-05-10T12:00:00.000Z' },
+    });
+
+    const preview = await app.inject({
+      method: 'POST',
+      url: `/clients/${client.id}/invoices/preview`,
+      headers: { cookie: staff.cookie },
+      payload: { periodStart: '2026-05-01', periodEnd: '2026-05-31', notes: 'May' },
+    });
+    expect(preview.statusCode).toBe(200);
+    const pv = preview.json();
+    expect(pv.periodStart).not.toBeNull(); // period echoed back as ISO
+    expect(pv.periodEnd).not.toBeNull();
+    expect(pv.notes).toBe('May');
+    const covered = pv.lines.find((l: { issueKey: string }) => l.issueKey === 'ACME-2');
+    expect(covered).toMatchObject({ amountCents: 0, hourlyCents: null, kind: 'covered' });
+  });
+
+  it('preview surfaces the same validation errors as a save (no rate → 400)', async () => {
+    const { client, staff } = await setup();
+    await create(staff.cookie, { projectKey: 'ACME', title: 'Unrated' });
+    await logWork(staff.cookie, 'ACME-1', 60);
+    const preview = await app.inject({
+      method: 'POST',
+      url: `/clients/${client.id}/invoices/preview`,
+      headers: { cookie: staff.cookie },
+    });
+    expect(preview.statusCode).toBe(400);
+    expect(preview.json().error ?? preview.json().message).toMatch(/rate/i);
   });
 
   it('records the external TicketBAI fiscal-invoice reference on the annex', async () => {
@@ -247,35 +339,45 @@ describe('invoicing (M5)', () => {
     expect(gen.json().error ?? gen.json().message).toMatch(/fixed price/i);
   });
 
-  it('does not reuse an existing annex number after a draft is deleted (max-based seq)', async () => {
+  it('drafts never consume a number — only issued annexes are numbered, sequentially', async () => {
     const { client, staff } = await setup();
     await setRate(staff.cookie, 6000);
-    // Two annexes from two issues.
+    const issue = (invId: string) =>
+      app
+        .inject({
+          method: 'POST',
+          url: `/invoices/${invId}/issue`,
+          headers: { cookie: staff.cookie },
+        })
+        .then((r) => r.json());
+
+    // Annex A: saved as an unnumbered draft, then issued → 0001.
     await create(staff.cookie, { projectKey: 'ACME', title: 'A' });
     await logWork(staff.cookie, 'ACME-1', 30);
     const a = (await generate(staff.cookie, client.id)).json();
-    expect(a.number).toMatch(/-0001$/);
+    expect(a.number).toBeNull();
+    expect((await issue(a.id)).number).toMatch(/-0001$/);
+
+    // A second draft is saved then DELETED — it must not burn number 0002.
     await create(staff.cookie, { projectKey: 'ACME', title: 'B' });
     await logWork(staff.cookie, 'ACME-2', 30);
     const b = (await generate(staff.cookie, client.id)).json();
-    expect(b.number).toMatch(/-0002$/);
-
-    // Delete the FIRST draft (frees A's hours). The old count-based numbering would
-    // now generate ...-0002 again and collide; max-based yields ...-0003.
+    expect(b.number).toBeNull();
     expect(
       (
         await app.inject({
           method: 'DELETE',
-          url: `/invoices/${a.id}`,
+          url: `/invoices/${b.id}`,
           headers: { cookie: staff.cookie },
         })
       ).statusCode,
     ).toBe(204);
+
+    // Annex C is issued next → still 0002 (the deleted draft consumed no number).
     await create(staff.cookie, { projectKey: 'ACME', title: 'C' });
     await logWork(staff.cookie, 'ACME-3', 30);
-    const c = await generate(staff.cookie, client.id);
-    expect(c.statusCode).toBe(201);
-    expect(c.json().number).toMatch(/-0003$/);
+    const c = (await generate(staff.cookie, client.id)).json();
+    expect((await issue(c.id)).number).toMatch(/-0002$/);
   });
 
   it('deleting a draft releases its worklogs so they can be re-invoiced', async () => {

@@ -575,6 +575,13 @@ export interface GenerateInvoiceInput {
 export const invoices = {
   listForClient: (clientId: string) =>
     request<InvoiceListItemView[]>(`/clients/${clientId}/invoices`),
+  // Preview an annex without saving it (no row, no number, no worklog claim).
+  preview: (clientId: string, data: GenerateInvoiceInput = {}) =>
+    request<InvoiceView>(`/clients/${clientId}/invoices/preview`, {
+      method: 'POST',
+      ...json(data),
+    }),
+  // Save a draft (persists + claims worklogs, but assigns NO number until issued).
   generate: (clientId: string, data: GenerateInvoiceInput = {}) =>
     request<InvoiceView>(`/clients/${clientId}/invoices`, { method: 'POST', ...json(data) }),
   get: (id: string) => request<InvoiceView>(`/invoices/${id}`),

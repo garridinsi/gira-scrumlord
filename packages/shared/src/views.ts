@@ -311,7 +311,8 @@ export interface InvoiceLineView {
 /** Summary row for the non-fiscal billing-annex list — no lines. */
 export interface InvoiceListItemView {
   id: string;
-  number: string;
+  /** ANX-YYYY-NNNN annex ref. null while draft — minted only when the annex is issued. */
+  number: string | null;
   /** The external TicketBAI fiscal-invoice reference, once recorded; else null. */
   externalInvoiceRef: string | null;
   clientId: string;

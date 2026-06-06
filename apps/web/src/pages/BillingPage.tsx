@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { InvoiceListItemView } from '@gira/shared';
+import type { InvoiceListItemView, InvoiceView } from '@gira/shared';
 import { invoices, clients, ApiError } from '../api/client';
 import { useMe } from '../hooks/useAuth';
 import { useToast } from '../ui/Toast';
+import { InvoiceReceipt } from '../ui/InvoiceReceipt';
 import { Plate } from '../ui/atoms';
 import { formatMoney } from '../lib/money';
 import { formatDate } from '../lib/format';
@@ -62,26 +63,48 @@ function GenerateForm({ clientId, currency }: { clientId: string; currency: stri
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
   const [notes, setNotes] = useState('');
+  // An annex is PREVIEWED first (nothing saved). Only "Save draft" persists it — and a draft
+  // is saved without a number; the number is minted only when the draft is later issued.
+  const [preview, setPreview] = useState<InvoiceView | null>(null);
 
-  const generateMut = useMutation({
-    mutationFn: () =>
-      invoices.generate(clientId, {
-        periodStart: periodStart || undefined,
-        periodEnd: periodEnd || undefined,
-        notes: notes || undefined,
-      }),
-    onSuccess: (inv) => {
-      void qc.invalidateQueries({ queryKey: ['invoices', 'client', clientId] });
-      toast({ tone: 'ok', title: 'Anexo generado · Annex generated', body: inv.number });
-      navigate(`/invoices/${inv.id}`);
-    },
-    onError: (err) => {
+  const params = () => ({
+    periodStart: periodStart || undefined,
+    periodEnd: periodEnd || undefined,
+    notes: notes || undefined,
+  });
+
+  // Any input change invalidates a stale preview so a saved draft always matches what's shown.
+  const clearPreview = () => setPreview(null);
+
+  const previewMut = useMutation({
+    mutationFn: () => invoices.preview(clientId, params()),
+    onSuccess: (inv) => setPreview(inv),
+    onError: (err) =>
       toast({
         tone: 'danger',
-        title: 'Error al generar · Generate failed',
+        title: 'Error al previsualizar · Preview failed',
         body: err instanceof ApiError ? err.message : 'Error',
+      }),
+  });
+
+  const saveMut = useMutation({
+    mutationFn: () => invoices.generate(clientId, params()),
+    onSuccess: (inv) => {
+      void qc.invalidateQueries({ queryKey: ['invoices', 'client', clientId] });
+      toast({
+        tone: 'ok',
+        title: 'Borrador guardado · Draft saved',
+        body: 'sin número hasta emitir · unnumbered until issued',
       });
+      setPreview(null);
+      navigate(`/invoices/${inv.id}`);
     },
+    onError: (err) =>
+      toast({
+        tone: 'danger',
+        title: 'Error al guardar · Save failed',
+        body: err instanceof ApiError ? err.message : 'Error',
+      }),
   });
 
   const inputStyle = {
@@ -120,7 +143,10 @@ function GenerateForm({ clientId, currency }: { clientId: string; currency: stri
           <input
             type="date"
             value={periodStart}
-            onChange={(e) => setPeriodStart(e.currentTarget.value)}
+            onChange={(e) => {
+              setPeriodStart(e.currentTarget.value);
+              clearPreview();
+            }}
             style={inputStyle}
           />
         </div>
@@ -131,7 +157,10 @@ function GenerateForm({ clientId, currency }: { clientId: string; currency: stri
           <input
             type="date"
             value={periodEnd}
-            onChange={(e) => setPeriodEnd(e.currentTarget.value)}
+            onChange={(e) => {
+              setPeriodEnd(e.currentTarget.value);
+              clearPreview();
+            }}
             style={inputStyle}
           />
         </div>
@@ -141,7 +170,10 @@ function GenerateForm({ clientId, currency }: { clientId: string; currency: stri
           </label>
           <textarea
             value={notes}
-            onChange={(e) => setNotes(e.currentTarget.value)}
+            onChange={(e) => {
+              setNotes(e.currentTarget.value);
+              clearPreview();
+            }}
             rows={2}
             style={{
               ...inputStyle,
@@ -160,19 +192,55 @@ function GenerateForm({ clientId, currency }: { clientId: string; currency: stri
           alignItems: 'center',
         }}
       >
-        {generateMut.isError && (
-          <span className="mono" style={{ color: 'var(--eg-red)', fontSize: 11 }}>
-            // error · check input
-          </span>
-        )}
         <button
           className="b-btn b-btn--ink"
-          onClick={() => generateMut.mutate()}
-          disabled={generateMut.isPending}
+          onClick={() => previewMut.mutate()}
+          disabled={previewMut.isPending}
         >
-          {generateMut.isPending ? '...' : '+ Generar Anexo · Generate Annex'}
+          {previewMut.isPending ? '...' : '⊙ Previsualizar · Preview'}
         </button>
       </div>
+
+      {/* Preview — nothing is saved until "Save draft" is pressed. */}
+      {preview && (
+        <div style={{ borderTop: '2px dashed var(--eg-iron)', padding: '16px 18px' }}>
+          <div
+            className="mono"
+            style={{
+              fontSize: 11,
+              color: 'var(--eg-fg-3)',
+              marginBottom: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span style={{ color: 'var(--eg-yellow)' }}>//</span>
+            previsualización · preview — no guardado hasta confirmar · not saved until you confirm
+          </div>
+          <InvoiceReceipt invoice={preview} />
+          <div
+            style={{
+              marginTop: 14,
+              display: 'flex',
+              gap: 8,
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+            }}
+          >
+            <button className="b-btn" onClick={clearPreview} disabled={saveMut.isPending}>
+              Descartar · Discard
+            </button>
+            <button
+              className="b-btn b-btn--ink"
+              onClick={() => saveMut.mutate()}
+              disabled={saveMut.isPending}
+            >
+              {saveMut.isPending ? '...' : '↓ Guardar borrador · Save draft'}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -284,11 +352,12 @@ function InvoiceList({ clientId }: { clientId: string }) {
                   fontFamily: 'var(--font-mono)',
                   fontWeight: 700,
                   fontSize: 13,
-                  color: 'var(--eg-iron)',
+                  color: inv.number ? 'var(--eg-iron)' : 'var(--eg-fg-4)',
                   letterSpacing: '0.06em',
                 }}
               >
-                {inv.number}
+                {/* Drafts are unnumbered until issued. */}
+                {inv.number ?? '— borrador · draft'}
               </span>
             </span>
             <span>

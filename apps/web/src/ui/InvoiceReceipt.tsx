@@ -372,7 +372,8 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
                 letterSpacing: '0.08em',
               }}
             >
-              {invoice.number}
+              {/* Drafts have no number until issued — show a clear placeholder. */}
+              {invoice.number ?? 'BORRADOR · DRAFT'}
             </span>
           </Plate>
           <div style={{ marginTop: 8 }}>
