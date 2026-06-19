@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { IssueView, LabelView, UserView } from '@gira/shared';
@@ -62,9 +62,13 @@ const chip = (text: string): HTMLElement => {
 };
 
 function renderBar(
-  props?: Partial<{ projectKey: string; myId: string | null; onResults: ReturnType<typeof vi.fn> }>,
+  props?: Partial<{
+    projectKey: string;
+    myId: string | null;
+    onResults: Mock<(issues: IssueView[] | null) => void>;
+  }>,
 ) {
-  const onResults = props?.onResults ?? vi.fn();
+  const onResults = props?.onResults ?? vi.fn<(issues: IssueView[] | null) => void>();
   renderWithProviders(
     <FilterBar
       projectKey={props?.projectKey ?? 'GIRA'}

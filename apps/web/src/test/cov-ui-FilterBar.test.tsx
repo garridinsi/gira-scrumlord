@@ -8,7 +8,7 @@
 //   - the CSV export onClick (line 398)
 //   - the assignee chip label fallback `?? filter.assigneeId` when the active
 //     assignee id is not present in the loaded user list (line 446)
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { IssueView, LabelView, UserView } from '@gira/shared';
@@ -71,9 +71,13 @@ const chip = (text: string): HTMLElement => {
 };
 
 function renderBar(
-  props?: Partial<{ projectKey: string; myId: string | null; onResults: ReturnType<typeof vi.fn> }>,
+  props?: Partial<{
+    projectKey: string;
+    myId: string | null;
+    onResults: Mock<(issues: IssueView[] | null) => void>;
+  }>,
 ) {
-  const onResults = props?.onResults ?? vi.fn();
+  const onResults = props?.onResults ?? vi.fn<(issues: IssueView[] | null) => void>();
   renderWithProviders(
     <FilterBar
       projectKey={props?.projectKey ?? 'GIRA'}
