@@ -18,25 +18,21 @@ const HTML_TAG = /<\/?[a-zA-Z!][^>]*>/g;
 // A dangerous scheme opening a Markdown link/image target: `](javascript:` etc.
 const DANGEROUS_LINK = /\]\(\s*(?:javascript|data|vbscript|file):/gi;
 
-// One scrubbing pass: strip comments, then tags, then defang dangerous schemes.
-function scrubOnce(s: string): string {
-  return s
-    .replace(HTML_COMMENT, '')
-    .replace(HTML_TAG, '')
-    .replace(DANGEROUS_LINK, '](#');
-}
-
 export function sanitizeMarkdown(input: string): string {
   if (!input) return input;
-  // Apply the scrub to a FIXPOINT. A single pass is unsafe: removing an inner match can
-  // splice the surrounding halves into a brand-new one — e.g. `<<script>script>` becomes
-  // `<script>`, and `](java<x>script:` becomes `](javascript:`. Each pass only deletes
-  // characters, so the string shrinks monotonically and the loop always terminates.
-  let prev = input;
-  let s = scrubOnce(prev);
-  while (s !== prev) {
+  // Strip raw HTML (comments, then tags) to a FIXPOINT. A single pass is unsafe because
+  // removing an inner match can splice the surrounding halves into a brand-new one — e.g.
+  // `<<script>script>` collapses to `<script>`. Looping until the string stops changing
+  // guarantees no `<!--` or tag survives; each pass only deletes characters, so it shrinks
+  // monotonically and the loop always terminates.
+  let prev: string;
+  let s = input;
+  do {
     prev = s;
-    s = scrubOnce(prev);
-  }
-  return s;
+    s = s.replace(HTML_COMMENT, '').replace(HTML_TAG, '');
+  } while (s !== prev);
+  // Now defang dangerous link/image schemes — `](scheme:rest)` → `](#rest)`. Safe to do
+  // once: the HTML strip above has reached a fixpoint, so no further tag removal can
+  // reconstruct a `](javascript:` target (e.g. `](java<x>script:` is already collapsed).
+  return s.replace(DANGEROUS_LINK, '](#');
 }
