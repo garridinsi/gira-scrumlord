@@ -16,7 +16,7 @@
     "@gira/db": "workspace:*",
     "dotenv": "^16.4.7",
     "nodemailer": "^9.0.1",
-    "undici": "^8.5.0",
+    "undici": "^6.27.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
