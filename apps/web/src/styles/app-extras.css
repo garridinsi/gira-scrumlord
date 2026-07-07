@@ -1186,21 +1186,22 @@ button {
    Printing the billing annex should read like a document prepared for paper —
    the SAME annex you see on the web, but templated for the page rather than a
    raw Ctrl-P of the app. So print keeps the receipt's own look (border, hazard-
-   stripe header, colors, spacing) and adds the document furniture: a measured
-   page frame, a running footer with page numbers on every sheet, and column
-   headings that repeat at the top of each continuation page (via the <thead>).
+   stripe header, colors, spacing) and adds the document furniture: a full-bleed
+   page (near-zero margins), a running footer with page numbers on every sheet,
+   and column headings that repeat at the top of each continuation page (<thead>).
    It also does the plumbing: expand the app's scroll shells (Chrome otherwise
    clips an overflow:auto box to its first page), hide app chrome, force the
    design's colors to render (browsers drop backgrounds by default), and keep
    rows/blocks from splitting across page breaks.
    ──────────────────────────────────────────────────────────────────────────── */
 
-/* Document-style page: a measured frame (not a full-bleed screenshot) with a
-   running footer on every sheet — page numbers on the right, the document's
-   identity on the left, the non-fiscal note centered. */
+/* Full-bleed page: the annex paints to the top and side edges (near-zero
+   margins), with just a bottom band reserved for the running footer — page
+   numbers on the right, the document's identity on the left, the non-fiscal
+   note centered. */
 @page {
   size: A4;
-  margin: 10mm 10mm 14mm;
+  margin: 0 0 11mm;
 
   @bottom-left {
     content: 'GIRA · Anexo de facturación';
@@ -1298,11 +1299,14 @@ button {
     print-color-adjust: exact !important;
   }
 
-  /* Same card as the web, minus the offset drop shadow (which only reads as a
-     UI artifact on paper). Border, header stripes and spacing stay as-is; let
-     it span the full printable width instead of the on-screen 960px cap. */
+  /* Full-bleed: drop the on-screen card frame (border + offset shadow) and the
+     960px cap so the annex paints edge to edge. Removing the side border also
+     stops the leftover space under the last row on a page from looking like a
+     framed empty row — it just becomes page background. The header stripes,
+     colors and internal spacing are unchanged. */
   .invoice-receipt {
     box-shadow: none !important;
+    border: none !important;
     max-width: 100% !important;
     width: 100% !important;
     margin: 0 !important;
