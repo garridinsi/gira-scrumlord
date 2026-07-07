@@ -1225,6 +1225,15 @@ button {
     overflow: visible !important;
   }
 
+  /* Staff annex detail wraps the receipt in an inline overflow:auto scroller.
+     Chrome clips an overflow:auto box to its first printed page, so a multi-line
+     annex prints blank/truncated. Let it expand like the portal shell above. */
+  .invoice-detail__scroll {
+    flex: none !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
   .invoice-receipt {
     box-shadow: none !important;
     border: 1px solid #0b1620 !important;

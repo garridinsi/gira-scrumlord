@@ -291,6 +291,7 @@ export function InvoiceDetailPage() {
   return (
     <div className="body">
       <div
+        className="invoice-detail__scroll"
         style={{
           flex: 1,
           overflow: 'auto',
