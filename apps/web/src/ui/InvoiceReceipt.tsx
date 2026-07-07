@@ -509,179 +509,195 @@ export function InvoiceReceipt({ invoice }: { invoice: InvoiceView }) {
         </div>
       </div>
 
-      {/* ── Lines table ─────────────────────────────────────── */}
-      <div className="invoice-receipt__lines">
-        {/* Table header */}
-        <div className="invoice-receipt__line invoice-receipt__line--head">
-          <span className="invoice-receipt__col invoice-receipt__col--issue">
-            <span className="invoice-receipt__col-es">ISSUE</span>
-          </span>
-          <span className="invoice-receipt__col invoice-receipt__col--desc">
-            <span className="invoice-receipt__col-es">DESCRIPCIÓN</span>
-            <span className="invoice-receipt__col-en">DESCRIPTION</span>
-          </span>
-          <span className="invoice-receipt__col invoice-receipt__col--time">
-            <span className="invoice-receipt__col-es">TIEMPO</span>
-            <span className="invoice-receipt__col-en">TIME</span>
-          </span>
-          <span className="invoice-receipt__col invoice-receipt__col--rate">
-            <span className="invoice-receipt__col-es">TARIFA</span>
-            <span className="invoice-receipt__col-en">RATE</span>
-          </span>
-          <span className="invoice-receipt__col invoice-receipt__col--amount invoice-receipt__col--right">
-            <span className="invoice-receipt__col-es">IMPORTE</span>
-            <span className="invoice-receipt__col-en">AMOUNT</span>
-          </span>
-        </div>
-
-        {/* Data rows */}
-        {invoice.lines.map((line, i) => (
-          <div
-            key={line.id}
-            className="invoice-receipt__line"
-            style={{ background: i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)' }}
-          >
-            <span className="invoice-receipt__col invoice-receipt__col--issue">
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  background: 'var(--eg-iron)',
-                  color: 'var(--eg-yellow)',
-                  padding: '2px 7px',
-                  display: 'inline-block',
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {line.issueKey}
-              </span>
-            </span>
-            <span className="invoice-receipt__col invoice-receipt__col--desc">
-              <span
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  gap: 5,
-                }}
-              >
+      {/* ── Lines table ───────────────────────────────────────
+          A real <table> so the column headings repeat on every printed
+          page (thead = table-header-group) — a continuation page reads as
+          a proper document, not a screenshot cut off mid-list. */}
+      <table className="invoice-receipt__lines">
+        <colgroup>
+          <col className="invoice-receipt__cg--issue" />
+          <col className="invoice-receipt__cg--desc" />
+          <col className="invoice-receipt__cg--time" />
+          <col className="invoice-receipt__cg--rate" />
+          <col className="invoice-receipt__cg--amount" />
+        </colgroup>
+        <thead>
+          <tr className="invoice-receipt__line invoice-receipt__line--head">
+            <th className="invoice-receipt__col invoice-receipt__col--issue">
+              <span className="invoice-receipt__col-es">ISSUE</span>
+            </th>
+            <th className="invoice-receipt__col invoice-receipt__col--desc">
+              <span className="invoice-receipt__col-es">DESCRIPCIÓN</span>
+              <span className="invoice-receipt__col-en">DESCRIPTION</span>
+            </th>
+            <th className="invoice-receipt__col invoice-receipt__col--time">
+              <span className="invoice-receipt__col-es">TIEMPO</span>
+              <span className="invoice-receipt__col-en">TIME</span>
+            </th>
+            <th className="invoice-receipt__col invoice-receipt__col--rate">
+              <span className="invoice-receipt__col-es">TARIFA</span>
+              <span className="invoice-receipt__col-en">RATE</span>
+            </th>
+            <th className="invoice-receipt__col invoice-receipt__col--amount invoice-receipt__col--right">
+              <span className="invoice-receipt__col-es">IMPORTE</span>
+              <span className="invoice-receipt__col-en">AMOUNT</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {/* Data rows */}
+          {invoice.lines.map((line, i) => (
+            <tr
+              key={line.id}
+              className="invoice-receipt__line"
+              style={{ background: i % 2 ? 'var(--eg-paper)' : 'var(--eg-paper-2)' }}
+            >
+              <td className="invoice-receipt__col invoice-receipt__col--issue">
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
-                    fontSize: 12,
-                    color: 'var(--eg-fg-1)',
-                    lineHeight: 1.4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: 'var(--eg-iron)',
+                    color: 'var(--eg-yellow)',
+                    padding: '2px 7px',
+                    display: 'inline-block',
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
                   }}
                 >
-                  {line.description}
+                  {line.issueKey}
                 </span>
-                <KindBadge kind={line.kind} />
-              </span>
-            </span>
-            <span className="invoice-receipt__col invoice-receipt__col--time">
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: 'var(--eg-iron)',
-                }}
-              >
-                {formatMinutes(line.minutes)}
-              </span>
-            </span>
-            <span className="invoice-receipt__col invoice-receipt__col--rate">
-              {line.hourlyCents !== null ? (
+              </td>
+              <td className="invoice-receipt__col invoice-receipt__col--desc">
+                <span
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: 5,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 12,
+                      color: 'var(--eg-fg-1)',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {line.description}
+                  </span>
+                  <KindBadge kind={line.kind} />
+                </span>
+              </td>
+              <td className="invoice-receipt__col invoice-receipt__col--time">
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: 12,
+                    fontWeight: 600,
                     color: 'var(--eg-iron)',
                   }}
                 >
-                  {formatMoney(line.hourlyCents, invoice.currency)}
-                  <span style={{ color: 'var(--eg-fg-3)', fontSize: 10 }}>/h</span>
+                  {formatMinutes(line.minutes)}
                 </span>
-              ) : (
+              </td>
+              <td className="invoice-receipt__col invoice-receipt__col--rate">
+                {line.hourlyCents !== null ? (
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 12,
+                      color: 'var(--eg-iron)',
+                    }}
+                  >
+                    {formatMoney(line.hourlyCents, invoice.currency)}
+                    <span style={{ color: 'var(--eg-fg-3)', fontSize: 10 }}>/h</span>
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.1em',
+                      color: 'var(--eg-fg-3)',
+                    }}
+                  >
+                    {line.kind === 'covered'
+                      ? 'incluido · included'
+                      : line.kind === 'retainer'
+                        ? 'cuota mensual · monthly'
+                        : 'precio fijo · fixed'}
+                  </span>
+                )}
+              </td>
+              <td className="invoice-receipt__col invoice-receipt__col--amount invoice-receipt__col--right">
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    color: 'var(--eg-fg-3)',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: 'var(--eg-iron)',
                   }}
                 >
-                  {line.kind === 'covered'
-                    ? 'incluido · included'
-                    : line.kind === 'retainer'
-                      ? 'cuota mensual · monthly'
-                      : 'precio fijo · fixed'}
+                  {formatMoney(line.amountCents, invoice.currency)}
                 </span>
-              )}
-            </span>
-            <span className="invoice-receipt__col invoice-receipt__col--amount invoice-receipt__col--right">
-              <span
+              </td>
+            </tr>
+          ))}
+
+          {/* Empty state */}
+          {invoice.lines.length === 0 && (
+            <tr>
+              <td
+                colSpan={5}
                 style={{
+                  padding: '32px 20px',
+                  textAlign: 'center',
                   fontFamily: 'var(--font-mono)',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: 'var(--eg-iron)',
+                  fontSize: 11,
+                  color: 'var(--eg-fg-4)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.12em',
                 }}
               >
-                {formatMoney(line.amountCents, invoice.currency)}
-              </span>
-            </span>
-          </div>
-        ))}
+                sin líneas · no lines
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
 
-        {/* Empty state */}
-        {invoice.lines.length === 0 && (
-          <div
-            style={{
-              padding: '32px 20px',
-              textAlign: 'center',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--eg-fg-4)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-            }}
-          >
-            sin líneas · no lines
-          </div>
-        )}
-
-        {/* Total row */}
-        <div className="invoice-receipt__total">
-          <span style={{ flex: 1 }} />
+      {/* Total row — a sibling of the table so it prints once at the end,
+          not repeated per page the way a <tfoot> group would be. */}
+      <div className="invoice-receipt__total">
+        <span style={{ flex: 1 }} />
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            textTransform: 'uppercase',
+            letterSpacing: '0.16em',
+            color: 'var(--eg-fg-3)',
+            paddingRight: 20,
+          }}
+        >
+          TOTAL ANEXO · ANNEX TOTAL
+        </span>
+        <Plate tone="yellow" style={{ fontSize: 16, padding: '8px 18px' }}>
           <span
             style={{
               fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              textTransform: 'uppercase',
-              letterSpacing: '0.16em',
-              color: 'var(--eg-fg-3)',
-              paddingRight: 20,
+              fontWeight: 800,
+              fontSize: 18,
+              letterSpacing: '0.02em',
             }}
           >
-            TOTAL ANEXO · ANNEX TOTAL
+            {formatMoney(invoice.subtotalCents, invoice.currency)}
           </span>
-          <Plate tone="yellow" style={{ fontSize: 16, padding: '8px 18px' }}>
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 800,
-                fontSize: 18,
-                letterSpacing: '0.02em',
-              }}
-            >
-              {formatMoney(invoice.subtotalCents, invoice.currency)}
-            </span>
-          </Plate>
-        </div>
+        </Plate>
       </div>
 
       {/* ── Covered-time footer ─────────────────────────────── */}
