@@ -1099,31 +1099,51 @@ button {
   color: var(--eg-fg-4);
 }
 
+/* Semantic table so column headings repeat on every printed page. Widths and
+   spacing are tuned to render exactly like the previous CSS-grid layout. */
 .invoice-receipt__lines {
-  padding: 0;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
 }
 
-.invoice-receipt__line {
-  display: grid;
-  grid-template-columns: 110px 1fr 100px 160px 160px;
-  gap: 0;
-  align-items: center;
-  padding: 10px 20px;
+.invoice-receipt__cg--issue {
+  width: 110px;
+}
+.invoice-receipt__cg--time {
+  width: 100px;
+}
+.invoice-receipt__cg--rate {
+  width: 160px;
+}
+.invoice-receipt__cg--amount {
+  width: 160px;
 }
 
 .invoice-receipt__line--head {
   background: var(--eg-iron) !important;
   border-bottom: 2px solid var(--eg-iron);
-  padding: 8px 20px;
 }
 
 .invoice-receipt__col {
-  padding: 0 8px 0 0;
+  padding: 10px 8px 10px 0;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.invoice-receipt__line--head .invoice-receipt__col {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* The old row carried 20px side gutters; on a table those live on the edge cells. */
+.invoice-receipt__line > .invoice-receipt__col:first-child {
+  padding-left: 20px;
 }
 
 .invoice-receipt__col--right {
   text-align: right;
-  padding-right: 0;
+  padding-right: 20px;
 }
 
 .invoice-receipt__col-es {
@@ -1162,42 +1182,74 @@ button {
   border-top: 1px dashed var(--eg-iron);
 }
 
-/* ── Print support ────────────────────────────────────────────────────────── */
+/* ── Print support ────────────────────────────────────────────────────────────
+   Printing the billing annex should read like a document prepared for paper —
+   the SAME annex you see on the web, but templated for the page rather than a
+   raw Ctrl-P of the app. So print keeps the receipt's own look (border, hazard-
+   stripe header, colors, spacing) and adds the document furniture: a full-bleed
+   page (near-zero margins), a running footer with page numbers on every sheet,
+   and column headings that repeat at the top of each continuation page (<thead>).
+   It also does the plumbing: expand the app's scroll shells (Chrome otherwise
+   clips an overflow:auto box to its first page), hide app chrome, force the
+   design's colors to render (browsers drop backgrounds by default), and keep
+   rows/blocks from splitting across page breaks.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* Full-bleed page: the annex paints to the top and side edges (near-zero
+   margins), with just a bottom band reserved for the running footer — page
+   numbers on the right, the document's identity on the left, the non-fiscal
+   note centered. */
+@page {
+  size: A4;
+  margin: 0 0 11mm;
+
+  @bottom-left {
+    content: 'GIRA · Anexo de facturación';
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 7pt;
+    letter-spacing: 0.06em;
+    color: #6b7480;
+  }
+
+  @bottom-center {
+    content: 'Documento informativo · no es una factura fiscal';
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 7pt;
+    letter-spacing: 0.04em;
+    color: #6b7480;
+  }
+
+  @bottom-right {
+    content: 'Página ' counter(page) ' / ' counter(pages);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 7pt;
+    letter-spacing: 0.06em;
+    color: #6b7480;
+  }
+}
 
 @media print {
-  /* Hide all app chrome: nav, topbars, rails, action bars */
-  .app,
+  /* Hide every piece of app chrome so only the annex remains. */
   .rail,
   .topbar,
   .cp-topbar,
   .cp-nav,
-  .invoice-action-bar,
-  .cp-detail__back,
   .cp-topbar__right,
+  .cp-detail__back,
+  .invoice-action-bar,
   .b-btn,
   .gs-scrim,
-  [class*='subbar'],
-  [class*='tag-head'] {
-    /* Keep tag-head inside receipt — override specifically */
-  }
-
-  .rail {
-    display: none !important;
-  }
-  .topbar {
-    display: none !important;
-  }
-  .cp-topbar {
-    display: none !important;
-  }
-  .invoice-action-bar {
+  .no-print,
+  [class*='subbar'] {
     display: none !important;
   }
 
-  /* Let the receipt fill the page */
+  /* Collapse the app's fixed-height flex/scroll shells so content flows onto
+     as many pages as it needs instead of being clipped to the viewport. */
+  html,
   body {
-    background: white !important;
-    margin: 0;
+    background: #fff !important;
+    margin: 0 !important;
   }
 
   .app {
@@ -1225,16 +1277,55 @@ button {
     overflow: visible !important;
   }
 
-  .invoice-receipt {
-    box-shadow: none !important;
-    border: 1px solid #0b1620 !important;
+  /* Both detail pages wrap the receipt in a scroll container; Chrome clips an
+     overflow:auto box to its first printed page. Let them expand and drop the
+     app padding so the annex sits flush against the @page margins. */
+  .invoice-detail__scroll,
+  .cp-detail {
+    flex: none !important;
+    overflow: visible !important;
+    height: auto !important;
     max-width: 100% !important;
+    padding: 0 !important;
     margin: 0 !important;
   }
 
-  /* Remove hazard stripes for clean print */
-  .invoice-receipt__header {
-    background-image: none !important;
+  /* The colors ARE the design — force them to print rather than letting the
+     browser strip backgrounds (which erases the header bars, issue chips,
+     plates and status badges). */
+  .invoice-receipt,
+  .invoice-receipt * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Full-bleed: drop the on-screen card frame (border + offset shadow) and the
+     960px cap so the annex paints edge to edge. Removing the side border also
+     stops the leftover space under the last row on a page from looking like a
+     framed empty row — it just becomes page background. The header stripes,
+     colors and internal spacing are unchanged. */
+  .invoice-receipt {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Repeat the column headings at the top of every printed page. */
+  .invoice-receipt__lines thead {
+    display: table-header-group;
+  }
+
+  /* Keep logical blocks — and individual table rows — intact across breaks. */
+  .invoice-receipt__header,
+  .invoice-receipt__meta,
+  .invoice-receipt__meta-cell,
+  .invoice-receipt__line,
+  .invoice-receipt__total,
+  .invoice-receipt__notes,
+  [data-testid='covered-footer'] {
+    break-inside: avoid;
   }
 }
 

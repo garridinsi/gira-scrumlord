@@ -291,6 +291,7 @@ export function InvoiceDetailPage() {
   return (
     <div className="body">
       <div
+        className="invoice-detail__scroll"
         style={{
           flex: 1,
           overflow: 'auto',
@@ -301,6 +302,7 @@ export function InvoiceDetailPage() {
         {/* Back link */}
         <Link
           to="/billing"
+          className="no-print"
           style={{
             fontFamily: 'var(--font-mono)',
             fontSize: 10,
