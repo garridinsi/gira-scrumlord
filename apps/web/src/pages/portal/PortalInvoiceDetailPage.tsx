@@ -23,6 +23,7 @@ export function PortalInvoiceDetailPage() {
   const backLink = (
     <Link
       to="/portal/invoices"
+      className="no-print"
       style={{
         fontFamily: 'var(--font-mono)',
         fontSize: 10,

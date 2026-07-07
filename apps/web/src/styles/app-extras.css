@@ -1162,42 +1162,61 @@ button {
   border-top: 1px dashed var(--eg-iron);
 }
 
-/* ── Print support ────────────────────────────────────────────────────────── */
+/* ── Print support ────────────────────────────────────────────────────────────
+   The billing annex is meant to read as a document generated from a template —
+   a real PDF-looking page — not a screenshot of the app. So print sets up A4
+   page geometry with margins, a repeating footer with page numbers, forces the
+   template's colors to render (browsers drop backgrounds by default, which would
+   erase the dark header bars and yellow accents), drops the on-screen UI card
+   (border + drop shadow) so the receipt IS the page, and keeps rows and blocks
+   from splitting across page breaks.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* Real document margins + a running footer on every page. Kept out of the
+   @media block so the page box applies to the whole print job. */
+@page {
+  size: A4;
+  margin: 15mm 15mm 18mm;
+
+  @bottom-left {
+    content: 'GIRA · Anexo de facturación · Documento informativo (no fiscal)';
+    font-family: 'Courier New', monospace;
+    font-size: 7pt;
+    letter-spacing: 0.04em;
+    color: #55606b;
+  }
+
+  @bottom-right {
+    content: 'Página ' counter(page) ' / ' counter(pages);
+    font-family: 'Courier New', monospace;
+    font-size: 7pt;
+    letter-spacing: 0.04em;
+    color: #55606b;
+  }
+}
 
 @media print {
-  /* Hide all app chrome: nav, topbars, rails, action bars */
-  .app,
+  /* Hide every piece of app chrome so only the document remains. */
   .rail,
   .topbar,
   .cp-topbar,
   .cp-nav,
-  .invoice-action-bar,
-  .cp-detail__back,
   .cp-topbar__right,
+  .cp-detail__back,
+  .invoice-action-bar,
   .b-btn,
   .gs-scrim,
-  [class*='subbar'],
-  [class*='tag-head'] {
-    /* Keep tag-head inside receipt — override specifically */
-  }
-
-  .rail {
-    display: none !important;
-  }
-  .topbar {
-    display: none !important;
-  }
-  .cp-topbar {
-    display: none !important;
-  }
-  .invoice-action-bar {
+  .no-print,
+  [class*='subbar'] {
     display: none !important;
   }
 
-  /* Let the receipt fill the page */
+  /* Collapse the app's fixed-height fl/scroll shells so content flows onto
+     as many pages as it needs instead of being clipped to the viewport. */
+  html,
   body {
-    background: white !important;
-    margin: 0;
+    background: #fff !important;
+    margin: 0 !important;
   }
 
   .app {
@@ -1225,25 +1244,62 @@ button {
     overflow: visible !important;
   }
 
-  /* Staff annex detail wraps the receipt in an inline overflow:auto scroller.
-     Chrome clips an overflow:auto box to its first printed page, so a multi-line
-     annex prints blank/truncated. Let it expand like the portal shell above. */
-  .invoice-detail__scroll {
+  /* Both detail pages wrap the receipt in a scroll container; Chrome clips an
+     overflow:auto box to its first printed page. Let them expand and drop the
+     app padding so the document sits flush against the @page margins. */
+  .invoice-detail__scroll,
+  .cp-detail {
     flex: none !important;
     overflow: visible !important;
     height: auto !important;
-  }
-
-  .invoice-receipt {
-    box-shadow: none !important;
-    border: 1px solid #0b1620 !important;
     max-width: 100% !important;
+    padding: 0 !important;
     margin: 0 !important;
   }
 
-  /* Remove hazard stripes for clean print */
+  /* The template's colors are the design — force them to print rather than
+     letting the browser strip backgrounds (which erases the header bars,
+     issue chips, plates and status badges). */
+  .invoice-receipt,
+  .invoice-receipt * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* The receipt becomes the page itself: no card border, no shadow, full width. */
+  .invoice-receipt {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Remove the hazard-stripe wash for a crisp printed header. */
   .invoice-receipt__header {
     background-image: none !important;
+    border-bottom: 3px solid var(--eg-iron) !important;
+  }
+
+  /* Keep logical blocks intact across page breaks. */
+  .invoice-receipt__header,
+  .invoice-receipt__meta,
+  .invoice-receipt__meta-cell,
+  .invoice-receipt__line,
+  .invoice-receipt__total,
+  .invoice-receipt__notes,
+  [data-testid='covered-footer'] {
+    break-inside: avoid;
+  }
+
+  /* Never leave the column headings stranded at the foot of a page. */
+  .invoice-receipt__line--head {
+    break-after: avoid;
+  }
+
+  /* Widen the printable area a touch — A4 at these margins is ~180mm. */
+  .invoice-receipt__line {
+    grid-template-columns: 90px 1fr 90px 130px 130px;
   }
 }
 
