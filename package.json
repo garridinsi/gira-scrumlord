@@ -7,7 +7,7 @@
   "license": "GPL-3.0-or-later",
   "packageManager": "pnpm@9.15.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
