@@ -3,7 +3,7 @@
 # same image (the compose service picks the command). The web is built separately
 # (apps/web/Dockerfile) and served by nginx.
 
-FROM node:20-bookworm-slim AS app
+FROM node:22-trixie-slim AS app
 # openssl + ca-certificates are needed by Prisma's query engine.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \

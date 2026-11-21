@@ -51,7 +51,7 @@ services:
     volumes:
       - gira_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U gira -d gira']
+      test: ['CMD-SHELL', 'pg_isready -h "$$(hostname -i)" -U gira -d gira']
       interval: 5s
       timeout: 5s
       retries: 20
